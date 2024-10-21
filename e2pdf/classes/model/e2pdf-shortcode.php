@@ -452,7 +452,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                                                 'e2pdf_model_shortcode_e2pdf_download_site_url',
                                                             )
                                                     )
-                                    ));
+                                            ));
                                 }
                                 $response = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
                                 break;
@@ -741,7 +741,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                                             'e2pdf_model_shortcode_e2pdf_download_site_url',
                                                         )
                                                 )
-                                ));
+                                        ));
                             }
                             $response = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
                             break;
@@ -794,11 +794,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         /* Backward Compatibility */
         $overwrite = '1';
         if (isset($atts['overwrite'])) {
-            if ($atts['overwrite'] == 'false') {
-                $overwrite = '0';
-            } elseif ($atts['overwrite'] == '2') {
-                $overwrite = '2';
-            }
+            $overwrite = $atts['overwrite'] == 'false' ? '0' : $atts['overwrite'];
         }
         $output = isset($atts['output']) ? $atts['output'] : '';
         $apply = isset($atts['apply']) ? true : false;
@@ -1166,7 +1162,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                                                         'e2pdf_model_shortcode_e2pdf_save_site_url',
                                                                     )
                                                             )
-                                            ));
+                                                    ));
                                         }
                                         $response = apply_filters('e2pdf_model_shortcode_e2pdf_save_output_url', $url, $atts);
                                     }

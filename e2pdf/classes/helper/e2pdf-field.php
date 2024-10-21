@@ -105,10 +105,10 @@ class Helper_E2pdf_Field {
                 );
             }
 
-            /*
-             * [e2pdf-foreach] backward compatibility
-             */
             if ($extension instanceof Extension_E2pdf_Woocommerce || $extension instanceof Extension_E2pdf_Wordpress) {
+                /*
+                 * [e2pdf-foreach] backward compatibility
+                 */
                 $shortcode_tags = array(
                     'e2pdf-foreach',
                 );
@@ -229,7 +229,6 @@ class Helper_E2pdf_Field {
                 $shortcode_tags = array(
                     'e2pdf-acf-repeater',
                 );
-                $shortcode_tags = apply_filters('e2pdf_extension_render_shortcodes_tags', $shortcode_tags);
                 preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
                 $tagnames = array_intersect($shortcode_tags, $matches[1]);
                 if (!empty($tagnames)) {
@@ -268,7 +267,6 @@ class Helper_E2pdf_Field {
             $shortcode_tags = array(
                 'e2pdf-for',
             );
-            $shortcode_tags = apply_filters('e2pdf_extension_render_shortcodes_tags', $shortcode_tags);
             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
             $tagnames = array_intersect($shortcode_tags, $matches[1]);
             if (!empty($tagnames)) {
@@ -289,7 +287,6 @@ class Helper_E2pdf_Field {
             $shortcode_tags = array(
                 'e2pdf-if',
             );
-            $shortcode_tags = apply_filters('e2pdf_extension_render_shortcodes_tags', $shortcode_tags);
             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
             $tagnames = array_intersect($shortcode_tags, $matches[1]);
             if (!empty($tagnames)) {
@@ -324,7 +321,7 @@ class Helper_E2pdf_Field {
             if ($extension instanceof Extension_E2pdf_Gravity) {
                 $shortcode_tags[] = 'gravityforms';
             }
-            $shortcode_tags = apply_filters('e2pdf_extension_render_shortcodes_tags', $shortcode_tags);
+            $shortcode_tags = apply_filters('e2pdf_extension_render_shortcodes_tags', $shortcode_tags, $extension, $field, $do_shortcode);
             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
             $tagnames = array_intersect($shortcode_tags, $matches[1]);
             if (!empty($tagnames)) {
