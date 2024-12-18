@@ -3,9 +3,9 @@ Contributors: rasmarcus, oleksandrz
 Donate link: https://e2pdf.com/
 Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpforms, elementor, woocommerce, contact form 7
 Requires at least: 4.0
-Tested up to: 6.6
+Tested up to: 6.7
 Requires PHP: 5.3
-Stable tag: 1.25.12
+Stable tag: 1.25.14
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -133,6 +133,11 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 6. Settings Page.
 
 == Changelog ==
+
+= 1.25.14 =
+*Release Date - 18 December 2024*
+
+* Fix: Contact Form 7 duplicated entries
 
 = 1.25.12 =
 *Release Date - 21 October 2024*

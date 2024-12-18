@@ -4,7 +4,7 @@
   Plugin Name: E2Pdf
   Plugin URI:  https://e2pdf.com
   Description: Export to PDF tool
-  Version:     1.25.12
+  Version:     1.25.14
   Author:      E2Pdf.com
   Author URI:  https://e2pdf.com/contributors
   Text Domain: e2pdf

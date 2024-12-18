@@ -262,7 +262,9 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                             remove_filter('wpcf7_validate_signature*', 'wpcf7_signature_validation_filter', 10, 2);
 
                             $form = WPCF7_ContactForm::get_instance($this->get('item'));
+                            add_action('wpcf7_before_send_mail', array($this, 'action_wpcf7_before_send_mail_abort'), 98, 2);
                             $submission = WPCF7_Submission::get_instance($form);
+                            remove_action('wpcf7_before_send_mail', array($this, 'action_wpcf7_before_send_mail_abort'), 98, 2);
                         } else {
                             $submission = WPCF7_Submission::get_instance();
                         }
@@ -328,7 +330,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
      * Load actions for this extension
      */
     public function load_actions() {
-        add_action('wpcf7_before_send_mail', array($this, 'action_wpcf7_before_send_mail'), 99);
+        add_action('wpcf7_before_send_mail', array($this, 'action_wpcf7_before_send_mail'), 99, 2);
         add_action('wpcf7_mail_sent', array($this, 'action_wpcf7_mail_sent'));
         add_action('cfdb7_after_save_data', array($this, 'action_cfdb7_after_save_data'));
         add_action('vsz_cf7_after_insert_db', array($this, 'action_vsz_cf7_after_insert_db'), 10, 3);
@@ -347,9 +349,9 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         $items = array();
         if (class_exists('WPCF7_ContactForm')) {
             $forms = WPCF7_ContactForm::find(
-                            array(
-                                'posts_per_page' => 99999,
-                            )
+                    array(
+                        'posts_per_page' => 99999,
+                    )
             );
             if ($forms) {
                 foreach ($forms as $key => $form) {
@@ -1282,11 +1284,15 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         }
     }
 
-    public function action_wpcf7_before_send_mail($form) {
+    public function action_wpcf7_before_send_mail_abort($form, &$abort) {
+        $abort = true;
+    }
+
+    public function action_wpcf7_before_send_mail($form, &$abort) {
 
         $submission = WPCF7_Submission::get_instance();
-        if (!$submission) {
-            return $form;
+        if (!$submission || $abort) {
+            return;
         }
 
         $this->set('dataset', false);
