@@ -491,12 +491,11 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
             }
             $value = $this->helper->load('field')->do_shortcodes($value, $this, $field);
             if (function_exists('wpforms_process_smart_tags')) {
-
+                add_filter('wpforms_smart_tags_formatted_field_value', array($this, 'filter_wpforms_smart_tags_formatted_field_value'), 99, 4);
                 add_filter('wpforms_smarttags_process_value', array($this, 'filter_wpforms_smarttags_process_value'), 10, 6);
-
                 $value = wpforms_process_smart_tags($value, wpforms_decode($this->get('cached_form')->post_content), wpforms_decode($this->get('cached_entry')->fields), $this->get('cached_entry')->entry_id);
-
                 remove_filter('wpforms_smarttags_process_value', array($this, 'filter_wpforms_smarttags_process_value'), 10);
+                remove_filter('wpforms_smart_tags_formatted_field_value', array($this, 'filter_wpforms_smart_tags_formatted_field_value'), 99);
             }
             $value = $this->helper->load('field')->render(
                     apply_filters('e2pdf_extension_render_shortcodes_pre_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), false, false),
@@ -507,6 +506,16 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         return apply_filters(
                 'e2pdf_extension_render_shortcodes_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), false, false
         );
+    }
+
+    public function filter_wpforms_smart_tags_formatted_field_value($value, $field_id, $fields, $field_key) {
+        if (function_exists('wpforms_get_multi_fields')) {
+            $field_type = $fields[$field_id]['type'] ?? '';
+            if (in_array($field_type, wpforms_get_multi_fields(), true)) {
+                return $fields[$field_id][$field_key] ?? '';
+            }
+        }
+        return $value;
     }
 
     public function filter_wpforms_smarttags_process_value($value, $tag_name, $form_data, $fields, $entry_id, $smart_tag_object) {
