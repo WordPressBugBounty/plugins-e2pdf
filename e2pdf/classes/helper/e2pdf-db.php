@@ -22,11 +22,13 @@ class Helper_E2pdf_Db {
      * 
      * @return array - Filtered WHERE request
      */
-    public function prepare_where($condition = array()) {
+    public function prepare_where($condition = array(), $sub_query = false) {
 
         $sql = array();
         $filter = array();
-        $sql[] = " WHERE '1' = '1'";
+        if (!$sub_query) {
+            $sql[] = " WHERE '1' = '1'";
+        }
         $condition = apply_filters('e2pdf_helper_db_prepare_where_condition', $condition);
 
         if (!empty($condition)) {
@@ -43,8 +45,23 @@ class Helper_E2pdf_Db {
                         $filter[] = $sub_value;
                     }
                 } else {
-                    $sql[] = " " . implode('.', $sql_keys) . " {$value['condition']} '{$value['type']}'";
-                    $filter[] = $value['value'];
+                    if (!empty($value['or'])) {
+                        $sub_sql = array();
+                        $sub_sql[] = " " . implode('.', $sql_keys) . " {$value['condition']} '{$value['type']}'";
+                        $filter[] = $value['value'];
+                        foreach ($value['or'] as $or) {
+                            $sub_where = $this->prepare_where($or, true);
+                            $sub_sql[] = $sub_where['sql'];
+                            foreach ($sub_where['filter'] as $sub_filter) {
+                                $filter[] = $sub_filter;
+                            }
+                        }
+
+                        $sql[] = ' (' . implode(' OR ', $sub_sql) . ')';
+                    } else {
+                        $sql[] = " " . implode('.', $sql_keys) . " {$value['condition']} '{$value['type']}'";
+                        $filter[] = $value['value'];
+                    }
                 }
             }
         }
@@ -135,10 +152,12 @@ class Helper_E2pdf_Db {
         `password` text NOT NULL,
         `owner_password` text NOT NULL,
         `permissions` longtext NOT NULL,
+        `hooks` longtext NOT NULL,
         `meta_title` text NOT NULL,
         `meta_subject` text NOT NULL,
         `meta_author` text NOT NULL,
         `meta_keywords` text NOT NULL,
+        `lang_code` varchar(255) NOT NULL,
         `font` varchar(255) NOT NULL,
         `font_size` varchar(255) NOT NULL,
         `font_color` varchar(255) NOT NULL,
@@ -149,6 +168,7 @@ class Helper_E2pdf_Db {
         `activated` enum('0','1') NOT NULL DEFAULT '0',
         `locked` enum('0','1') NOT NULL DEFAULT '0',
         `author` int(11) NOT NULL,
+        `properties` longtext NOT NULL,
         `actions` longtext NOT NULL,
             PRIMARY KEY (`ID`)
         ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
@@ -173,8 +193,16 @@ class Helper_E2pdf_Db {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `meta_keywords` text NOT NULL AFTER meta_author;");
         }
 
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'lang_code';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `lang_code` text NOT NULL AFTER meta_keywords;");
+        }
+
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'actions';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `actions` longtext NOT NULL AFTER author;");
+        }
+
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'properties';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `properties` longtext NOT NULL AFTER author;");
         }
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'rtl';")) {
@@ -232,6 +260,10 @@ class Helper_E2pdf_Db {
 
         $wpdb->query("UPDATE `" . $db_prefix . "e2pdf_templates` SET permissions = 'a:1:{i:0;s:8:\"printing\";}' WHERE permissions = ''");
 
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'hooks';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `hooks` longtext NOT NULL AFTER permissions;");
+        }
+
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'dpdf';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `dpdf` text NOT NULL AFTER button_title;");
         }
@@ -242,6 +274,10 @@ class Helper_E2pdf_Db {
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'optimization';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `optimization` int(1) NOT NULL DEFAULT '-1' AFTER compression;");
+        }
+
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'attachments';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `attachments` longtext NOT NULL AFTER fonts;");
         }
 
         $wpdb->query("CREATE TABLE IF NOT EXISTS `" . $db_prefix . "e2pdf_entries` (
@@ -270,11 +306,16 @@ class Helper_E2pdf_Db {
         `extension` varchar(255) NOT NULL,
         `item` varchar(255) NOT NULL,
         `entry` longtext,
+        `created_at` datetime NOT NULL,
             PRIMARY KEY (`ID`)
         ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
 
         if ($wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_datasets` WHERE Field = 'ID' and Type LIKE 'int(11)';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_datasets` CHANGE `ID` `ID` bigint(20) NOT NULL AUTO_INCREMENT;");
+        }
+
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_datasets` LIKE 'created_at';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_datasets` ADD COLUMN `created_at` datetime NOT NULL AFTER entry;");
         }
 
         $wpdb->query("CREATE TABLE IF NOT EXISTS `" . $db_prefix . "e2pdf_pages` (
@@ -404,10 +445,12 @@ class Helper_E2pdf_Db {
         `password` text NOT NULL,
         `owner_password` text NOT NULL,
         `permissions` longtext NOT NULL,
+        `hooks` longtext NOT NULL,
         `meta_title` text NOT NULL,
         `meta_subject` text NOT NULL,
         `meta_author` text NOT NULL,
         `meta_keywords` text NOT NULL,
+        `lang_code` varchar(255) NOT NULL,
         `font` varchar(255) NOT NULL,
         `font_size` varchar(255) NOT NULL,
         `font_color` varchar(255) NOT NULL,
@@ -415,6 +458,7 @@ class Helper_E2pdf_Db {
         `text_align` varchar(255) NOT NULL,
         `fonts` longtext NOT NULL,
         `author` int(11) NOT NULL,
+        `properties` longtext NOT NULL,
         `actions` longtext NOT NULL,
             PRIMARY KEY (`PID`)
         ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
@@ -429,8 +473,16 @@ class Helper_E2pdf_Db {
             $wpdb->query("CREATE INDEX `template_id` ON `" . $db_prefix . "e2pdf_revisions` (`template_id`);");
         }
 
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'lang_code';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `lang_code` text NOT NULL AFTER meta_keywords;");
+        }
+
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'actions';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `actions` longtext NOT NULL AFTER author;");
+        }
+
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'properties';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `properties` longtext NOT NULL AFTER author;");
         }
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'rtl';")) {
@@ -488,6 +540,10 @@ class Helper_E2pdf_Db {
 
         $wpdb->query("UPDATE `" . $db_prefix . "e2pdf_revisions` SET permissions = 'a:1:{i:0;s:8:\"printing\";}' WHERE permissions = ''");
 
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'hooks';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `hooks` longtext NOT NULL AFTER permissions;");
+        }
+
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'dpdf';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `dpdf` text NOT NULL AFTER button_title;");
         }
@@ -502,6 +558,10 @@ class Helper_E2pdf_Db {
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'optimization';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `optimization` int(1) NOT NULL DEFAULT '-1' AFTER compression;");
+        }
+
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'attachments';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `attachments` longtext NOT NULL AFTER fonts;");
         }
 
         $wpdb->query("CREATE TABLE IF NOT EXISTS `" . $db_prefix . "e2pdf_bulks` (
@@ -633,20 +693,24 @@ class Helper_E2pdf_Db {
                     'password' => array(),
                     'owner_password' => array(),
                     'permissions' => array(),
+                    'hooks' => array(),
                     'meta_title' => array(),
                     'meta_subject' => array(),
                     'meta_author' => array(),
                     'meta_keywords' => array(),
+                    'lang_code' => array(),
                     'font' => array(),
                     'font_size' => array(),
                     'font_color' => array(),
                     'line_height' => array(),
                     'text_align' => array(),
                     'fonts' => array(),
+                    'attachments' => array(),
                     'trash' => array(),
                     'activated' => array(),
                     'locked' => array(),
                     'author' => array(),
+                    'properties' => array(),
                     'actions' => array(),
                 )
             ),
@@ -668,6 +732,7 @@ class Helper_E2pdf_Db {
                     'extension' => array(),
                     'item' => array(),
                     'entry' => array(),
+                    'created_at' => array(),
                 )
             ),
             'e2pdf_pages' => array(
@@ -740,17 +805,21 @@ class Helper_E2pdf_Db {
                     'password' => array(),
                     'owner_password' => array(),
                     'permissions' => array(),
+                    'hooks' => array(),
                     'meta_title' => array(),
                     'meta_subject' => array(),
                     'meta_author' => array(),
                     'meta_keywords' => array(),
+                    'lang_code' => array(),
                     'font' => array(),
                     'font_size' => array(),
                     'font_color' => array(),
                     'line_height' => array(),
                     'text_align' => array(),
                     'fonts' => array(),
+                    'attachments' => array(),
                     'author' => array(),
+                    'properties' => array(),
                     'actions' => array(),
                 )
             )
@@ -772,12 +841,12 @@ class Helper_E2pdf_Db {
                 );
                 $where = $this->prepare_where($condition);
 
-                $table_exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES " . $where['sql'] . "", $where['filter']));
+                $table_exists = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` ' . $where['sql'] . '', $where['filter']));
                 if ($table_exists) {
 
                     $db_structure[$table_key]['check'] = true;
-                    $table_columns = $wpdb->get_results($wpdb->prepare("SELECT `COLUMN_NAME` FROM INFORMATION_SCHEMA.COLUMNS " . $where['sql'] . "", $where['filter']), ARRAY_A);
-                    $table_format = $wpdb->get_var($wpdb->prepare("SELECT row_format FROM INFORMATION_SCHEMA.TABLES " . $where['sql'] . "", $where['filter']));
+                    $table_columns = $wpdb->get_results($wpdb->prepare('SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` ' . $where['sql'] . '', $where['filter']), ARRAY_A);
+                    $table_format = $wpdb->get_var($wpdb->prepare('SELECT row_format FROM `INFORMATION_SCHEMA`.`TABLES` ' . $where['sql'] . '', $where['filter']));
                     $db_structure[$table_key]['format'] = $table_format;
 
                     foreach ($table_columns as $table_column) {

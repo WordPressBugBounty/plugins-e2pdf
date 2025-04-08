@@ -1,7 +1,7 @@
 <?php
 
 /**
- * E2pdf View Helper
+ * E2Pdf View Helper
  * 
  * @copyright  Copyright 2017 https://e2pdf.com
  * @license    GPLv3
@@ -51,9 +51,7 @@ class Helper_E2pdf_View {
 
     /**
      * Get Tpl Value
-     * 
      * @param string $key - Tpl key
-     * 
      * @return mixed - Tpl value
      */
     public function render($type, $element, $args = array()) {
@@ -66,9 +64,7 @@ class Helper_E2pdf_View {
 
     /**
      * Get Tpl Value
-     * 
      * @param string $key - Tpl key
-     * 
      * @return mixed - Tpl value
      */
     public function render_metabox($post, $metabox) {
@@ -77,9 +73,7 @@ class Helper_E2pdf_View {
 
     /**
      * Get Tpl Value
-     * 
      * @param string $key - Tpl key
-     * 
      * @return mixed - Tpl value
      */
     public function render_page() {
@@ -96,7 +90,7 @@ class Helper_E2pdf_View {
                 $this->controller->$method();
                 $this->view = $this->controller->view;
             } else {
-                $this->error('404');
+                $this->handle_404();
             }
         }
 
@@ -119,7 +113,7 @@ class Helper_E2pdf_View {
                 if (method_exists($this->controller, $method)) {
                     $this->controller->$method();
                 } else {
-                    $this->error('404');
+                    $this->handle_404();
                 }
             }
 
@@ -141,32 +135,40 @@ class Helper_E2pdf_View {
         }
     }
 
+    public function rpc() {
+        if (ob_get_length() > 0) {
+            while (@ob_end_clean());
+        }
+        $rpc = new Model_E2pdf_Rpc($this->helper->load('server')->get('REQUEST_URI'));
+        $controller = $this->page_to_controller('e2pdf-rpc-' . $rpc->get('version'), true);
+        if (class_exists($controller)) {
+            $this->controller = new $controller();
+            $method = $rpc->get('method');
+            if ($method && method_exists($this->controller, $method)) {
+                $this->controller->$method($rpc);
+            }
+        }
+    }
+
     /**
      * Get Tpl Value
-     * 
      * @param string $key - Tpl key
-     * 
      * @return mixed - Tpl value
      */
     public function page_to_controller($page, $frontend = false) {
-
         $controller = array(
             'Controller'
         );
-
         if ($frontend) {
             $controller[] = 'Frontend';
         }
-
         $controller = array_merge($controller, explode('-', $page));
         $controller = array_map('ucfirst', $controller);
-
         return implode("_", $controller);
     }
 
     /**
      * Redirect to page
-     * 
      * @param string $location - Full url where to redirect
      */
     public function redirect($location) {
@@ -180,7 +182,6 @@ class Helper_E2pdf_View {
 
     /**
      * Add notification
-     * 
      * @param string $type - Type of notification error|update
      * @param string $text - Text of notification
      */
@@ -190,7 +191,6 @@ class Helper_E2pdf_View {
 
     /**
      * Get notifications
-     * 
      * @return array - List of notifications
      */
     public function get_notifications() {
@@ -200,9 +200,7 @@ class Helper_E2pdf_View {
 
     /**
      * Force Json response
-     * 
      * @param array $data - Array of data
-     * 
      * @return json
      */
     public function json_response($data = array()) {
@@ -228,16 +226,15 @@ class Helper_E2pdf_View {
 
     /**
      * Force Download response
-     * 
      * @param string $format - Format of file
      * @param string $file - Base64 Encoded File
      * @param string $name - Name of file when download
      * @param string $disposition - Disposition of file inline|attachment
-     * 
      * @return string
      */
     public function download_response($format, $file, $name = '', $disposition = '', $fpassthru = false, $preview = false) {
 
+        $content_length = true;
         /**
          * External Links – nofollow, noopener & new window compatibility fix filter 
          * https://wordpress.org/plugins/wp-external-links/
@@ -259,6 +256,25 @@ class Helper_E2pdf_View {
          */
         header_remove("Content-Encoding");
 
+        /**
+         * W3 Total Cache + OVH compatibility fix
+         * https://wordpress.org/plugins/w3-total-cache/
+         */
+        if (function_exists('w3tc_config')) {
+            $w3tc_config = w3tc_config();
+            if ($w3tc_config->get_boolean('browsercache.enabled') && $w3tc_config->get_boolean('browsercache.html.compression') && function_exists('php_uname') && false !== stripos(@php_uname(), '.ovh.net')) {
+                $content_length = false;
+            }
+        }
+
+        /**
+         * WP Rocket + OVH compatibility fix
+         * https://wp-rocket.me/
+         */
+        if (function_exists('rocket_generate_config_file') && !function_exists('WP_Rocket\Helpers\htaccess\remove_gzip\flush_wp_rocket') && function_exists('php_uname') && false !== stripos(@php_uname(), '.ovh.net')) {
+            $content_length = false;
+        }
+
         if (!$name) {
             $name = time();
         }
@@ -269,7 +285,9 @@ class Helper_E2pdf_View {
         header('X-Robots-Tag: noindex, nofollow');
         switch ($format) {
             case 'pdf':
-                header('Content-Length: ' . strlen(base64_decode($file)));
+                if ($content_length) {
+                    header('Content-Length: ' . strlen(base64_decode($file)));
+                }
                 if (!$disposition) {
                     $disposition = 'inline';
                 }
@@ -284,7 +302,9 @@ class Helper_E2pdf_View {
                 }
                 break;
             case 'jpg':
-                header('Content-Length: ' . strlen(base64_decode($file)));
+                if ($content_length) {
+                    header('Content-Length: ' . strlen(base64_decode($file)));
+                }
                 if (!$disposition) {
                     $disposition = 'attachment';
                 }
@@ -299,13 +319,15 @@ class Helper_E2pdf_View {
                 }
                 break;
             case 'zip':
-                if ($fpassthru) {
-                    if (ini_get('zlib.output_compression')) {
-                        ini_set('zlib.output_compression', 'Off');
+                if ($content_length) {
+                    if ($fpassthru) {
+                        if (ini_get('zlib.output_compression')) {
+                            ini_set('zlib.output_compression', 'Off');
+                        }
+                        header('Content-Length: ' . filesize(trim($file)));
+                    } else {
+                        header('Content-Length: ' . strlen(base64_decode($file)));
                     }
-                    header('Content-Length: ' . filesize(trim($file)));
-                } else {
-                    header('Content-Length: ' . strlen(base64_decode($file)));
                 }
                 if (!$disposition) {
                     $disposition = 'attachment';
@@ -390,11 +412,9 @@ class Helper_E2pdf_View {
 
     /**
      * Check if exists in array
-     * 
      * @param string $value - Array Key
      * @param mixed $compare 
      * @param array $data - Array of data
-     * 
      * @return bool
      */
     public function exist($value, $compare = false, $data = array()) {
@@ -407,22 +427,20 @@ class Helper_E2pdf_View {
 
     /**
      * Force Error
-     * 
      * @param string $code - Error Code
      */
-    public function error($code = '404') {
+    public function handle_404() {
         global $wp_query;
-        if ($code === '404') {
-            $wp_query->set_404();
-            status_header(404);
-            $this->redirect(site_url('wp-admin'));
+        $wp_query->set_404();
+        status_header(404);
+        nocache_headers();
+        if (is_admin()) {
             wp_die('404');
         }
     }
 
     /**
      * Set var available to view template
-     * 
      * @param string $key - Key of value
      * @param mixed $value - Value
      */
@@ -432,9 +450,7 @@ class Helper_E2pdf_View {
 
     /**
      * Check if Array/Object Empty
-     * 
      * @param mixed $data - Object/Array to check
-     * 
      * @return bool
      */
     public function is_empty($data) {
@@ -455,7 +471,7 @@ class Helper_E2pdf_View {
         $message = '';
         switch ($key) {
             case 'wp_verify_nonce_error':
-                $message = __('E2Pdf Bad Request', 'e2pdf');
+                $message = 'E2Pdf Bad Request';
                 break;
             default:
                 break;

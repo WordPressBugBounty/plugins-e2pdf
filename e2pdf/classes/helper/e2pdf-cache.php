@@ -89,4 +89,14 @@ class Helper_E2pdf_Cache {
             }
         }
     }
+
+    public function purge_tmp_cache() {
+        $files = glob($this->helper->get('tmp_dir') . '*', GLOB_MARK);
+        $ttl = (int) get_option('e2pdf_cache_tmp_ttl', '7200');
+        foreach ($files as $file) {
+            if (0 === strpos(basename($file), 'e2pdf') && (time() - filectime($file)) > $ttl) {
+                $this->helper->delete_dir($file);
+            }
+        }
+    }
 }

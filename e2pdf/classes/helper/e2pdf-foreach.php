@@ -40,13 +40,7 @@ class Helper_E2pdf_Foreach {
             if (!empty($tagnames)) {
                 preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $value, $shortcodes);
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
-                    $shortcode = array();
-                    $shortcode[1] = $shortcodes[1][$key];
-                    $shortcode[2] = $shortcodes[2][$key];
-                    $shortcode[3] = $shortcodes[3][$key];
-                    $shortcode[4] = $shortcodes[4][$key];
-                    $shortcode[5] = $shortcodes[5][$key];
-                    $shortcode[6] = $shortcodes[6][$key];
+                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
                     if (isset($atts['shortcode'])) {
                         $response = array();
@@ -118,13 +112,7 @@ class Helper_E2pdf_Foreach {
             if (!empty($tagnames)) {
                 preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $value, $shortcodes);
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
-                    $shortcode = array();
-                    $shortcode[1] = $shortcodes[1][$key];
-                    $shortcode[2] = $shortcodes[2][$key];
-                    $shortcode[3] = $shortcodes[3][$key];
-                    $shortcode[4] = $shortcodes[4][$key];
-                    $shortcode[5] = $shortcodes[5][$key];
-                    $shortcode[6] = $shortcodes[6][$key];
+                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
                     if (isset($atts['path'])) {
                         $path = $atts['path'];

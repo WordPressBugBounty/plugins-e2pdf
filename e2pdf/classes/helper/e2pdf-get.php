@@ -21,7 +21,6 @@ class Helper_E2pdf_Get {
     /**
      * On init
      * Assign $_GET params to $get
-     * 
      * @param string $url - Current url  
      */
     public function __construct($url) {
@@ -32,9 +31,7 @@ class Helper_E2pdf_Get {
 
     /**
      * Get value from $_GET
-     * 
      * @param string $key - Array key
-     * 
      * @return mixed - Return value by get key
      */
     public function get($key = false) {
@@ -56,11 +53,9 @@ class Helper_E2pdf_Get {
 
     /**
      * Get current page
-     * 
      * @return string - Current page
      */
     public function get_page() {
         return $this->page;
     }
-
 }

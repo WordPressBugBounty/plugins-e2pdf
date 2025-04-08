@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Bulk Model
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-bulk.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -39,7 +37,8 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
 
         if ($bulk === false) {
             $this->helper->load('cache')->pre_objects_cache();
-            $bulk = $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$this->get_table()}` WHERE ID = %d", $bulk_id), ARRAY_A);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+            $bulk = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $this->get_table() . '` WHERE ID = %d', $bulk_id), ARRAY_A);
             if ($this->helper->get('cache')) {
                 wp_cache_set($bulk_id, $bulk, 'e2pdf_bulks');
             }
@@ -58,11 +57,7 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Load Entry by UID
-     * 
-     * @param int $uid - ID of template
-     */
+    // load by uid
     public function load_by_uid($uid = false) {
         global $wpdb;
         $bulk = false;
@@ -71,7 +66,8 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
         }
         if ($bulk === false) {
             $this->helper->load('cache')->pre_objects_cache();
-            $bulk = $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$this->get_table()}` WHERE uid = %s", $uid), ARRAY_A);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+            $bulk = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $this->get_table() . '` WHERE uid = %s', $uid), ARRAY_A);
             if ($this->helper->get('cache')) {
                 wp_cache_set($uid, $bulk, 'e2pdf_bulks_uids');
             }
@@ -89,7 +85,8 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
     public function load_by_active_bulk() {
         global $wpdb;
 
-        $bulk = $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$this->get_table()}` WHERE status = %s OR status = %s ORDER BY ID ASC", 'pending', 'busy'), ARRAY_A);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $bulk = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $this->get_table() . '` WHERE status = %s OR status = %s ORDER BY ID ASC', 'pending', 'busy'), ARRAY_A);
         if ($bulk) {
             $this->load($bulk['ID']);
             return true;
@@ -139,8 +136,8 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
             'count' => $this->get('count'),
             'total' => $this->get('total'),
             'dataset' => $this->get('dataset'),
-            'datasets' => serialize($this->get('datasets')),
-            'options' => serialize($this->get('options')),
+            'datasets' => serialize($this->get('datasets')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'options' => serialize($this->get('options')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
             'status' => $this->get('status'),
         );
 
@@ -163,7 +160,7 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
 
         if ($this->get('ID')) {
             $where = array(
-                'ID' => $this->get('ID')
+                'ID' => $this->get('ID'),
             );
             $success = $wpdb->update($this->get_table(), $bulk, $where);
             if ($success === false) {
@@ -197,19 +194,18 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
 
     public function get_active_status() {
         global $wpdb;
-        $status = $wpdb->get_var($wpdb->prepare("SELECT status FROM `{$this->get_table()}` WHERE ID = %d", $this->get('ID')));
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $status = $wpdb->get_var($wpdb->prepare('SELECT status FROM `' . $this->get_table() . '` WHERE ID = %d', $this->get('ID')));
         return $status;
     }
 
-    /**
-     * Delete loaded entry
-     */
+    // delete
     public function delete() {
         global $wpdb;
         if ($this->get('ID')) {
 
             $where = array(
-                'ID' => $this->get('ID')
+                'ID' => $this->get('ID'),
             );
             $wpdb->delete($this->get_table(), $where);
 
@@ -218,12 +214,12 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
                 wp_cache_delete($this->get('uid'), 'e2pdf_bulks_uids');
             }
 
-            $pdf_dir = $this->helper->get('bulk_dir') . $this->get('uid') . "/";
+            $pdf_dir = $this->helper->get('bulk_dir') . $this->get('uid') . '/';
             if (file_exists($pdf_dir)) {
                 $this->helper->delete_dir($pdf_dir);
             }
 
-            $zip_path = $this->helper->get('bulk_dir') . $this->get('uid') . ".zip";
+            $zip_path = $this->helper->get('bulk_dir') . $this->get('uid') . '.zip';
             if (file_exists($zip_path)) {
                 unlink($zip_path);
             }

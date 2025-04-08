@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Template Model
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.01.33
+ * File: /model/e2pdf-entry.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -18,10 +16,6 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
     private $table;
     private $key;
     private $entry = array();
-
-    /*
-     * On Template init
-     */
 
     public function __construct() {
         global $wpdb;
@@ -34,11 +28,6 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Load Entry by UID
-     * 
-     * @param int $uid - ID of template
-     */
     public function load_by_uid($uid = false) {
         global $wpdb;
         if (!$uid) {
@@ -50,12 +39,12 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
         }
         if ($entry === false) {
             $this->helper->load('cache')->pre_objects_cache();
-            $entry = $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$this->get_table()}` WHERE uid = %s", $uid), ARRAY_A);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+            $entry = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $this->get_table() . '` WHERE uid = %s', $uid), ARRAY_A);
             if ($this->helper->get('cache')) {
                 wp_cache_set($uid, $entry, 'e2pdf_uid_entries');
             }
         }
-
         if ($entry) {
             $this->entry = $entry;
             $this->set('entry', $this->helper->load('convert')->unserialize($entry['entry']));
@@ -64,23 +53,10 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Set Entry attribute
-     * 
-     * @param string $key - Attribute Key 
-     * @param string $value - Attribute Value 
-     */
     public function set($key, $value) {
         $this->entry[$key] = $value;
     }
 
-    /**
-     * Get Entry attribute by Key
-     * 
-     * @param string $key - Attribute Key 
-     * 
-     * @return mixed
-     */
     public function get($key) {
         if (isset($this->entry[$key])) {
             $value = $this->entry[$key];
@@ -92,15 +68,13 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
                 case 'pdf_num':
                     $value = 0;
                     break;
-
                 case 'entry':
                     $value = array();
                     break;
-
                 case 'uid':
+                    // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
                     $value = md5(md5(serialize($this->get('entry'))) . md5($this->key));
                     break;
-
                 default:
                     $value = '';
                     break;
@@ -125,22 +99,16 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
         $this->entry['entry'][$key] = $value;
     }
 
-    /**
-     * Before save template
-     */
     public function pre_save() {
 
         $entry = array(
             'uid' => $this->get('uid'),
-            'entry' => serialize($this->get('entry')),
-            'pdf_num' => $this->get('pdf_num')
+            'entry' => serialize($this->get('entry')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'pdf_num' => $this->get('pdf_num'),
         );
         return $entry;
     }
 
-    /**
-     * Save entry
-     */
     public function save() {
         global $wpdb;
 
@@ -148,7 +116,7 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
 
         if ($this->get('ID')) {
             $where = array(
-                'ID' => $this->get('ID')
+                'ID' => $this->get('ID'),
             );
             $success = $wpdb->update($this->get_table(), $entry, $where);
             if ($success === false) {
@@ -170,14 +138,11 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Delete loaded entry
-     */
     public function delete() {
         global $wpdb;
         if ($this->get('ID')) {
             $where = array(
-                'ID' => $this->get('ID')
+                'ID' => $this->get('ID'),
             );
             $wpdb->delete($this->get_table(), $where);
 

@@ -1,12 +1,12 @@
 <?php
 
 /**
- * E2Pdf Fluent Forms Extension
+ * E2Pdf WPForms Extension
  * @copyright  Copyright 2017 https://e2pdf.com
  * @license    GPL v2
  * @version    1
  * @link       https://e2pdf.com
- * @since      1.07.04
+ * @since      1.23.00
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -67,7 +67,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
             case 'dataset':
                 $this->set('cached_entry', false);
                 if ($this->get('dataset')) {
-                    if (substr($this->get('dataset'), 0, 4) === 'tmp-') {
+                    if (substr($this->get('dataset'), 0, 4) === 'tmp_') {
                         $cached_entry = new stdClass();
                         $cached_entry->entry_id = '';
                         $cached_entry->form_id = $this->get('item');
@@ -232,11 +232,13 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -252,6 +254,10 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         } else {
             add_action('wpforms_email_send_after', array($this, 'action_wpforms_email_send_after'));
         }
+
+        /* Hooks */
+        add_action('wpforms_entry_details_sidebar', array($this, 'hook_wpforms_entry_view'));
+        add_action('wpforms_pro_admin_entries_edit_sidebar', array($this, 'hook_wpforms_entry_edit'));
     }
 
     public function action_wpforms_email_send_after() {
@@ -309,7 +315,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
                     if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
-                        $transient = isset($atts['dataset']) && substr($atts['dataset'], 0, 4) === 'tmp-' ? 'e2pdf_' . $atts['dataset'] : false;
+                        $transient = isset($atts['dataset']) && substr($atts['dataset'], 0, 4) === 'tmp_' ? 'e2pdf_' . $atts['dataset'] : false;
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
                             $tmp = false;
@@ -351,6 +357,11 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
     public function load_filters() {
         add_filter('wpforms_frontend_confirmation_message', array($this, 'filter_wpforms_frontend_confirmation_message'), 10, 4);
         add_filter('wpforms_emails_send_email_data', array($this, 'filter_wpforms_emails_send_email_data'), 11, 2);
+        add_filter('wpforms_process_smart_tags', array(new Model_E2pdf_Filter(), 'pre_filter'), 0);
+        add_filter('wpforms_process_smart_tags', array(new Model_E2pdf_Filter(), 'filter'), 999);
+
+        /* Hooks */
+        add_filter('wpforms_entry_table_actions', array($this, 'hook_wpforms_row_actions'), 10, 2);
     }
 
     public function filter_wpforms_frontend_confirmation_message($message, $form_data, $fields, $dataset) {
@@ -422,7 +433,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                     $atts['dataset'] = $data->entry_id;
                                     $shortcode[3] .= ' dataset="' . $data->entry_id . '"';
                                 } elseif (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
-                                    $dataset = 'tmp-' . md5(microtime() . '_' . wp_rand());
+                                    $dataset = 'tmp_' . $this->helper->load('encryption')->random_md5();
                                     $transient = 'e2pdf_' . $dataset;
                                     set_transient($transient, $data->fields, 1800);
                                     $atts['dataset'] = $dataset;
@@ -508,6 +519,9 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         );
     }
 
+    /**
+     * WPForms checkboxes, multi-selects, and payment checkboxes in email PDF attachments
+     */
     public function filter_wpforms_smart_tags_formatted_field_value($value, $field_id, $fields, $field_key) {
         if (function_exists('wpforms_get_multi_fields')) {
             $field_type = $fields[$field_id]['type'] ?? '';
@@ -519,34 +533,63 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
     }
 
     public function filter_wpforms_smarttags_process_value($value, $tag_name, $form_data, $fields, $entry_id, $smart_tag_object) {
-        if (
-                $this->get_field_property('type', $smart_tag_object, $form_data, $tag_name) == 'checkbox' ||
-                ($this->get_field_property('type', $smart_tag_object, $form_data, $tag_name) == 'select' && $this->get_field_property('multiple', $smart_tag_object, $form_data, $tag_name) == '1')
-        ) {
-            $value = implode(', ', explode("\n", $value));
-        } elseif ($this->get_field_property('type', $smart_tag_object, $form_data, $tag_name) == 'payment-checkbox') {
-            if ($tag_name == 'field_value_id') {
-                $value = implode(', ', explode(',', $value));
-            } else {
-                $value = implode(', ', explode("\r\n", $value));
+
+        $field_id = $smart_tag_object->get_attributes()['field_id'] ?? 0;
+        $field_id = explode('|', $field_id)[0];
+
+        if (false !== strpos($field_id, '_')) {
+            $repeater = array_map('intval', explode('_', $field_id, 2));
+            if (wpforms_is_repeated_field($repeater[0], $fields)) {
+                $prefix = $repeater[1] == '1' ? $repeater[0] : $repeater[0] . '_' . $repeater[1];
+                if ($tag_name == 'field_value_id') {
+                    $field_key = isset($fields[$prefix]['value_raw']) && !is_array($fields[$prefix]['value_raw']) && (string) $fields[$prefix]['value_raw'] !== '' ? 'value_raw' : 'value';
+                } else {
+                    $field_key = 'value';
+                }
+                $value = isset($fields[$prefix][$field_key]) ? $fields[$prefix][$field_key] : '';
             }
         }
-        $entity_decode = array(
-            'payment-multiple',
-            'payment-checkbox',
-            'payment-total',
-            'payment-single',
-            'payment-select',
-        );
-        if (in_array($this->get_field_property('type', $smart_tag_object, $form_data, $tag_name), $entity_decode)) {
-            $value = html_entity_decode($value);
+
+        if (false === strpos($field_id, '_') && apply_filters('e2pdf_for_do_shortcode_data_process', false) && wpforms_is_repeated_field((int) $field_id, $fields)) {
+            $values = array();
+            $prefix = (int) $field_id . '_';
+            foreach ($fields as $key => $field) {
+                if (strpos($key, $prefix) === 0 || $key == (int) $field_id) {
+                    $values[] = $field;
+                }
+            }
+            $value = serialize($values); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+        } else {
+            if (
+                    $this->get_field_property('type', $smart_tag_object, $form_data, $tag_name) == 'checkbox' ||
+                    ($this->get_field_property('type', $smart_tag_object, $form_data, $tag_name) == 'select' && $this->get_field_property('multiple', $smart_tag_object, $form_data, $tag_name) == '1')
+            ) {
+                $value = implode(', ', explode("\n", $value));
+            } elseif ($this->get_field_property('type', $smart_tag_object, $form_data, $tag_name) == 'payment-checkbox') {
+                if ($tag_name == 'field_value_id') {
+                    $value = implode(', ', explode(',', $value));
+                } else {
+                    $value = implode(', ', explode("\r\n", $value));
+                }
+            }
+            $entity_decode = array(
+                'payment-multiple',
+                'payment-checkbox',
+                'payment-total',
+                'payment-single',
+                'payment-select',
+            );
+            if (in_array($this->get_field_property('type', $smart_tag_object, $form_data, $tag_name), $entity_decode)) {
+                $value = html_entity_decode($value);
+            }
         }
         return $value;
     }
 
     public function get_field_property($attr, $smart_tag_object, $form_data, $tag_name) {
         if (isset($smart_tag_object->get_attributes()[$tag_name])) {
-            $field_id = $smart_tag_object->get_attributes()[$tag_name];
+            $field_id = $smart_tag_object->get_attributes()['field_id'] ?? 0;
+            $field_id = (int) explode('|', $field_id)[0];
             if (isset($form_data['fields'][$field_id][$attr])) {
                 return $form_data['fields'][$field_id][$attr];
             }
@@ -597,23 +640,49 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
 
         $elements = array();
         if ($this->get('cached_form') && function_exists('wpforms_get_form_fields')) {
-            $allowed_form_fields = apply_filters('wpforms_get_form_fields_allowed', $allowed_form_fields);
-            add_filter('wpforms_get_form_fields_allowed', array($this, 'filter_wpforms_get_form_fields_allowed'));
-            $form_fields = wpforms_get_form_fields(wpforms_decode($this->get('cached_form')->post_content));
+            $form = wpforms_decode($this->get('cached_form')->post_content);
+            $form_fields = isset($form['fields']) ? $form['fields'] : array();
             $sizes = array();
+            $repeaters = array();
+            $new_form_fields = array();
+
             foreach ($form_fields as $field) {
-                if ($field['type'] == 'layout') {
+                if ($field['type'] == 'layout' || $field['type'] == 'repeater') {
                     foreach ($field['columns'] as $column) {
-                        foreach ($column['fields'] as $field) {
-                            $sizes[$field] = $column['width_preset'];
+                        foreach ($column['fields'] as $sub_field) {
+                            $sizes[$sub_field] = $column['width_preset'];
+                            if ($field['type'] == 'repeater') {
+                                $repeaters[] = $sub_field;
+                            }
                         }
                     }
                 }
             }
+
             foreach ($form_fields as $field) {
+                if ($field['type'] == 'layout' || $field['type'] == 'repeater') {
+                    foreach ($field['columns'] as $column) {
+                        foreach ($column['fields'] as $sub_field) {
+                            $found = $this->inner_field($form_fields, $sub_field);
+                            if ($found !== false) {
+                                $new_form_fields[] = $form_fields[$found];
+                            }
+                        }
+                    }
+                } else {
+                    $field_id = isset($field['id']) ? $field['id'] : '0';
+                    if (!in_array($field_id, $repeaters) && !array_key_exists($field_id, $sizes)) {
+                        $new_form_fields[] = $field;
+                    }
+                }
+            }
+
+            foreach ($new_form_fields as $field) {
                 $width = '100';
-                if (isset($field['id']) && isset($sizes[$field['id']])) {
-                    $width = $sizes[$field['id']];
+                $field_id = isset($field['id']) ? $field['id'] : '0';
+                $field_value = in_array($field_id, $repeaters) ? '{field_id="' . $field_id . '_1"}' : '{field_id="' . $field_id . '"}';
+                if (isset($sizes[$field_id])) {
+                    $width = $sizes[$field_id];
                 }
                 switch ($field['type']) {
                     case 'divider':
@@ -664,7 +733,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                         'right' => '20',
                                         'width' => $width . '%',
                                         'height' => 'auto',
-                                        'value' => isset($field['label']) && $field['label'] ? $field['label'] . ': {field_id="' . $field['id'] . '"}' : '{field_id="' . $field['id'] . '"}',
+                                        'value' => isset($field['label']) && $field['label'] ? $field['label'] . ': ' . $field_value : $field_value,
                                     ),
                                 )
                         );
@@ -750,7 +819,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                         'top' => '5',
                                         'width' => '100%',
                                         'height' => 'auto',
-                                        'value' => '{field_id="' . $field['id'] . '"}',
+                                        'value' => $field_value,
                                     ),
                                 )
                         );
@@ -793,7 +862,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                             'height' => '44',
                                             'multiline' => '1',
                                             'options' => implode("\n", $field_options),
-                                            'value' => '{field_id="' . $field['id'] . '"}',
+                                            'value' => $field_value,
                                         ),
                                     )
                             );
@@ -807,7 +876,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                             'width' => '100%',
                                             'height' => 'auto',
                                             'options' => implode("\n", $field_options),
-                                            'value' => '{field_id="' . $field['id'] . '"}',
+                                            'value' => $field_value,
                                         ),
                                     )
                             );
@@ -841,7 +910,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                         'top' => '5',
                                         'width' => '100%',
                                         'height' => 'auto',
-                                        'value' => '{field_id="' . $field['id'] . '"}',
+                                        'value' => $field_value,
                                     ),
                                 )
                         );
@@ -871,7 +940,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                         'top' => '5',
                                         'width' => '100%',
                                         'height' => '150',
-                                        'value' => '{field_id="' . $field['id'] . '"}',
+                                        'value' => $field_value,
                                     ),
                                 )
                         );
@@ -908,9 +977,9 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                             'top' => '5',
                                             'width' => 'auto',
                                             'height' => 'auto',
-                                            'value' => '{field_id="' . $field['id'] . '"}',
+                                            'value' => $field_value,
                                             'option' => $option_value,
-                                            'group' => '{field_id="' . $field['id'] . '"}',
+                                            'group' => $field_value,
                                         ),
                                     )
                             );
@@ -961,7 +1030,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                             'top' => '5',
                                             'width' => 'auto',
                                             'height' => 'auto',
-                                            'value' => '{field_id="' . $field['id'] . '"}',
+                                            'value' => $field_value,
                                             'option' => $option_value,
                                         ),
                                     )
@@ -1008,7 +1077,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                         'height' => '150',
                                         'dimension' => '1',
                                         'block_dimension' => '1',
-                                        'value' => '{field_id="' . $field['id'] . '"}',
+                                        'value' => $field_value,
                                     ),
                                 )
                         );
@@ -1017,7 +1086,6 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                         break;
                 }
             }
-            remove_filter('wpforms_get_form_fields_allowed', array($this, 'filter_wpforms_get_form_fields_allowed'));
         }
         $response = array();
         $response['page'] = array(
@@ -1031,25 +1099,22 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         return $response;
     }
 
+    public function inner_field($array, $id) {
+        foreach ($array as $index => $item) {
+            if (is_array($item)) {
+                if (isset($item['id']) && $item['id'] == $id) {
+                    return $index;
+                }
+            }
+        }
+        return false;
+    }
+
     public function auto_field($field = false, $element = array()) {
         if (!$field) {
             return false;
         }
         return $element;
-    }
-
-    public function filter_wpforms_get_form_fields_allowed($allowed_form_fields) {
-        $allowed_form_fields = array_merge(
-                $allowed_form_fields,
-                array(
-                    'html',
-                    'content',
-                    'divider',
-                    'layout',
-                    'payment-coupon',
-                )
-        );
-        return $allowed_form_fields;
     }
 
     /**
@@ -1072,15 +1137,25 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         $source = '';
         if ($this->get('item')) {
             ob_start();
+            add_filter('wpforms_forms_anti_spam_v3_is_honeypot_enabled', '__return_false');
             echo do_shortcode('[wpforms id="' . $this->get('item') . '"]');
+            add_filter('wpforms_forms_anti_spam_v3_is_honeypot_enabled', '__return_true');
             $source = ob_get_clean();
             if ($source) {
                 libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
                 if (function_exists('mb_convert_encoding')) {
-                    $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD') && defined('LIBXML_SCHEMA_CREATE')) {
+                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_SCHEMA_CREATE);
+                    } else {
+                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    }
                 } else {
-                    $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD') && defined('LIBXML_SCHEMA_CREATE')) {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_SCHEMA_CREATE);
+                    } else {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    }
                 }
                 libxml_clear_errors();
             }
@@ -1097,6 +1172,17 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                 $xml = new Helper_E2pdf_Xml();
                 $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
+                $remove_by_tag = array(
+                    'script',
+                    'noscript',
+                );
+                foreach ($remove_by_tag as $key => $tag) {
+                    $elements = $xpath->query('//' . $tag);
+                    foreach ($elements as $element) {
+                        $element->parentNode->removeChild($element);
+                    }
+                }
+
                 $remove_by_class = array(
                     'wpforms-page-button',
                     'wpforms-field-pagebreak',
@@ -1118,7 +1204,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                 $remove_styles = array(
                     'wpforms-page',
                     'dropzone-input',
-                    'wpforms-conditional-field'
+                    'wpforms-conditional-field',
                 );
                 foreach ($remove_styles as $key => $class) {
                     $elements = $xpath->query("//*[contains(@class, '{$class}')]");
@@ -1126,6 +1212,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                         $xml->set_node_value($element, 'style', '');
                     }
                 }
+
                 $elements = $xpath->query("//*[contains(@class, 'wpforms-field-payment-checkbox') or contains(@class, 'wpforms-field-payment-multiple') or contains(@class, 'wpforms-field-payment-select')]");
                 foreach ($elements as $element) {
                     $field_id = $xml->get_node_value($element, 'data-field-id');
@@ -1162,20 +1249,32 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                     }
                 }
 
+                $elements = $xpath->query("//*[contains(@class, 'wpforms-field-repeater-display-rows')]");
+                foreach ($elements as $element) {
+                    $sub_elements = $xpath->query('.//input|.//textarea|.//select', $element);
+                    foreach ($sub_elements as $sub_element) {
+                        $xml->set_node_value($sub_element, 'name', preg_replace('/(wpforms\[fields\]\[)(\d+)(\].*)/', '$1$2_1$3', $xml->get_node_value($sub_element, 'name')));
+                    }
+                }
+
                 $elements = $xpath->query("//*[contains(@class, 'dropzone-input')]");
                 foreach ($elements as $element) {
                     $xml->set_node_value($element, 'name', preg_replace('/wpforms_\d+_(\d+)/', 'wpforms[fields][$1]', $xml->get_node_value($element, 'name')));
                 }
                 $elements = $xpath->query('//input|//textarea|//select');
                 foreach ($elements as $element) {
-                    preg_replace('/wpforms\[fields\]\[(\d+)\].*/', '$1', $xml->get_node_value($element, 'name'));
-                    $xml->set_node_value($element, 'name', '{field_id="' . preg_replace('/wpforms\[fields\]\[(\d+)\].*/', '$1', $xml->get_node_value($element, 'name')) . '"}');
+                    $xml->set_node_value($element, 'name', '{field_id="' . preg_replace('/wpforms\[fields\]\[(\d+|\d+_\d+)\].*/', '$1', $xml->get_node_value($element, 'name')) . '"}');
                 }
                 $submit_buttons = $xpath->query("//input[@type='submit']|//button[@type='submit']");
                 foreach ($submit_buttons as $element) {
                     $element->parentNode->removeChild($element);
                 }
-                return $dom->saveHTML();
+
+                if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                    return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
+                } else {
+                    return $dom->saveHTML();
+                }
             }
         }
         return false;
@@ -1197,10 +1296,111 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
             if (defined('WPFORMS_PLUGIN_SLUG') && WPFORMS_PLUGIN_SLUG == 'wpforms') {
                 $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/content/frontend.css';
                 $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/layout.css';
+                $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/repeater.css';
             }
             $styles[] = WPFORMS_PLUGIN_URL . 'assets/css/frontend/modern/wpforms-full.css';
         }
         $styles[] = plugins_url('css/extension/wpforms.css?v=' . time(), $this->helper->get('plugin_file_path'));
         return $styles;
+    }
+
+    public function hook_wpforms_entry_view($entry) {
+        if (!empty($entry->form_id)) {
+            $hooks = $this->helper->load('hooks')->get('wpforms', 'hook_wpforms_entry_view', $entry->form_id);
+            if (!empty($hooks)) {
+                echo '<div id="wpforms-entry-actions" class="postbox">';
+                echo '<div class="postbox-header"><h2 class="hndle"><span>' . apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_wpforms_entry_view') . '</span></h2></div>';
+                echo '<div class="inside">';
+                echo '<div class="wpforms-entry-actions-meta">';
+                foreach ($hooks as $hook) {
+                    $action = apply_filters('e2pdf_hook_action_button',
+                            array(
+                                'html' => '<p style="padding: 6px 12px 6.5px 42px"><a class="e2pdf-download-hook" target="_blank" href="%s"><span class="dashicons dashicons-pdf"></span> %s</a></p>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $entry->entry_id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook
+                            ), 'hook_wpforms_entry_view', $hook, $entry->entry_id
+                    );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
+                }
+                echo '</div>';
+                echo '</div>';
+                echo '</div>';
+            }
+        }
+    }
+
+    public function hook_wpforms_entry_edit($entry) {
+        if (!empty($entry->form_id)) {
+            $hooks = $this->helper->load('hooks')->get('wpforms', 'hook_wpforms_entry_edit', $entry->form_id);
+            if (!empty($hooks)) {
+                echo '<div id="wpforms-entry-actions" class="postbox">';
+                echo '<div class="postbox-header"><h2 class="hndle"><span>' . apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_wpforms_entry_edit') . '</span></h2></div>';
+                echo '<div class="inside">';
+                echo '<div class="wpforms-entry-actions-meta">';
+                foreach ($hooks as $hook) {
+                    $action = apply_filters('e2pdf_hook_action_button',
+                            array(
+                                'html' => '<p style="padding: 6px 12px 6.5px 42px"><a class="e2pdf-download-hook" target="_blank" href="%s"><span class="dashicons dashicons-pdf"></span> %s</a></p>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $entry->entry_id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook
+                            ), 'hook_wpforms_entry_edit', $hook, $entry->entry_id
+                    );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
+                }
+                echo '</div>';
+                echo '</div>';
+                echo '</div>';
+            }
+        }
+    }
+
+    public function hook_wpforms_row_actions($actions, $entry) {
+        if (!empty($entry->form_id)) {
+            $hooks = $this->helper->load('hooks')->get('wpforms', 'hook_wpforms_row_actions', $entry->form_id);
+            foreach ($hooks as $hook) {
+                $action = apply_filters('e2pdf_hook_action_button',
+                        array(
+                            'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                            'url' => $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf',
+                                        'action' => 'export',
+                                        'id' => $hook,
+                                        'dataset' => $entry->entry_id,
+                                    ), 'admin.php?'
+                            ),
+                            'title' => 'PDF #' . $hook
+                        ), 'hook_wpforms_row_actions', $hook, $entry->entry_id
+                );
+                if (!empty($action)) {
+                    $actions['e2pdf_' . $hook] = sprintf(
+                            $action['html'], $action['url'], $action['title']
+                    );
+                }
+            }
+        }
+        return $actions;
     }
 }

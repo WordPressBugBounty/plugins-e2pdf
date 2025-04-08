@@ -13,13 +13,15 @@ if (!defined('ABSPATH')) {
             <a title="<?php _e('Lock/Unlock Locked Elements', 'e2pdf'); ?>" href="javascript:void(0);" class="ed_button button button-small e2pdf-locked-elements e2pdf-inactive">
                 <i class="dashicons dashicons-unlock"></i>
             </a>
+            <a title="<?php _e('Enable/Disable WYSIWYG Editor', 'e2pdf'); ?>" href="javascript:void(0);" class="ed_button button button-small e2pdf-wysiwyg-source e2pdf-inactive">
+                <i class="dashicons dashicons-html"></i>
+            </a>
         </li>
         <li>
             <a title="<?php _e('New Page', 'e2pdf'); ?>" href="javascript:void(0);" class="ed_button button button-small e2pdf-add-page">
                 <i class="dashicons dashicons-welcome-add-page"></i> 
             </a>
-        </li>
-        <li>
+        </li><li>
             <!-- undo -->
             <a title="<?php _e('Undo', 'e2pdf'); ?>" href="javascript:void(0);"  class="ed_button e2pdf-apply-wysiwyg button button-small" data-command='undo'>
                 <i class="dashicons dashicons-undo"></i>
@@ -34,7 +36,7 @@ if (!defined('ABSPATH')) {
                     <i class="dashicons dashicons-editor-textcolor"></i>
                 </a>
                 <div class="e2pdf-colorpicker-wr">
-                    <input data-command='color' type="text" id="e2pdf-wysiwyg-font-color" class="e2pdf-color-picker e2pdf-color-picker-load" value="">
+                    <input data-command='color' type="text" class="e2pdf-wysiwyg-font-color e2pdf-color-picker e2pdf-color-picker-load" value="">
                 </div>
             </div><a title="<?php _e('Bold', 'e2pdf'); ?>" href="javascript:void(0);" class="ed_button e2pdf-apply-wysiwyg button button-small" data-command='bold'>
                 <i class="dashicons dashicons-editor-bold"></i>
@@ -61,9 +63,9 @@ if (!defined('ABSPATH')) {
                 <i class="dashicons dashicons-editor-ol"></i>
             </a>
         </li><li><a title="<?php _e('Heading H1', 'e2pdf'); ?>" href="javascript:void(0);" class="ed_button e2pdf-apply-wysiwyg button button-small" data-command='H1'>
-                <span>H1</span>
+                <i class="dashicons dashicons-heading"></i>1
             </a><a title="<?php _e('Heading H2', 'e2pdf'); ?>" href="javascript:void(0);" class="ed_button e2pdf-apply-wysiwyg button button-small" data-command='H2'>
-                <span>H2</span>
+                <i class="dashicons dashicons-heading"></i>2
             </a>
         </li><li><a title="<?php _e('Link', 'e2pdf'); ?>" href="javascript:void(0);" class="ed_button e2pdf-apply-wysiwyg button button-small" data-command='createlink'>
                 <i class="dashicons dashicons-admin-links"></i>
@@ -71,12 +73,16 @@ if (!defined('ABSPATH')) {
                 <i class="dashicons dashicons-editor-unlink"></i>
             </a>
         </li>
+        <li><a title="<?php _e('Table', 'e2pdf'); ?>" href="javascript:void(0);" class="ed_button button button-small e2pdf-wysiwyg-table">
+                <i class="dashicons dashicons-editor-table"></i>
+            </a><div class="e2pdf-wysiwyg-table-grid e2pdf-hide"></div>
+        </li>
         <li>
-            <label><?php _e('Font size', 'e2pdf'); ?>:</label>
+            <label><?php _e('Font Size', 'e2pdf'); ?>:</label>
             <?php
             $this->render('field', 'select', array(
                 'field' => array(
-                    'id' => 'e2pdf-wysiwyg-fontsize',
+                    'class' => 'e2pdf-wysiwyg-fontsize',
                     'data-command' => 'font-size'
                 ),
                 'value' => '',
@@ -84,11 +90,10 @@ if (!defined('ABSPATH')) {
                 'options' => $this->controller->get_font_sizes(),
             ));
             ?>
-             <label><?php _e('Font', 'e2pdf'); ?>:</label>
+            <label><?php _e('Font', 'e2pdf'); ?>:</label>
             <?php
             $this->render('field', 'select', array(
                 'field' => array(
-                    'id' => 'e2pdf-wysiwyg-font',
                     'class' => 'e2pdf-wysiwyg-font',
                     'data-command' => 'font'
                 ),

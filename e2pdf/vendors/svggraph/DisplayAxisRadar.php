@@ -184,8 +184,8 @@ class DisplayAxisRadar extends DisplayAxis {
   {
     $a = $this->arad + $this->direction * $point->position / $this->radius;
     $r1 = $this->radius + $this->text_offset;
-    $x1 = $this->xc + $r1 * sin($a);
-    $y1 = $this->yc + $r1 * cos($a);
+    $x1 = $this->xc + $this->styles['t_offset_x'] + $r1 * sin($a);
+    $y1 = $this->yc + $this->styles['t_offset_y'] + $r1 * cos($a);
     $text_angle = $this->styles['t_angle'];
 
     $tau = 2 * M_PI;

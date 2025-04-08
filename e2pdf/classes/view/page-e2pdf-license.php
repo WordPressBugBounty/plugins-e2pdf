@@ -37,7 +37,7 @@ if (!defined('ABSPATH')) {
                     <div class="e2pdf-ib e2pdf-pr5">
                         <a href="javascript:void(0);" data-modal="license-key" data-modal-title="<?php _e('License Key', 'e2pdf'); ?>" class="e2pdf-modal page-title-action e2pdf-simple-button"><?php _e('Change', 'e2pdf'); ?></a>
                     </div><?php if ($this->view->license->get('type') && $this->view->license->get('type') != "FREE") { ?><div class="e2pdf-ib">
-                            <a id="e2pdf-unlink-license-key" class="e2pdf-link page-title-action e2pdf-simple-button" href="javascript:void(0);" _wpnonce="<?php echo wp_create_nonce('e2pdf_license'); ?>"><?php _e('Unlink', 'e2pdf'); ?></a> <span class="spinner"></span>
+                            <a id="e2pdf-unlink-license-key" class="e2pdf-link page-title-action e2pdf-simple-button" href="javascript:void(0);" _wpnonce="<?php echo wp_create_nonce('e2pdf_license'); ?>"><?php _e('Disconnect', 'e2pdf'); ?></a>
                         </div>
                     <?php } ?>
                 </div>
@@ -53,7 +53,7 @@ if (!defined('ABSPATH')) {
                     <div class="e2pdf-ib e2pdf-w100"><?php echo $this->view->license->get('active_templates'); ?>/<?php echo $this->view->license->get('templates_limit'); ?></div>
                     <?php if ($this->view->license->get('templates_limit')) { ?>
                         <div class="e2pdf-ib">
-                            <a class="e2pdf-link page-title-action e2pdf-simple-button" id="e2pdf-deactivate-all-templates" href="javascript:void(0);" _wpnonce="<?php echo wp_create_nonce('e2pdf_license'); ?>"><?php _e('Deactivate Templates', 'e2pdf'); ?></a> <span class="spinner"></span>
+                            <a class="e2pdf-link page-title-action e2pdf-simple-button" id="e2pdf-deactivate-all-templates" href="javascript:void(0);" _wpnonce="<?php echo wp_create_nonce('e2pdf_license'); ?>"><?php _e('Deactivate Templates', 'e2pdf'); ?></a>
                         </div>
                     <?php } ?>
                 </div>

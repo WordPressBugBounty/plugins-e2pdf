@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Extension Model
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-extension.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -18,7 +16,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     private $extension;
 
     public function load($name) {
-        if (in_array($name, get_option('e2pdf_disabled_extensions', array()))) {
+        if (in_array($name, get_option('e2pdf_disabled_extensions', array()), true)) {
             return false;
         }
         $class = 'Extension_E2pdf_' . ucfirst($name);
@@ -109,9 +107,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Load styles from extension
-     */
+    // styles
     public function styles($item = false) {
         if ($this->extension() && method_exists($this->extension(), 'styles')) {
             return $this->extension()->styles($item);
@@ -119,22 +115,57 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Render Value via extension
-     */
-    public function render($value, $field = array()) {
+    // render
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         if ($this->extension() && method_exists($this->extension(), 'render')) {
-            add_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, 'filter_acf_shortcode_allow_in_block_themes_outside_content'), 999);
-            $content = $this->extension()->render($value, $field);
-            remove_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, 'filter_acf_shortcode_allow_in_block_themes_outside_content'), 999);
-            return $this->helper->load('translator')->translate($content, 'full');
+
+            add_filter('e2pdf_pdf_render', array($this, '__return_true'), 999);
+
+            if (class_exists('ACF')) {
+                if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
+                    add_filter('acf/settings/enable_shortcode', array($this, '__return_true'), 999);
+                }
+                if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
+                    add_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, '__return_true'), 999);
+                }
+                if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
+                    add_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
+                }
+                if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
+                    add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this, '__return_false'), 999);
+                }
+            }
+
+            $content = $this->extension()->render($value, $field, $convert_shortcodes, $raw);
+
+            if (class_exists('ACF')) {
+                if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
+                    remove_filter('acf/settings/enable_shortcode', array($this, '__return_true'), 999);
+                }
+                if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
+                    remove_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, '__return_true'), 999);
+                }
+                if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
+                    remove_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
+                }
+                if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
+                    remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this, '__return_false'), 999);
+                }
+            }
+
+            remove_filter('e2pdf_pdf_render', array($this, '__return_true'), 999);
+
+            $type = isset($field['type']) ? $field['type'] : false;
+            if ($type == 'e2pdf-image' || $type == 'e2pdf-signature' || $type == 'e2pdf-qrcode' || $type == 'e2pdf-barcode' || $type == 'e2pdf-graph') {
+                return $content;
+            } else {
+                return $this->helper->load('translator')->translate($content, 'full');
+            }
         }
-        return false;
+        return '';
     }
 
-    /**
-     * Convert Shortcodes via extension
-     */
+    // convert shortcodes
     public function convert_shortcodes($value, $to = false, $html = false) {
         if ($this->extension() && method_exists($this->extension(), 'convert_shortcodes')) {
             return $this->extension()->convert_shortcodes($value, $to, $html);
@@ -142,9 +173,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Get available datasets
-     */
+    // datasets
     public function datasets($item = false, $name = false) {
         if ($this->extension() && method_exists($this->extension(), 'datasets')) {
             return $this->extension()->datasets($item, $name);
@@ -152,9 +181,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Get Dataset Actions
-     */
+    // dataset actions
     public function get_dataset_actions($dataset_id = false) {
         if ($this->extension() && method_exists($this->extension(), 'get_dataset_actions')) {
             return $this->extension()->get_dataset_actions($dataset_id);
@@ -162,9 +189,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Get Template Actions
-     */
+    // template actions
     public function get_template_actions($template_id = false) {
         if ($this->extension() && method_exists($this->extension(), 'get_template_actions')) {
             return $this->extension()->get_template_actions($template_id);
@@ -172,9 +197,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Get Store Engine
-     */
+    // storing engine
     public function get_storing_engine() {
         if ($this->extension() && method_exists($this->extension(), 'get_storing_engine')) {
             return $this->extension()->get_storing_engine();
@@ -182,9 +205,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * List of available extensions
-     */
+    // extensions
     public function extensions($load = true) {
         $list = array();
         $extentions_path = $this->helper->get('plugin_dir') . 'classes/extension/*';
@@ -204,9 +225,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return $list;
     }
 
-    /**
-     * Delete item
-     */
+    // delete item
     public function delete_item($template_id = false, $dataset_id = false) {
         if ($this->extension() && method_exists($this->extension(), 'delete_item')) {
             return $this->extension()->delete_item($template_id, $dataset_id);
@@ -214,9 +233,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Delete all items
-     */
+    // delete items
     public function delete_items($template_id = false) {
         if ($this->extension() && method_exists($this->extension(), 'delete_items')) {
             return $this->extension()->delete_items($template_id);
@@ -224,21 +241,18 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Visual Mapper for Mapping field
-     * 
-     * @return bool|string - Prepared form or false
-     */
+    // visual mapper
     public function visual_mapper() {
 
         if ($this->extension() && method_exists($this->extension(), 'visual_mapper')) {
             if (!extension_loaded('libxml')) {
-                return __('libxml is required', 'e2pdf');
+                /* translators: %s: PHP Extension */
+                return sprintf(__('The PHP %s extension is required', 'e2pdf'), 'libxml');
             }
             if (!extension_loaded('Dom')) {
-                return __('DOM is required', 'e2pdf');
+                /* translators: %s: PHP Extension */
+                return sprintf(__('The PHP %s extension is required', 'e2pdf'), 'DOM');
             }
-
             if ($this->extension()->get('item') == '-2') {
                 $visual_mapper = '';
                 if ($this->extension()->get('item1')) {
@@ -271,14 +285,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return $template;
     }
 
-    /**
-     * Convert Field name to Value
-     * @since 0.01.34
-     * 
-     * @param string $name - Field name
-     * 
-     * @return bool|string - Converted value or false
-     */
+    // auto map
     public function auto_map($name = false) {
         if ($this->extension() && method_exists($this->extension(), 'auto_map') && $name) {
             return $this->extension()->auto_map($name);
@@ -286,9 +293,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Auto PDF generation
-     */
+    // auto
     public function auto() {
         if ($this->extension() && method_exists($this->extension(), 'auto')) {
             if ($this->extension()->get('item') == '-2') {
@@ -319,9 +324,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Check if function exists inside extension
-     */
+    // method
     public function method($attr = false) {
         if ($attr && $this->extension() && method_exists($this->extension(), $attr)) {
             return true;
@@ -329,9 +332,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Load actions from extension
-     */
+    // load actions
     public function load_actions() {
         if ($this->extension() && method_exists($this->extension(), 'load_actions')) {
             return $this->extension()->load_actions();
@@ -339,9 +340,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Load filters from extension
-     */
+    // load filters
     public function load_filters() {
         if ($this->extension() && method_exists($this->extension(), 'load_filters')) {
             return $this->extension()->load_filters();
@@ -349,9 +348,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Load shortcodes from extension
-     */
+    // load shortcodes
     public function load_shortcodes() {
         if ($this->extension() && method_exists($this->extension(), 'load_shortcodes')) {
             return $this->extension()->load_shortcodes();
@@ -359,11 +356,21 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * ACF 6.0.3 compatibility fix
-     * https://wordpress.org/plugins/advanced-custom-fields/
-     */
-    public function filter_acf_shortcode_allow_in_block_themes_outside_content($status) {
+    // return true
+    public function __return_true() {
         return true;
+    }
+
+    // return false
+    public function __return_false() {
+        return false;
+    }
+
+    // filter acf allow in bidnings
+    public function filter_acf_allow_in_bindings($field) {
+        if (isset($field['allow_in_bindings']) && !$field['allow_in_bindings']) {
+            $field['allow_in_bindings'] = 1;
+        }
+        return $field;
     }
 }

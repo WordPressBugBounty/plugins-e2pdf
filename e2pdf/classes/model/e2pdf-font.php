@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Font Model
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-font.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -20,16 +18,16 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
     public function get_font_info($font = false, $key = false, $font_path = false) {
 
         $font_tags = array();
-
         if (!$font_path) {
-            $font_path = $this->helper->get("fonts_dir") . $font;
+            $font_path = $this->helper->get('fonts_dir') . $font;
         }
-
-
         if ($font_path && file_exists($font_path) && filesize($font_path) > 0) {
 
-            $fd = fopen($font_path, "r");
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fopen
+            $fd = fopen($font_path, 'r');
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fread
             $this->text = fread($fd, filesize($font_path));
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fclose
             fclose($fd);
 
             $number_of_tables = hexdec($this->dec2ord($this->text[4]) . $this->dec2ord($this->text[5]));
@@ -40,7 +38,8 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
                 if ($tag == 'name') {
                     $this->ntOffset = hexdec(
                             $this->dec2ord($this->text[12 + $i * 16 + 8]) . $this->dec2ord($this->text[12 + $i * 16 + 8 + 1]) .
-                            $this->dec2ord($this->text[12 + $i * 16 + 8 + 2]) . $this->dec2ord($this->text[12 + $i * 16 + 8 + 3]));
+                            $this->dec2ord($this->text[12 + $i * 16 + 8 + 2]) . $this->dec2ord($this->text[12 + $i * 16 + 8 + 3])
+                    );
 
                     $offset_storage_dec = hexdec($this->dec2ord($this->text[$this->ntOffset + 4]) . $this->dec2ord($this->text[$this->ntOffset + 5]));
                     $number_name_records_dec = hexdec($this->dec2ord($this->text[$this->ntOffset + 2]) . $this->dec2ord($this->text[$this->ntOffset + 3]));
@@ -56,14 +55,14 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
                 $string_length_dec = hexdec($this->dec2ord($this->text[$this->ntOffset + 6 + $j * 12 + 8]) . $this->dec2ord($this->text[$this->ntOffset + 6 + $j * 12 + 9]));
                 $string_offset_dec = hexdec($this->dec2ord($this->text[$this->ntOffset + 6 + $j * 12 + 10]) . $this->dec2ord($this->text[$this->ntOffset + 6 + $j * 12 + 11]));
 
-                if (!empty($name_id_dec) and empty($font_tags[$name_id_dec])) {
+                if (!empty($name_id_dec) && empty($font_tags[$name_id_dec])) {
                     for ($l = 0; $l < $string_length_dec; $l++) {
                         if (ord($this->text[$storage_dec + $string_offset_dec + $l]) == '0') {
                             continue;
                         } else {
 
                             if (!isset($font_tags[$name_id_dec])) {
-                                $font_tags[$name_id_dec] = "";
+                                $font_tags[$name_id_dec] = '';
                             }
 
                             $font_tags[$name_id_dec] .= ($this->text[$storage_dec + $string_offset_dec + $l]);
@@ -91,6 +90,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
             if ($md5) {
                 return md5_file($font_path);
             } else {
+                // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode, WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
                 return base64_encode(file_get_contents($font_path));
             }
         }
@@ -98,12 +98,11 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
     }
 
     public function get_fonts() {
-
         $fonts = array();
-        $files = glob($this->helper->get('fonts_dir') . "*");
+        $files = glob($this->helper->get('fonts_dir') . '*');
         if ($files) {
             foreach ($files as $key => $value) {
-                if (in_array(strtolower(pathinfo($value, PATHINFO_EXTENSION)), $this->get_allowed_extensions())) {
+                if (in_array(strtolower(pathinfo($value, PATHINFO_EXTENSION)), $this->get_allowed_extensions(), true)) {
                     $font_name = $this->get_font_info(basename($value), 4);
                     if ($font_name) {
                         $fonts[basename($value)] = $font_name;
@@ -116,8 +115,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
 
     public function get_font_path($font) {
         $fonts = $this->get_fonts();
-        $c_font = array_search($font, $fonts);
-
+        $c_font = array_search($font, $fonts, true);
         if ($c_font) {
             return $this->helper->get('fonts_dir') . $c_font;
         }
@@ -140,9 +138,9 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
             preg_match_all('/font-family:[\s]+?["]?(.*?)["]?;/', htmlspecialchars_decode($el_value['value']), $matches);
             if (isset($matches[1]) && !empty($matches[1])) {
                 foreach ($matches[1] as $font_key => $font_value) {
-                    $exist = array_search($font_value, $fonts);
+                    $exist = array_search($font_value, $fonts, true);
                     if (!$exist) {
-                        $c_font = array_search($font_value, $all_fonts);
+                        $c_font = array_search($font_value, $all_fonts, true);
                         if ($c_font) {
                             $fonts[$c_font] = $font_value;
                         }
@@ -154,9 +152,9 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
                 preg_match_all('/font-family:[\s]+?["]?(.*?)["]?;/', htmlspecialchars_decode($el_value['properties']['css']), $matches);
                 if (isset($matches[1]) && !empty($matches[1])) {
                     foreach ($matches[1] as $font_key => $font_value) {
-                        $exist = array_search($font_value, $fonts);
+                        $exist = array_search($font_value, $fonts, true);
                         if (!$exist) {
-                            $c_font = array_search($font_value, $all_fonts);
+                            $c_font = array_search($font_value, $all_fonts, true);
                             if ($c_font) {
                                 $fonts[$c_font] = $font_value;
                             }
@@ -168,9 +166,9 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
 
         if (isset($el_value['properties']['text_font']) && $el_value['properties']['text_font']) {
             $font_value = $el_value['properties']['text_font'];
-            $exist = array_search($font_value, $fonts);
+            $exist = array_search($font_value, $fonts, true);
             if (!$exist) {
-                $c_font = array_search($font_value, $all_fonts);
+                $c_font = array_search($font_value, $all_fonts, true);
                 if ($c_font) {
                     $fonts[$c_font] = $font_value;
                 }
@@ -182,9 +180,9 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
             foreach ($el_value['actions'] as $action) {
                 if (isset($action['property']) && $action['property'] == 'text_font' && isset($action['change']) && $action['change']) {
                     $font_value = $action['change'];
-                    $exist = array_search($font_value, $fonts);
+                    $exist = array_search($font_value, $fonts, true);
                     if (!$exist) {
-                        $c_font = array_search($font_value, $all_fonts);
+                        $c_font = array_search($font_value, $all_fonts, true);
                         if ($c_font) {
                             $fonts[$c_font] = $font_value;
                         }
@@ -195,9 +193,9 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
                     preg_match_all('/font-family:[\s]+?["]?(.*?)["]?;/', htmlspecialchars_decode($action['change']), $matches);
                     if (isset($matches[1]) && !empty($matches[1])) {
                         foreach ($matches[1] as $font_key => $font_value) {
-                            $exist = array_search($font_value, $fonts);
+                            $exist = array_search($font_value, $fonts, true);
                             if (!$exist) {
-                                $c_font = array_search($font_value, $all_fonts);
+                                $c_font = array_search($font_value, $all_fonts, true);
                                 if ($c_font) {
                                     $fonts[$c_font] = $font_value;
                                 }
@@ -210,9 +208,9 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
                     preg_match_all('/font-family:[\s]+?["]?(.*?)["]?;/', htmlspecialchars_decode($action['change']), $matches);
                     if (isset($matches[1]) && !empty($matches[1])) {
                         foreach ($matches[1] as $font_key => $font_value) {
-                            $exist = array_search($font_value, $fonts);
+                            $exist = array_search($font_value, $fonts, true);
                             if (!$exist) {
-                                $c_font = array_search($font_value, $all_fonts);
+                                $c_font = array_search($font_value, $all_fonts, true);
                                 if ($c_font) {
                                     $fonts[$c_font] = $font_value;
                                 }
@@ -229,7 +227,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
     public function get_allowed_extensions() {
         return array(
             'ttf',
-            'otf'
+            'otf',
         );
     }
 
@@ -238,7 +236,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
     }
 
     protected function dec2hex($dec) {
+        // phpcs:ignore Squiz.PHP.DisallowMultipleAssignments.Found
         return str_repeat('0', 2 - strlen(($hex = strtoupper(dechex($dec))))) . $hex;
     }
-
 }

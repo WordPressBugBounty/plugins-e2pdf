@@ -230,11 +230,13 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -243,7 +245,10 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
      */
     public function load_actions() {
         add_action('gform_after_email', array($this, 'action_gform_after_email'), 30);
-        add_action('gform_after_update_entry', array($this, 'action_gform_after_update_entry'), 0, 3);
+        add_action('gform_after_update_entry', array($this, 'action_gform_after_update_entry'), 0, 2);
+
+        /* Hooks */
+        add_action('gform_entries_first_column_actions', array($this, 'hook_gravity_row_actions'), 10, 4);
     }
 
     /**
@@ -257,6 +262,9 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         add_filter('gform_entry_field_value', array($this, 'filter_gform_entry_field_value'), 10, 4);
         add_filter('gform_merge_tag_filter', array($this, 'filter_gform_merge_tag_filter'), 10, 5);
         add_filter('gform_entries_field_value', array($this, 'filter_gform_entries_field_value'), 10, 4);
+
+        /* Hooks */
+        add_filter('gform_entry_detail_meta_boxes', array($this, 'hook_gravity_entry_view'), 10, 3);
     }
 
     /**
@@ -424,7 +432,6 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     case 'phone':
                     case 'website':
                     case 'email':
-                    case 'fileupload':
                     case 'post_title':
                     case 'post_excerpt':
                     case 'post_tags':
@@ -564,6 +571,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                             );
                         }
                         break;
+                    case 'fileupload':
                     case 'textarea':
                     case 'post_content':
                         $value = isset($merged_tags[$field->id]) ? $merged_tags[$field->id] : '';
@@ -1654,14 +1662,13 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
 
                             if ($element['type'] == 'e2pdf-input' || $element['type'] == 'e2pdf-signature') {
                                 $type = 'text';
-                                $label = !empty($labels) ? implode(' ', $labels) : __('Text', 'e2pdf');
+                                $label = !empty($labels) ? implode(' ', $labels) : 'Text';
                             } elseif ($element['type'] == 'e2pdf-textarea') {
-
                                 $type = 'textarea';
-                                $label = !empty($labels) ? implode(' ', $labels) : __('Textarea', 'e2pdf');
+                                $label = !empty($labels) ? implode(' ', $labels) : 'Textarea';
                             } elseif ($element['type'] == 'e2pdf-select') {
                                 $type = 'select';
-                                $label = !empty($labels) ? implode(' ', $labels) : __('Select', 'e2pdf');
+                                $label = !empty($labels) ? implode(' ', $labels) : 'Select';
 
                                 $choices = array();
                                 $field_options = array();
@@ -1693,7 +1700,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                                         $pages[$page_key]['elements'][$element_key]['value'] = '{' . $form['fields'][$checkbox]['label'] . ':' . $form['fields'][$checkbox]['id'] . '}';
                                     }
                                 } else {
-                                    $label = !empty($labels) ? implode(' ', $labels) : __('Checkbox', 'e2pdf');
+                                    $label = !empty($labels) ? implode(' ', $labels) : 'Checkbox';
                                     $type = 'checkbox';
                                     $checkboxes[] = array(
                                         'id' => $field_id,
@@ -1732,7 +1739,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                                         $pages[$page_key]['elements'][$element_key]['value'] = '{' . $form['fields'][$radio]['label'] . ':' . $form['fields'][$radio]['id'] . '}';
                                     }
                                 } else {
-                                    $label = !empty($labels) ? implode(' ', $labels) : __('Radio', 'e2pdf');
+                                    $label = !empty($labels) ? implode(' ', $labels) : 'Radio';
                                     $type = 'radio';
                                     $radios[] = array(
                                         'id' => $field_id,
@@ -1811,15 +1818,23 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                         $source = str_replace(array('<form', '</form>'), array('<div', '</div>'), $source);
                     }
                     if (function_exists('mb_convert_encoding')) {
-                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                        if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                            $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                        } else {
+                            $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                        }
                     } else {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                        if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                            $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                        } else {
+                            $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                        }
                     }
                     libxml_clear_errors();
                 }
             }
             if (ob_get_length() > 0) {
-                while (@ob_end_clean());
+                while (@ob_end_clean()); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
             }
             if (!$source) {
                 return '<div class="e2pdf-vm-error">' . __("The form source is empty or doesn't exist", 'e2pdf') . '</div>';
@@ -2148,7 +2163,11 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                 if ($this->get('nested')) {
                     return $dom;
                 } else {
-                    return $dom->saveHTML();
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
+                    } else {
+                        return $dom->saveHTML();
+                    }
                 }
             }
         }
@@ -2584,7 +2603,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         }
     }
 
-    public function action_gform_after_update_entry($form, $entry_id, $original_entry) {
+    public function action_gform_after_update_entry($form, $entry_id) {
         if (isset($form['fields'])) {
             foreach ($form['fields'] as $key => $field) {
                 if (isset($field->defaultValue) && (false !== strpos($field->defaultValue, '[e2pdf-download') || false !== strpos($field->defaultValue, '[e2pdf-save'))) {
@@ -2613,25 +2632,93 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
             $version = GFForms::$version;
             $min = defined('SCRIPT_DEBUG') && SCRIPT_DEBUG ? '' : '.min';
             if (file_exists($base_path . '/legacy/css/')) {
-                $styles[] = $base_url . "/legacy/css/formreset{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/legacy/css/datepicker{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/legacy/css/formsmain{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/legacy/css/readyclass{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/legacy/css/browsers{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/legacy/css/rtl{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/css/theme-ie11{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/css/basic{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/css/theme{$min}.css?ver=" . $version;
+                $styles[] = $base_url . '/legacy/css/formreset' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/legacy/css/datepicker' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/legacy/css/formsmain' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/legacy/css/readyclass' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/legacy/css/browsers' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/legacy/css/rtl' . $min . '.css?ver=' . $version;
             } else {
-                $styles[] = $base_url . "/css/formreset{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/css/datepicker{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/css/formsmain{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/css/readyclass{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/css/browsers{$min}.css?ver=" . $version;
-                $styles[] = $base_url . "/css/rtl{$min}.css?ver=" . $version;
+                $styles[] = $base_url . '/css/formreset' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/css/datepicker' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/css/formsmain' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/css/readyclass' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/css/browsers' . $min . '.css?ver=' . $version;
+                $styles[] = $base_url . '/css/rtl' . $min . '.css?ver=' . $version;
             }
             $styles[] = plugins_url('css/extension/gravity.css?v=' . time(), $this->helper->get('plugin_file_path'));
         }
         return $styles;
+    }
+
+    public function hook_gravity_entry_view($metaboxes, $entry, $form) {
+        if (!empty($form['id'])) {
+            $hooks = $this->helper->load('hooks')->get('gravity', 'hook_gravity_entry_view', $form['id']);
+            if (!empty($hooks)) {
+                $metaboxes['e2pdf'] = array(
+                    'title' => apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_gravity_entry_view'),
+                    'callback' => array($this, 'hook_gravity_entry_view_callback'),
+                    'context' => 'side',
+                    'callback_args' => array(
+                        'entry' => $entry,
+                        'hooks' => $hooks,
+                    ),
+                );
+            }
+        }
+        return $metaboxes;
+    }
+
+    public function hook_gravity_entry_view_callback($post, $metabox) {
+        if (!empty($metabox['args']['entry']['id'])) {
+            foreach ($metabox['args']['hooks'] as $hook) {
+                $action = apply_filters('e2pdf_hook_action_button',
+                        array(
+                            'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
+                            'url' => $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf',
+                                        'action' => 'export',
+                                        'id' => $hook,
+                                        'dataset' => $metabox['args']['entry']['id'],
+                                    ), 'admin.php?'
+                            ),
+                            'title' => 'PDF #' . $hook
+                        ), 'hook_gravity_entry_view', $hook, $metabox['args']['entry']['id']
+                );
+                if (!empty($action)) {
+                    echo sprintf(
+                            $action['html'], $action['url'], $action['title']
+                    );
+                }
+            }
+        }
+    }
+
+    public function hook_gravity_row_actions($form_id, $field_id, $value, $entry) {
+        if (!empty($entry['form_id']) && !empty($entry['id'])) {
+            $hooks = $this->helper->load('hooks')->get('gravity', 'hook_gravity_row_actions', $entry['form_id']);
+            foreach ($hooks as $hook) {
+                $action = apply_filters('e2pdf_hook_action_button',
+                        array(
+                            'html' => '<span> | <a class="e2pdf-download-hook" target="_blank" href="%s">%s</a></span>',
+                            'url' => $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf',
+                                        'action' => 'export',
+                                        'id' => $hook,
+                                        'dataset' => $entry['id'],
+                                    ), 'admin.php?'
+                            ),
+                            'title' => 'PDF #' . $hook
+                        ), 'hook_gravity_row_actions', $hook, $entry['id']
+                );
+                if (!empty($action)) {
+                    echo sprintf(
+                            $action['html'], $action['url'], $action['title']
+                    );
+                }
+            }
+        }
     }
 }

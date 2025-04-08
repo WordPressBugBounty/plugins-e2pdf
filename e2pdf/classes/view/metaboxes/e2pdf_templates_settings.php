@@ -6,18 +6,22 @@ if (!defined('ABSPATH')) {
 <div id="taxonomy-category" class="categorydiv e2pdf-tabs-panel">
 
     <ul id="e2pdf-tabs" class="category-tabs e2pdf-tabs">
-        <li class="active"><a data-tab="e2pdf-template-style" href="javascript:void(0);"><?php _e('Style', 'e2pdf'); ?></a></li>
-        <li><a data-tab="e2pdf-template-template" href="javascript:void(0);"><?php _e('Template', 'e2pdf'); ?></a></li>
-        <li><a data-tab="e2pdf-template-pdf" href="javascript:void(0);">Pdf</a></li>
-        <li><a data-tab="e2pdf-template-meta" href="javascript:void(0);"><?php _e('Meta', 'e2pdf'); ?></a></li>
-        <li><a data-tab="e2pdf-template-security" href="javascript:void(0);"><?php _e('Security', 'e2pdf'); ?></a></li>
+        <li class="active"><a data-tab="e2pdf-template-style" href="javascript:void(0);"><?php _e('Style', 'e2pdf'); ?></a>
+        </li><li>
+            <a data-tab="e2pdf-template-template" href="javascript:void(0);"><?php _e('Template', 'e2pdf'); ?></a>
+        </li><li>
+            <a data-tab="e2pdf-template-pdf" href="javascript:void(0);">Pdf</a>
+        </li><li>
+            <a data-tab="e2pdf-template-meta" href="javascript:void(0);"><?php _e('Meta', 'e2pdf'); ?></a>
+        </li><li>
+            <a data-tab="e2pdf-template-security" href="javascript:void(0);"><?php _e('Security', 'e2pdf'); ?></a>
+        </li>
     </ul>
 
     <div class="e2pdf-rel">
         <?php if (!get_option('e2pdf_email', '') && $this->helper->get('license')->get('type') == 'FREE') { ?>
             <div class="e2pdf-email-lock e2pdf-ib">
                 <div id="e2pdf-email">
-                    <div class="e2pdf-form-loader e2pdf-hidden-loader"><span class="spinner"></span></div>
                     <p class="post-attributes-label-wrapper">
                         <label><?php _e('Enter your E-mail to unlock this features', 'e2pdf'); ?>:</label>
                     </p>
@@ -39,7 +43,6 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         <?php } ?>
-
         <div id="e2pdf-template-style" class="tabs-panel e2pdf-rel">
             <div class="e2pdf-options-panel">
                 <p class="post-attributes-label-wrapper">
@@ -72,7 +75,6 @@ if (!defined('ABSPATH')) {
                         ?>
                     </div>
                 </div>
-
                 <div class="e2pdf-grid">
                     <div class="e2pdf-ib e2pdf-w50 e2pdf-pr5">
                         <p class="post-attributes-label-wrapper">
@@ -114,7 +116,6 @@ if (!defined('ABSPATH')) {
                         </div>
                     </div>
                 </div>
-
                 <div class="e2pdf-ib e2pdf-w100">
                     <p class="post-attributes-label-wrapper"></p>
                     <div>
@@ -123,7 +124,7 @@ if (!defined('ABSPATH')) {
                             'field' => array(
                                 'id' => 'e2pdf-rtl',
                                 'name' => 'rtl',
-                                'placeholder' => __('RTL', 'e2pdf'),
+                                'placeholder' => 'RTL',
                                 'class' => 'e2pdf-settings-style-change'
                             ),
                             'value' => $this->view->template->get('rtl'),
@@ -133,7 +134,6 @@ if (!defined('ABSPATH')) {
                         ?>
                     </div>
                 </div>
-
                 <div class="e2pdf-ib e2pdf-w100">
                     <p class="post-attributes-label-wrapper">
                         <label><?php _e('Font Color', 'e2pdf'); ?>:</label>
@@ -154,7 +154,6 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
-
         <div id="e2pdf-template-template" class="tabs-panel e2pdf-template-template e2pdf-rel" style="display: none;" >
             <div class="e2pdf-options-panel">
                 <p class="post-attributes-label-wrapper">
@@ -200,7 +199,6 @@ if (!defined('ABSPATH')) {
                         ?>
                     </div>
                 </div>
-
                 <p class="post-attributes-label-wrapper">
                     <label>
                         <?php _e('Button Title', 'e2pdf'); ?>:
@@ -218,7 +216,6 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper">
                     <label>
                         <?php _e('Dynamic PDF Source', 'e2pdf'); ?>:
@@ -236,7 +233,6 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper">
                     <label>
                         <?php _e('Format', 'e2pdf'); ?>:
@@ -257,10 +253,9 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper">
                     <label>
-                        <?php _e('Resample for JPG output', 'e2pdf'); ?>:
+                        <?php _e('JPG Output Resolution', 'e2pdf'); ?>:
                     </label>
                 </p>
                 <div>
@@ -272,23 +267,22 @@ if (!defined('ABSPATH')) {
                         ),
                         'value' => $this->view->template->get('resample'),
                         'options' => array(
-                            '100' => '100%',
-                            '125' => '125%',
-                            '150' => '150%',
-                            '175' => '175%',
-                            '200' => '200%',
+                            '100' => '72dpi',
+                            '125' => '90dpi',
+                            '150' => '108dpi',
+                            '175' => '126dpi',
+                            '200' => '144dpi',
                         ),
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper"></p>
                 <div>
                     <?php
                     $this->render('field', 'checkbox', array(
                         'field' => array(
                             'name' => 'inline',
-                            'placeholder' => __('Inline', 'e2pdf'),
+                            'placeholder' => __('Open PDF in Browser', 'e2pdf'),
                             'class' => 'e2pdf-settings-template-change'
                         ),
                         'value' => $this->view->template->get('inline'),
@@ -297,14 +291,13 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper"></p>
                 <div>
                     <?php
                     $this->render('field', 'checkbox', array(
                         'field' => array(
                             'name' => 'auto',
-                            'placeholder' => __('Auto Download', 'e2pdf'),
+                            'placeholder' => __('Auto PDF Download', 'e2pdf'),
                             'class' => 'e2pdf-settings-template-change'
                         ),
                         'value' => $this->view->template->get('auto'),
@@ -407,11 +400,11 @@ if (!defined('ABSPATH')) {
                         'value' => $this->view->template->get('optimization'),
                         'options' => array(
                             '-1' => __('Not Optimized', 'e2pdf'),
-                            '1' => 'Low Quality',
-                            '2' => 'Basic Quality',
-                            '3' => 'Good Quality',
-                            '4' => 'Best Quality',
-                            '5' => 'Ultra Quality',
+                            '1' => __('Low Quality', 'e2pdf'),
+                            '2' => __('Basic Quality', 'e2pdf'),
+                            '3' => __('Good Quality', 'e2pdf'),
+                            '4' => __('Best Quality', 'e2pdf'),
+                            '5' => __('Ultra Quality', 'e2pdf'),
                         ),
                     ));
                     ?>
@@ -565,6 +558,25 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
+                <p class="post-attributes-label-wrapper">
+                    <label>
+                        <?php _e('Lang Code', 'e2pdf'); ?>:
+                    </label>
+                </p>
+                <div>
+                    <?php
+                    $this->render('field', 'select', array(
+                        'field' => array(
+                            'name' => 'lang_code',
+                            'class' => 'e2pdf-settings-style-change'
+                        ),
+                        'value' => $this->view->template->get('lang_code'),
+                        'options' => $this->get_lang_codes(),
+                    ));
+                    ?>
+                </div>
+
+
             </div>
         </div>
         <div id="e2pdf-template-security" class="tabs-panel e2pdf-template-security" style="display: none;" >

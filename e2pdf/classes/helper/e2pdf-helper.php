@@ -281,7 +281,7 @@ class Helper_E2pdf_Helper {
     public function get_caps() {
         $caps = array(
             'e2pdf' => array(
-                'name' => __('Export', 'e2pdf'),
+                'name' => __('Create PDF', 'e2pdf'),
                 'cap' => 'e2pdf',
             ),
             'e2pdf_templates' => array(
@@ -368,10 +368,14 @@ class Helper_E2pdf_Helper {
             } else {
                 $site_url = str_replace('%uid%', '', $site_url);
             }
-
             if (isset($url_data['page'])) {
                 unset($url_data['page']);
             }
+        }
+
+        if (isset($url_data['download_name'])) {
+            $site_url = trailingslashit($site_url) . $url_data['download_name'];
+            unset($url_data['download_name']);
         }
 
         $site_url = apply_filters('e2pdf_helper_get_frontend_pdf_url_site_url', $site_url);
@@ -395,5 +399,24 @@ class Helper_E2pdf_Helper {
             }
         }
         return $site_url . str_replace(ABSPATH, '', $pdf);
+    }
+
+    /**
+     * Get Domain
+     * @return string - Domain
+     */
+    public function get_site_url() {
+        $site_url = false;
+        if (class_exists('SitePress')) {
+            $settings = get_option('icl_sitepress_settings');
+            if (isset($settings['language_negotiation_type']) && $settings['language_negotiation_type'] == '2') {
+                global $wpdb;
+                $site_url = $wpdb->get_var($wpdb->prepare('SELECT option_value FROM `' . $wpdb->options . '` WHERE option_name = %s LIMIT 1', 'siteurl'));
+            }
+        }
+        if (!$site_url) {
+            $site_url = site_url();
+        }
+        return $site_url;
     }
 }

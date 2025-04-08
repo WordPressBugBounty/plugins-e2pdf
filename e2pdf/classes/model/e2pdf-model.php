@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Loader Helper
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-model.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');

@@ -42,7 +42,7 @@ if (!defined('ABSPATH')) {
                     <?php } ?>
                 </div><div class="e2pdf-ib e2pdf-w50 e2pdf-pl5">
                     <div id="preview-action">
-                        <a form-id="e2pdf-build-form" target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'preview')); ?>" class="preview button e2pdf-submit-form e2pdf-link" _wpnonce="<?php echo wp_create_nonce('e2pdf_templates'); ?>"><?php _e('Preview', 'e2pdf'); ?></a>
+                        <a form-id="e2pdf-build-form" target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'preview')); ?>" class="button e2pdf-w100 e2pdf-center e2pdf-submit-form e2pdf-link" _wpnonce="<?php echo wp_create_nonce('e2pdf_templates'); ?>"><?php _e('Preview', 'e2pdf'); ?></a>
                     </div>
                     <div class="clear"></div>
                 </div>
@@ -62,9 +62,9 @@ if (!defined('ABSPATH')) {
                             <a class="e2pdf-link e2pdf-modal" data-modal="pdf-reupload" title="<?php _e('Upload PDF', 'e2pdf') ?>" href="javascript:void(0);"><i class="dashicons dashicons-upload"></i></a>
                         <?php } ?>
                     <?php } ?>
-                </div><div class="e2pdf-ib e2pdf-w50 e2pdf-pl5 e2pdf-align-right">
-                    <a <?php if ($this->get->get('action') !== 'edit') { ?>disabled="disabled"<?php } ?> target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'view', 'id' => $this->view->template->get('ID'))); ?>" class="button e2pdf-link"><?php _e('View Saved', 'e2pdf'); ?></a>
-                    <a <?php if (!$this->view->template->get('activated')) { ?>disabled="disabled"<?php } ?> target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'id' => $this->view->template->get('ID'))); ?>" class="button e2pdf-link e2pdf-mt6"><?php _e('Export To PDF', 'e2pdf'); ?></a>
+                </div><div class="e2pdf-ib e2pdf-w50 e2pdf-pl5 e2pdf-center">
+                    <a <?php if ($this->get->get('action') !== 'edit') { ?>disabled="disabled"<?php } ?> target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'view', 'id' => $this->view->template->get('ID'))); ?>" class="e2pdf-ib e2pdf-link"><?php _e('View Saved', 'e2pdf'); ?></a><br/>
+                    <a <?php if (!$this->view->template->get('activated')) { ?>disabled="disabled"<?php } ?> target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'id' => $this->view->template->get('ID'))); ?>" class="e2pdf-ib e2pdf-link e2pdf-mt6 e2pdf-generate-pdf-button"><?php _e('Create PDF', 'e2pdf'); ?></a>
                 </div>
             </div>
         </div>
@@ -94,13 +94,23 @@ if (!defined('ABSPATH')) {
                     </span>
                 </div>
             <?php } ?>
+            <div class="misc-pub-section misc-pub-e2pdf-tpl-hooks">
+                <span id="e2pdf-post-tpl-hooks">
+                    <a class="e2pdf-modal e2pdf-link" data-modal="tpl-hooks" href="javascript:void(0);"><?php _e('Hooks', 'e2pdf'); ?></a>
+                </span>
+            </div>
+            <div class="misc-pub-section misc-pub-e2pdf-tpl-properties">
+                <span id="e2pdf-post-tpl-properties">
+                    <a class="e2pdf-modal e2pdf-link" data-modal="tpl-properties" href="javascript:void(0);"><?php _e('Global Properties', 'e2pdf'); ?></a>
+                </span>
+            </div>
             <div class="misc-pub-section misc-pub-e2pdf-tpl-actions">
                 <span id="e2pdf-post-tpl-actions">
                     <a class="e2pdf-modal e2pdf-link" data-modal="tpl-actions" href="javascript:void(0);"><?php _e('Global Actions', 'e2pdf'); ?></a>
                 </span>
             </div>
             <div class="misc-pub-section misc-pub-e2pdf-item">
-                <label for="e2pdf-post-item"><?php _e('Item', 'e2pdf'); ?>:</label>
+                <label for="e2pdf-post-item"><?php _e('Connection', 'e2pdf'); ?>:</label>
                 <span id="e2pdf-post-item">
                     <?php if ($this->view->template->get('extension') && $this->view->template->get('item') && $this->view->template->extension()->item()) { ?>
                         <?php if ($this->view->template->get('item') == '-2') { ?>
@@ -130,7 +140,7 @@ if (!defined('ABSPATH')) {
                 <div class="e2pdf-grid">
                     <div class="e2pdf-ib e2pdf-w100">
                         <div id="convert-action">
-                            <a form-id="e2pdf-build-form" target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'convert', 'type' => 'php')); ?>" class="e2pdf-submit-form e2pdf-link" _wpnonce="<?php echo wp_create_nonce('e2pdf_templates'); ?>"><?php _e('PHP', 'e2pdf'); ?></a>
+                            <a form-id="e2pdf-build-form" target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'convert', 'type' => 'php')); ?>" class="e2pdf-submit-form e2pdf-link" _wpnonce="<?php echo wp_create_nonce('e2pdf_templates'); ?>">PHP</a>
                         </div>
                         <div class="clear"></div> 
                     </div>
@@ -142,7 +152,7 @@ if (!defined('ABSPATH')) {
     <div id="major-publishing-actions">
         <?php if ($this->get->get('action') === 'edit' && !$this->get->get('revision_id')) { ?>
             <div id="delete-action">
-                <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'trash', 'id' => $this->view->template->get('ID'), '_wpnonce' => wp_create_nonce('e2pdf_templates'))); ?>" onclick="return confirm('<?php _e('Move To Trash?', 'e2pdf'); ?> ')" class="submitdelete deletion"><?php _e('Move To Trash', 'e2pdf'); ?></a>
+                <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'trash', 'id' => $this->view->template->get('ID'), '_wpnonce' => wp_create_nonce('e2pdf_templates'))); ?>" onclick="return confirm('<?php _e('Trash', 'e2pdf'); ?>?')" class="submitdelete deletion"><?php _e('Trash', 'e2pdf'); ?></a>
             </div>
         <?php } ?>
         <div id="publishing-action" class="e2pdf-onload">

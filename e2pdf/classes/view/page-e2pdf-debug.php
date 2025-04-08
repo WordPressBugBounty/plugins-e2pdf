@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
         <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug')); ?>" class="nav-tab <?php if (!$this->get->get('action')) { ?>nav-tab-active<?php } ?>"><?php echo _e('Debug', 'e2pdf'); ?></a>
         <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug', 'action' => 'connections')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'connections') { ?>nav-tab-active<?php } ?>"><?php _e('Connections', 'e2pdf'); ?></a>
         <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug', 'action' => 'db')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'db') { ?>nav-tab-active<?php } ?>"><?php _e('DB', 'e2pdf'); ?></a>
-        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug', 'action' => 'phpinfo')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'phpinfo') { ?>nav-tab-active<?php } ?>"><?php _e('PHP Info', 'e2pdf'); ?></a>
+        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug', 'action' => 'phpinfo')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'phpinfo') { ?>nav-tab-active<?php } ?>">PHP</a>
     </h3>
     <div class="wrap">
         <?php if (!$this->get->get('action')) { ?>
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
                     <li><h2><?php _e('Maintenance', 'e2pdf') ?></h2></li>
                     <li>
                         <div class="e2pdf-name">
-                            <?php _e('Re-Init Activation Hooks', 'e2pdf'); ?>:
+                            <?php _e('Reinitialize Activation Hooks', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
                             <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug')); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_debug'); ?>">
@@ -31,24 +31,25 @@ if (!defined('ABSPATH')) {
                     </li>
                 </ul>
                 <hr>
-                <small><?php _e("* It is strongly RECOMMENDED that you backup your WEBSITE before any of these actions are applied to avoid data loss.", 'e2pdf') ?></small>
+                <small><?php _e("* It is strongly RECOMMENDED that you backup your WEBSITE before any of these actions are applied to avoid data loss", 'e2pdf') ?></small>
             </div>
             <ul class="e2pdf-view-area">
                 <li><h2><?php _e('Common', 'e2pdf') ?></h2></li>
-                <li><span class="e2pdf-bold"><?php _e('Domain', 'e2pdf') ?>:</span> <?php echo $this->view->api->get_domain(); ?></li>
+                <li><span class="e2pdf-bold"><?php _e('Site URL', 'e2pdf') ?>:</span> <?php echo $this->helper->get_site_url(); ?></li>
                 <li><span class="e2pdf-bold"><?php _e('Plugin Version', 'e2pdf') ?>:</span> <?php echo $this->helper->get('version'); ?></li>
                 <li><span class="e2pdf-bold"><?php _e('DB Version', 'e2pdf') ?>:</span> <?php echo get_option('e2pdf_version'); ?></li>
                 <li><span class="e2pdf-bold"><?php _e('WP Version', 'e2pdf') ?>:</span> <?php echo get_bloginfo('version'); ?></li>
                 <li><span class="e2pdf-bold"><?php _e('Multisite', 'e2pdf') ?>:</span> <?php is_multisite() ? _e('Yes', 'e2pdf') : _e('No', 'e2pdf'); ?></span></li>
                 <li><span class="e2pdf-bold"><?php _e('Is Main Site', 'e2pdf') ?>:</span> <?php is_main_site() ? _e('Yes', 'e2pdf') : _e('No', 'e2pdf'); ?></span></li>
                 <li><h2><?php _e('Settings', 'e2pdf') ?></h2></li>
-                <li><span class="e2pdf-bold"><?php _e('PDF Processor', 'e2pdf') ?>:</span> <?php echo get_option('e2pdf_processor', '0') ? __('Release Candidate (Debug Mode)', 'e2pdf') : __('Default (Stable Version)', 'e2pdf'); ?></li>
-                <li><span class="e2pdf-bold"><?php _e('Font Processor', 'e2pdf') ?>:</span> <?php echo get_option('e2pdf_font_processor', '0') ? __('Complex Fonts', 'e2pdf') : __('Plain Fonts', 'e2pdf'); ?></li>
-                <li><h2><?php _e('PHP', 'e2pdf') ?></h2></li>
-                <li><span class="e2pdf-bold"><?php _e('PHP Version', 'e2pdf') ?>:</span> <?php echo phpversion(); ?></li>
-                <li><span class="e2pdf-bold"><?php _e('Max Filesize', 'e2pdf') ?>:</span> <?php echo $this->helper->load('files')->get_upload_max_filesize(); ?></span></li>
-                <li><span class="e2pdf-bold"><?php _e('Memory Limit', 'e2pdf') ?>:</span> <?php echo ini_get('memory_limit'); ?></span></li>
-                <li><span class="e2pdf-bold"><?php _e('Max Execution Time', 'e2pdf') ?>:</span> <?php echo ini_get('max_execution_time'); ?></span></li>
+                <li><span class="e2pdf-bold"><?php _e('PDF Processor', 'e2pdf') ?>:</span> <?php echo get_option('e2pdf_processor', '0') ? 'Release Candidate (Debug Mode)' : 'Default (Stable Version)' ?></li>
+                <li><span class="e2pdf-bold"><?php _e('Font Processor', 'e2pdf') ?>:</span> <?php echo get_option('e2pdf_font_processor', '0') ? 'Complex Fonts' : 'Plain Fonts' ?></li>
+                <li><h2>PHP</h2></li>
+                <li><span class="e2pdf-bold">PHP:</span> <?php echo phpversion(); ?></li>
+                <li><span class="e2pdf-bold">post_max_size:</span> <?php echo ini_get('post_max_size'); ?></span></li>
+                <li><span class="e2pdf-bold">upload_max_filesize:</span> <?php echo ini_get('upload_max_filesize'); ?></span></li>
+                <li><span class="e2pdf-bold">memory_limit:</span> <?php echo ini_get('memory_limit'); ?></span></li>
+                <li><span class="e2pdf-bold">max_execution_time:</span> <?php echo ini_get('max_execution_time'); ?></span></li>
                 <li><h2><?php _e('Folders', 'e2pdf') ?></h2></li>
                 <li><span class="e2pdf-bold"><?php _e('WP Folder', 'e2pdf') ?>:</span></li>
                 <li><?php echo ABSPATH ?></li>
@@ -108,9 +109,9 @@ if (!defined('ABSPATH')) {
                 <li><h2><?php _e('PHP Extensions', 'e2pdf') ?></h2></li>
                 <li>
                     <?php if (!function_exists('curl_version')) { ?>
-                        <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span> CURL<br><small><?php _e('curl_version not found', 'e2pdf'); ?></small>
+                        <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span> CURL<br><small>curl_version</small>
                     <?php } elseif (in_array('curl_exec', $this->view->disabled_functions)) { ?>
-                        <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span> CURL<br><small><?php _e('curl_exec disabled', 'e2pdf'); ?></small>
+                        <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span> CURL<br><small>curl_exec</small>
                     <?php } else { ?>
                         <span class="e2pdf-color-green">[OK]</span> CURL
                     <?php } ?> 
@@ -156,6 +157,20 @@ if (!defined('ABSPATH')) {
                 }
                 ?>
                 <?php
+                if (function_exists('get_post_types') && function_exists('get_post_type_labels')) {
+                    $post_type_objects = get_post_types(array(), 'objects');
+                    $post_types = array();
+                    foreach ($post_type_objects as $post_type_obj) {
+                        $labels = get_post_type_labels($post_type_obj);
+                        $post_types[] = esc_html($labels->name) . ' (' . esc_html($post_type_obj->name) . ')';
+                    }
+                    ?>
+                    <li><h2><?php _e('Post Types', 'e2pdf') ?>:</h2></li>
+                    <li><?php echo implode(', ', $post_types); ?></span></li>
+                    <?php
+                }
+                ?>
+                <?php
                 if (function_exists('get_intermediate_image_sizes')) {
                     $image_sizes = get_intermediate_image_sizes();
                     ?>
@@ -175,7 +190,7 @@ if (!defined('ABSPATH')) {
                     <li><h2><?php _e('Maintenance', 'e2pdf') ?></h2></li>
                     <li>
                         <div class="e2pdf-name">
-                            <?php _e('Repair Database', 'e2pdf'); ?>:
+                            <?php _e('Repair DB', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
                             <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug', 'action' => 'db')); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_debug'); ?>">
@@ -186,7 +201,7 @@ if (!defined('ABSPATH')) {
                     </li>
                     <li>
                         <div class="e2pdf-name">
-                            <?php _e('Re-Init Database Hooks', 'e2pdf'); ?>:
+                            <?php _e('Reinitialize DB Hooks', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
                             <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug', 'action' => 'db')); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_debug'); ?>">
@@ -197,7 +212,7 @@ if (!defined('ABSPATH')) {
                     </li>
                 </ul>
                 <hr>
-                <small><?php _e("* It is strongly RECOMMENDED that you backup your DATABASE before any of these actions are applied to avoid data loss.", 'e2pdf') ?></small>
+                <small><?php _e("* It is strongly RECOMMENDED that you backup your DB before any of these actions are applied to avoid data loss", 'e2pdf') ?></small>
             </div>
             <br>
             <div class="e2pdf-view-area">
@@ -234,7 +249,7 @@ if (!defined('ABSPATH')) {
                                 <span class="e2pdf-color-green">[OK]</span>
                             <?php } else { ?>
                                 <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span>
-                            <?php } ?> <?php _e('SELF', 'e2pdf') ?>
+                            <?php } ?> <?php _e('Back-connection', 'e2pdf') ?>
                         </li>
                     <?php } ?>
                     <?php if (isset($this->view->connections['api_connection_upload'])) { ?>
@@ -243,7 +258,7 @@ if (!defined('ABSPATH')) {
                                 <span class="e2pdf-color-green">[OK]</span>
                             <?php } else { ?>
                                 <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span>
-                            <?php } ?> <?php _e('UPLOAD', 'e2pdf') ?>: <?php echo $this->view->connections['api_connection_upload']['result']; ?>
+                            <?php } ?> <?php _e('Upload Speed', 'e2pdf') ?>: <?php echo $this->view->connections['api_connection_upload']['result']; ?>
                         </li>
                     <?php } ?>
                     <?php if (isset($this->view->connections['api_connection_download'])) { ?>
@@ -252,7 +267,7 @@ if (!defined('ABSPATH')) {
                                 <span class="e2pdf-color-green">[OK]</span>
                             <?php } else { ?>
                                 <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span>
-                            <?php } ?> <?php _e('DOWNLOAD', 'e2pdf') ?>: <?php echo $this->view->connections['api_connection_download']['result']; ?>
+                            <?php } ?> <?php _e('Download Speed', 'e2pdf') ?>: <?php echo $this->view->connections['api_connection_download']['result']; ?>
                         </li>
                     <?php } ?>
                 </ul>

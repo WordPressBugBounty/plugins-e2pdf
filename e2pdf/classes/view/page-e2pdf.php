@@ -4,12 +4,12 @@ if (!defined('ABSPATH')) {
 }
 ?>
 <div class="wrap">
-    <h1><?php _e('Export', 'e2pdf'); ?></h1>
+    <h1><?php _e('Create PDF', 'e2pdf'); ?></h1>
     <hr class="wp-header-end">
     <?php $this->render('blocks', 'notifications'); ?>
     <h3 class="nav-tab-wrapper wp-clearfix">
-        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf')); ?>" class="nav-tab <?php if (!($this->get->get('action'))) { ?>nav-tab-active<?php } ?>"><?php echo _e('Export', 'e2pdf'); ?></a>
-        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'bulk') { ?>nav-tab-active<?php } ?>"><?php _e('Bulk Export', 'e2pdf'); ?></a>
+        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf')); ?>" class="nav-tab <?php if (!($this->get->get('action'))) { ?>nav-tab-active<?php } ?>"><?php echo _e('Create PDF', 'e2pdf'); ?></a>
+        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'bulk') { ?>nav-tab-active<?php } ?>"><?php _e('Create PDFs in Bulk', 'e2pdf'); ?></a>
     </h3>
 
     <?php if (!$this->get->get('action')) { ?>
@@ -34,21 +34,28 @@ if (!defined('ABSPATH')) {
                 </div>
                 <div class="e2pdf-grid">
                     <div class="e2pdf-ib e2pdf-w30 e2pdf-pr10">
-                        <?php _e('E2Pdf Template', 'e2pdf'); ?>:
+                        <?php _e('Template', 'e2pdf'); ?>:
                     </div><div class="e2pdf-ib e2pdf-w70 e2pdf-pl10">
-                        <?php
-                        $this->render('field', 'select', array(
-                            'field' => array(
-                                'name' => 'id',
-                                'class' => 'e2pdf-export-template e2pdf-w100 e2pdf-onload',
-                                'disabled' => 'disabled',
-                                '_wpnonce' => wp_create_nonce('e2pdf'),
-                            ),
-                            'value' => '0',
-                            'options' => $this->controller->get_active_templates(),
-                        ));
-                        ?>
-                        <div id="e2pdf-export-template-actions" class="e2pdf-ib e2pdf-w100 e2pdf-align-right"></div>
+                        <div class="e2pdf-ib e2pdf-w100 e2pdf-select2-wrapper">
+                            <?php
+                            $this->render('field', 'select', array(
+                                'field' => array(
+                                    'name' => 'id',
+                                    'class' => 'e2pdf-export-template e2pdf-w100',
+                                    '_wpnonce' => wp_create_nonce('e2pdf'),
+                                ),
+                                'value' => '0',
+                                'options' => $this->controller->get_active_templates(),
+                            ));
+                            $this->render('field', 'text', array(
+                                'field' => array(
+                                    'class' => 'e2pdf-w100 e2pdf-select2',
+                                    'placeholder' => __('--- Select ---', 'e2pdf'),
+                                ),
+                            ));
+                            ?>
+                            <div class="e2pdf-ib e2pdf-w100 e2pdf-align-right e2pdf-export-template-actions"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="e2pdf-grid e2pdf-export-item e2pdf-hide">
@@ -56,12 +63,11 @@ if (!defined('ABSPATH')) {
                         <?php _e('Dataset', 'e2pdf'); ?>:
                     </div><div class="e2pdf-ib e2pdf-w70 e2pdf-pl10">
                         <div class="e2pdf-ib e2pdf-w100">
-                            <div class="e2pdf-ib e2pdf-w70 e2pdf-pr5">
+                            <div class="e2pdf-ib e2pdf-w100 e2pdf-select2-wrapper e2pdf-dataset-wrapper">
                                 <?php
                                 $this->render('field', 'select', array(
                                     'field' => array(
                                         'name' => 'dataset',
-                                        'disabled' => 'disabled',
                                         'class' => 'e2pdf-export-dataset e2pdf-w100',
                                         '_wpnonce' => wp_create_nonce('e2pdf'),
                                     ),
@@ -71,20 +77,18 @@ if (!defined('ABSPATH')) {
                                     ),
                                 ));
                                 ?>
-                            </div><div class="e2pdf-ib e2pdf-w30 e2pdf-pl5">
                                 <?php
                                 $this->render('field', 'text', array(
                                     'field' => array(
-                                        'name' => 'search',
                                         'disabled' => 'disabled',
-                                        'class' => 'e2pdf-w100 e2pdf-export-dataset-search',
-                                        'field' => 'dataset',
-                                        'placeholder' => 'Search...',
+                                        'class' => 'e2pdf-w100 e2pdf-select2',
+                                        'placeholder' => __('--- Select ---', 'e2pdf'),
                                     ),
                                 ));
                                 ?>
+                                <a href="javascript:void(0);" class="e2pdf-link e2pdf-datasets-refresh" _wpnonce="<?php echo esc_attr(wp_create_nonce('e2pdf')); ?>"><i class="dashicons dashicons-update"></i></a>
+                                <div class="e2pdf-ib e2pdf-w100 e2pdf-export-dataset-actions"></div>
                             </div>
-                            <div class="e2pdf-ib e2pdf-w100 e2pdf-export-dataset-actions"></div>
                         </div>
                     </div>
                     <div class="e2pdf-ib e2pdf-w100 e2pdf-export-item-actions"></div>
@@ -94,12 +98,11 @@ if (!defined('ABSPATH')) {
                         <?php _e('Dataset2', 'e2pdf'); ?>:
                     </div><div class="e2pdf-ib e2pdf-w70 e2pdf-pl10">
                         <div class="e2pdf-ib e2pdf-w100">
-                            <div class="e2pdf-ib e2pdf-w70 e2pdf-pr5">
+                            <div class="e2pdf-ib e2pdf-w100 e2pdf-select2-wrapper e2pdf-dataset-wrapper">
                                 <?php
                                 $this->render('field', 'select', array(
                                     'field' => array(
                                         'name' => 'dataset2',
-                                        'disabled' => 'disabled',
                                         'class' => 'e2pdf-export-dataset e2pdf-w100',
                                         '_wpnonce' => wp_create_nonce('e2pdf'),
                                     ),
@@ -108,21 +111,17 @@ if (!defined('ABSPATH')) {
                                         '' => __('--- Select ---', 'e2pdf')
                                     ),
                                 ));
-                                ?>
-                            </div><div class="e2pdf-ib e2pdf-w30 e2pdf-pl5">
-                                <?php
                                 $this->render('field', 'text', array(
                                     'field' => array(
-                                        'name' => 'search',
                                         'disabled' => 'disabled',
-                                        'class' => 'e2pdf-w100 e2pdf-export-dataset-search',
-                                        'field' => 'dataset2',
-                                        'placeholder' => 'Search...',
+                                        'class' => 'e2pdf-w100 e2pdf-select2',
+                                        'placeholder' => __('--- Select ---', 'e2pdf'),
                                     ),
                                 ));
                                 ?>
+                                <a href="javascript:void(0);" class="e2pdf-link e2pdf-datasets-refresh" _wpnonce="<?php echo esc_attr(wp_create_nonce('e2pdf')); ?>"><i class="dashicons dashicons-update"></i></a>
+                                <div class="e2pdf-ib e2pdf-w100 e2pdf-export-dataset-actions"></div>
                             </div>
-                            <div class="e2pdf-ib e2pdf-w100 e2pdf-export-dataset-actions"></div>
                         </div>
                     </div>
                     <div class="e2pdf-ib e2pdf-w100 e2pdf-export-item-actions"></div>
@@ -135,12 +134,12 @@ if (!defined('ABSPATH')) {
                                 <div class='e2pdf-ib e2pdf-w100'>
                                     <h4 class="e2pdf-center"><?php _e('Shortcodes', 'e2pdf'); ?></h4>
                                 </div>
-                                <div id="e2pdf-template-shortcode-wr" class='e2pdf-ib e2pdf-w100'>
-                                    <div class="e2pdf-w100 e2pdf-center"><?php _e("Shortcode for Download Link with dynamic dataset", 'e2pdf'); ?></div>
-                                    <input id="e2pdf-template-shortcode" readonly="readonly" name="e2pdf-template-shortcode" class="e2pdf-center e2pdf-w100" type="text" value=''>
+                                <div class='e2pdf-ib e2pdf-w100'>
+                                    <div class="e2pdf-w100 e2pdf-center"><?php _e("Shortcode for a Download Link with a Dynamic Dataset", 'e2pdf'); ?></div>
+                                    <input readonly="readonly" class="e2pdf-template-shortcode e2pdf-center e2pdf-w100" type="text" value=''>
                                 </div>
                                 <div class='e2pdf-dataset-shortcode-wr e2pdf-ib e2pdf-w100 e2pdf-hide'>
-                                    <div class="e2pdf-w100 e2pdf-center"><?php _e("Shortcode for Download Link with current dataset", 'e2pdf'); ?></div>
+                                    <div class="e2pdf-w100 e2pdf-center"><?php _e("Shortcode for a Download Link with the Current Dataset", 'e2pdf'); ?></div>
                                     <input readonly="readonly" name="e2pdf-dataset-shortcode" class="e2pdf-dataset-shortcode e2pdf-center e2pdf-w100" type="text" value=''>
                                 </div>
                             </div>
@@ -258,7 +257,7 @@ if (!defined('ABSPATH')) {
                     </div>
                 </div>
                 <div class="e2pdf-center">
-                    <input type="submit" form-id="e2pdf-export-form" disabled="disabled" class="e2pdf-export-form-submit button-primary button-large" value="<?php _e('Export', 'e2pdf'); ?>"><div class="e2pdf-form-loader"><span class="spinner"></span></div>
+                    <input type="submit" form-id="e2pdf-export-form" disabled="disabled" class="e2pdf-export-form-submit button-primary button-large" value="<?php _e('Create PDF', 'e2pdf'); ?>">
                 </div>
             </form>
         </div>
@@ -266,24 +265,30 @@ if (!defined('ABSPATH')) {
         <div class="wrap e2pdf-view-area e2pdf-rel">
             <form id="e2pdf-export-form" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk')); ?>" class="e2pdf-export-form">
                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf'); ?>">
-                <div class="e2pdf-form-loader"><span class="spinner"></span></div>
                 <div class="e2pdf-grid">
                     <div class="e2pdf-ib e2pdf-w30 e2pdf-pr10">
-                        <?php _e('E2Pdf Template', 'e2pdf'); ?>:
+                        <?php _e('Template', 'e2pdf'); ?>:
                     </div><div class="e2pdf-ib e2pdf-w70 e2pdf-pl10">
-                        <?php
-                        $this->render('field', 'select', array(
-                            'field' => array(
-                                'name' => 'id',
-                                'class' => 'e2pdf-export-template e2pdf-w100 e2pdf-onload',
-                                'disabled' => 'disabled',
-                                '_wpnonce' => wp_create_nonce('e2pdf'),
-                            ),
-                            'value' => '0',
-                            'options' => $this->controller->get_active_templates(),
-                        ));
-                        ?>
-                        <div id="e2pdf-export-template-actions" class="e2pdf-ib e2pdf-w100 e2pdf-align-right"></div>
+                        <div class="e2pdf-ib e2pdf-w100 e2pdf-select2-wrapper">
+                            <?php
+                            $this->render('field', 'select', array(
+                                'field' => array(
+                                    'name' => 'id',
+                                    'class' => 'e2pdf-export-template e2pdf-w100',
+                                    '_wpnonce' => wp_create_nonce('e2pdf'),
+                                ),
+                                'value' => '0',
+                                'options' => $this->controller->get_active_templates(),
+                            ));
+                            $this->render('field', 'text', array(
+                                'field' => array(
+                                    'class' => 'e2pdf-w100 e2pdf-select2',
+                                    'placeholder' => __('--- Select ---', 'e2pdf'),
+                                ),
+                            ));
+                            ?>
+                            <div class="e2pdf-ib e2pdf-w100 e2pdf-align-right e2pdf-export-template-actions"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="e2pdf-grid e2pdf-export-item e2pdf-hide">
@@ -296,10 +301,9 @@ if (!defined('ABSPATH')) {
                                 $this->render('field', 'text', array(
                                     'field' => array(
                                         'name' => 'search',
-                                        'disabled' => 'disabled',
                                         'class' => 'e2pdf-w100 e2pdf-export-dataset-search',
                                         'field' => 'dataset',
-                                        'placeholder' => 'Search...',
+                                        'placeholder' => __('Filter...', 'e2pdf'),
                                     ),
                                 ));
                                 ?>
@@ -311,24 +315,11 @@ if (!defined('ABSPATH')) {
                                 $this->render('field', 'fieldset', array(
                                     'field' => array(
                                         'name' => 'dataset',
-                                        'disabled' => 'disabled',
                                         'class' => 'e2pdf-export-dataset e2pdf-w100'
                                     ),
                                     'value' => '0',
                                     'options' => array(
                                         '' => __('--- Select ---', 'e2pdf')
-                                    ),
-                                ));
-                                ?>
-                            </div><div class="e2pdf-ib e2pdf-w30 e2pdf-pl5 e2pdf-hide">
-                                <?php
-                                $this->render('field', 'text', array(
-                                    'field' => array(
-                                        'name' => 'search',
-                                        'disabled' => 'disabled',
-                                        'class' => 'e2pdf-w100 e2pdf-export-dataset-search',
-                                        'field' => 'dataset',
-                                        'placeholder' => 'Search...',
                                     ),
                                 ));
                                 ?>
@@ -473,7 +464,7 @@ if (!defined('ABSPATH')) {
                     </div>
                 </div>
                 <div class="e2pdf-center">
-                    <input type="button" form-id="e2pdf-export-form"  action="e2pdf_bulk_create" disabled="disabled" class="e2pdf-submit-form e2pdf-export-form-submit button-primary button-large" value="<?php _e('Export', 'e2pdf'); ?>" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>">
+                    <input type="button" form-id="e2pdf-export-form"  action="e2pdf_bulk_create" disabled="disabled" class="e2pdf-submit-form e2pdf-export-form-submit button-primary button-large" value="<?php _e('Create PDFs in Bulk', 'e2pdf'); ?>" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>">
                 </div>
             </form>
         </div>
@@ -509,7 +500,7 @@ if (!defined('ABSPATH')) {
                             <?php } ?>
                             <a class="e2pdf-link e2pdf-bulk-action" action="delete" bulk="<?php echo $bulk->get('ID'); ?>" href="javascript:void(0)" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-no"></i></a> 
                         </div><div class="e2pdf-ib e2pdf-w10">
-                            <?php echo $bulk->get('created_at'); ?>
+                            <?php echo get_date_from_gmt($bulk->get('created_at')); ?>
                         </div>
                     </div>
                 <?php } ?>

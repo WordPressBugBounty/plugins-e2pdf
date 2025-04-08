@@ -376,11 +376,13 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -399,6 +401,8 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         add_filter('ninja_forms_post_run_action_type_email', array($this, 'filter_ninja_forms_post_run_action_type_email'));
         add_filter('ninja_forms_action_email_attachments', array($this, 'filter_ninja_forms_action_email_attachments'), 10, 3);
         add_filter('ninja_forms_action_email_message', array($this, 'filter_ninja_forms_action_email_message'), 10, 3);
+        /* 1.25.14 - Trigger Email Action Fix */
+        add_filter('rest_dispatch_request', array($this, 'filter_rest_dispatch_request'), 10, 3);
     }
 
     public function filter_ninja_forms_run_action_settings($settings, $form_id, $action_id, $form_data) {
@@ -428,8 +432,8 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $data;
     }
 
-    public function filter_ninja_forms_action_email_attachments($attachments, $data, $settings) {
-        $message = isset($settings['email_message']) ? $settings['email_message'] : '';
+    public function filter_ninja_forms_action_email_attachments($attachments, $data, $action_settings) {
+        $message = isset($action_settings['email_message']) ? $action_settings['email_message'] : '';
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-attachment',
@@ -448,6 +452,9 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                         $template->load($atts['id']);
                         if ($template->get('extension') === 'ninja') {
                             $dataset_id = isset($data['actions']['save']['sub_id']) ? $data['actions']['save']['sub_id'] : false;
+                            if (!$dataset_id) {
+                                $dataset_id = isset($action_settings['sub_id']) ? $action_settings['sub_id'] : false;
+                            }
                             if ($dataset_id) {
                                 $atts['dataset'] = $dataset_id;
                                 $shortcode[3] .= ' dataset="' . $dataset_id . '"';
@@ -486,8 +493,22 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
 
     public function filter_ninja_forms_action_email_message($message, $data, $action_settings) {
         $dataset_id = isset($data['actions']['save']['sub_id']) ? $data['actions']['save']['sub_id'] : false;
+        if (!$dataset_id) {
+            $dataset_id = isset($action_settings['sub_id']) ? $action_settings['sub_id'] : false;
+        }
         $message = $this->filter_content($message, $dataset_id);
         return $message;
+    }
+
+    public function filter_rest_dispatch_request($result, $request, $route) {
+        if ($route && false !== strpos($route, '/ninja-forms-submissions/email-action')) {
+            $data = json_decode($request->get_body());
+            if (!empty($data->submission) && !empty($data->action_settings)) {
+                $data->action_settings->sub_id = $data->submission;
+                $request->set_body(json_encode($data)); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+            }
+        }
+        return $result;
     }
 
     public function filter_content($message, $dataset_id) {

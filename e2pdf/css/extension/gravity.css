@@ -48,11 +48,6 @@
     display: none;
 }
 
-.e2pdf-vm-content .gform_wrapper form {
-    max-width: none;
-    display: inline-block;
-}
-
 .e2pdf-vm-content label {
     font-weight: normal;
 }

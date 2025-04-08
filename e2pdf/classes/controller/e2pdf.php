@@ -67,12 +67,12 @@ class Controller_E2pdf extends Helper_E2pdf_View {
         if (defined('DISABLE_WP_CRON') && DISABLE_WP_CRON) {
             if (defined('ALTERNATE_WP_CRON') && ALTERNATE_WP_CRON) {  // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
             } else {
-                $this->add_notification('error', __('WP Cron is Disabled. You must not leave the page to finish the bulk export.', 'e2pdf'));
+                $this->add_notification('error', __('WP Cron is disabled. You must stay on this page to complete the Bulk PDFs creation', 'e2pdf'));
             }
         }
 
         if ($this->helper->get('license')->get('type') == 'FREE' && !get_option('e2pdf_hide_warnings', '0')) {
-            $this->add_notification('notice', sprintf(__("The bulk export is not available with Free License Type. Please check <a target='_blank' href='%s'>%s</a> for upgrade options.", 'e2pdf'), 'https://e2pdf.com/price', 'https://e2pdf.com'));
+            $this->add_notification('notice', sprintf(__("The Bulk PDFs creation is not available with Free License Type. Check <a target='_blank' href='%s'>%s</a> for upgrade options", 'e2pdf'), 'https://e2pdf.com/price', 'https://e2pdf.com'));
         }
 
         $users_tmp = get_users(
@@ -133,7 +133,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                 if ($key == 'args') {
                     if (is_array($value)) {
                         foreach ($value as $sub_key => $sub_value) {
-                            if ($sub_value) {
+                            if ($sub_value !== '') {
                                 $args['arg' . ($sub_key + 1)] = stripslashes($sub_value);
                             }
                         }
@@ -342,7 +342,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                 $this->render('blocks', 'notifications');
             }
         } else {
-            $this->error('404');
+            $this->handle_404();
         }
     }
 
@@ -391,7 +391,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
         $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
         $limit = $this->helper->load('db')->prepare_limit($limit_condition);
 
-        $blks = $wpdb->get_results($wpdb->prepare('SELECT `ID` FROM ' . $model_e2pdf_bulk->get_table() . $where['sql'] . $orderby . $limit . '', $where['filter']));
+        $blks = $wpdb->get_results($wpdb->prepare('SELECT `ID` FROM `' . $model_e2pdf_bulk->get_table() . '`' . $where['sql'] . $orderby . $limit . '', $where['filter']));
 
         if ($count) {
             return count($blks);
@@ -437,7 +437,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
         $where = $this->helper->load('db')->prepare_where($condition);
         $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
 
-        $templates = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . $model_e2pdf_template->get_table() . $where['sql'] . $orderby . '', $where['filter']));
+        $templates = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $model_e2pdf_template->get_table() . '`' . $where['sql'] . $orderby . '', $where['filter']));
         $export_templates = array();
 
         $export_templates[] = array(
@@ -462,27 +462,25 @@ class Controller_E2pdf extends Helper_E2pdf_View {
      * @return array() - Entries for template
      */
     public function get_datasets($template_id = false, $item = false, $dataset_title = false) {
-
-        $datasets = array();
-
-        $datasets[] = array(
-            'key' => '',
-            'value' => __('--- Select ---', 'e2pdf'),
+        $datasets = array(
+            array(
+                'key' => '',
+                'value' => __('--- Select ---', 'e2pdf'),
+            )
         );
-
         if ($template_id) {
             $template = new Model_E2pdf_Template();
             if ($template->load($template_id)) {
                 if ($item) {
                     $datasets_tmp = $template->extension()->
                             datasets(
-                            $item, $dataset_title ? $dataset_title : $template->get('dataset_title')
-                    );
+                                    $item, $dataset_title ? $dataset_title : $template->get('dataset_title')
+                            );
                 } else {
                     $datasets_tmp = $template->extension()->
                             datasets(
-                            $template->get('item'), $dataset_title ? $dataset_title : $template->get('dataset_title')
-                    );
+                                    $template->get('item'), $dataset_title ? $dataset_title : $template->get('dataset_title')
+                            );
                 }
                 if ($datasets_tmp && is_array($datasets_tmp)) {
                     $datasets = array_merge($datasets, $datasets_tmp);
@@ -544,6 +542,38 @@ class Controller_E2pdf extends Helper_E2pdf_View {
             );
             if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') {
                 unset($content['options']['user_id']);
+            }
+            $response = array(
+                'content' => $content,
+            );
+        } else {
+            $response['error'] = $this->message('wp_verify_nonce_error');
+        }
+        $this->json_response($response);
+    }
+
+    public function ajax_datasets_refresh() {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+            $data = $this->post->get('data');
+            $template_id = (int) $data['id'];
+            $name = $data['name'];
+            $dataset = $data['dataset'];
+            $content = array(
+                'dataset' => $dataset,
+                'datasets' => array(),
+            );
+            $template = new Model_E2pdf_Template();
+            if ($template->load($template_id)) {
+                $content['id'] = $template_id;
+                if ($template->get('item') == '-2') {
+                    if ($name == 'dataset') {
+                        $content['datasets'] = $this->get_datasets($template_id, $template->get('item1'), $template->get('dataset_title1'));
+                    } else {
+                        $content['datasets'] = $this->get_datasets($template_id, $template->get('item2'), $template->get('dataset_title2'));
+                    }
+                } else {
+                    $content['datasets'] = $this->get_datasets($template_id);
+                }
             }
             $response = array(
                 'content' => $content,
@@ -675,15 +705,15 @@ class Controller_E2pdf extends Helper_E2pdf_View {
             $this->helper->set('license', new Model_E2pdf_License());
             if ($this->helper->get('license')->get('type') === false) {
                 $response = array(
-                    'error' => __('Something went wrong', 'e2pdf'),
+                    'error' => __('Something went wrong!', 'e2pdf'),
                 );
             } elseif ($this->helper->get('license')->get('type') == 'FREE') {
                 $response = array(
-                    'error' => __('The bulk export is not available with Free License Type', 'e2pdf'),
+                    'error' => sprintf(__("The Bulk PDFs generation is not available with Free License Type. Check <a target='_blank' href='%s'>%s</a> for upgrade options", 'e2pdf'), 'https://e2pdf.com/price', 'https://e2pdf.com')
                 );
             } elseif (!class_exists('ZipArchive')) {
                 $response = array(
-                    'error' => __('PHP zip extension not loaded', 'e2pdf'),
+                    'error' => sprintf(__('The PHP %s extension is required', 'e2pdf'), 'Zip'),
                 );
             } else {
                 $data = json_decode($this->post->get('data'), true);
@@ -715,7 +745,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                         );
                     }
                     $this->cron_bulk_export();
-                    $this->add_notification('update', __('The bulk export task successfully created', 'e2pdf'));
+                    $this->add_notification('update', 'The Bulk PDFs generation Task is created successfully', 'e2pdf');
                 }
             }
         } else {
@@ -791,48 +821,50 @@ class Controller_E2pdf extends Helper_E2pdf_View {
     public function cron_bulk_export() {
         $model_e2pdf_bulk = new Model_E2pdf_Bulk();
         if ($model_e2pdf_bulk->load_by_active_bulk()) {
-            if ($model_e2pdf_bulk->get('ID') && $model_e2pdf_bulk->get_active_status() !== 'busy' && $model_e2pdf_bulk->get_active_status() !== 'stop') {
-                $model_e2pdf_bulk->set('status', 'busy');
-                $model_e2pdf_bulk->save();
-                $template_id = $model_e2pdf_bulk->get('template_id');
-                $datasets = $model_e2pdf_bulk->get('datasets');
-                $dataset = array_shift($datasets);
-                $pdf_dir = $this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '/';
-                if (!file_exists($pdf_dir)) {
-                    $this->helper->create_dir($pdf_dir, false, true, true);
-                }
-                register_shutdown_function(array($this, 'cron_bulk_export_shutdown'), $model_e2pdf_bulk, $datasets, $pdf_dir);
-                if ($template_id && $dataset) {
-                    $model_e2pdf_shortcode = new Model_E2pdf_Shortcode();
-                    $atts = array(
-                        'id' => $template_id,
-                        'dataset' => $dataset,
-                        'user_id' => 0,
-                        'create_index' => 'false',
-                        'create_htaccess' => 'false',
-                        'overwrite' => '2',
-                        'dir' => $pdf_dir,
-                        'apply' => 'true',
-                    );
-                    if ($model_e2pdf_bulk->get('options')) {
-                        foreach ($model_e2pdf_bulk->get('options') as $key => $value) {
-                            if ($key == 'args') {
-                                if (is_array($value)) {
-                                    foreach ($value as $sub_key => $sub_value) {
-                                        if ($sub_value) {
-                                            $atts['arg' . ($sub_key + 1)] = $sub_value;
+            if (!get_transient('e2pdf_bulk_export')) {
+                set_transient('e2pdf_bulk_export', true, max(10, (int) get_option('e2pdf_bulk_export_interval', '10')));
+                if ($model_e2pdf_bulk->get('ID') && $model_e2pdf_bulk->get_active_status() !== 'busy' && $model_e2pdf_bulk->get_active_status() !== 'stop') {
+                    $model_e2pdf_bulk->set('status', 'busy');
+                    $model_e2pdf_bulk->save();
+                    $template_id = $model_e2pdf_bulk->get('template_id');
+                    $datasets = $model_e2pdf_bulk->get('datasets');
+                    $dataset = array_shift($datasets);
+                    $pdf_dir = $this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '/';
+                    if (!file_exists($pdf_dir)) {
+                        $this->helper->create_dir($pdf_dir, false, true, true);
+                    }
+                    register_shutdown_function(array($this, 'cron_bulk_export_shutdown'), $model_e2pdf_bulk, $datasets, $pdf_dir);
+                    if ($template_id && $dataset) {
+                        $model_e2pdf_shortcode = new Model_E2pdf_Shortcode();
+                        $atts = array(
+                            'id' => $template_id,
+                            'dataset' => $dataset,
+                            'user_id' => 0,
+                            'create_index' => 'false',
+                            'create_htaccess' => 'false',
+                            'overwrite' => '2',
+                            'dir' => $pdf_dir,
+                            'apply' => 'true',
+                        );
+                        if ($model_e2pdf_bulk->get('options')) {
+                            foreach ($model_e2pdf_bulk->get('options') as $key => $value) {
+                                if ($key == 'args') {
+                                    if (is_array($value)) {
+                                        foreach ($value as $sub_key => $sub_value) {
+                                            if ($sub_value) {
+                                                $atts['arg' . ($sub_key + 1)] = $sub_value;
+                                            }
                                         }
                                     }
+                                } else {
+                                    $atts[$key] = $value;
                                 }
-                            } else {
-                                $atts[$key] = $value;
                             }
                         }
+                        $model_e2pdf_shortcode->e2pdf_save($atts);
                     }
-                    $model_e2pdf_shortcode->e2pdf_save($atts);
                 }
             }
-
             if (!wp_next_scheduled('e2pdf_bulk_export_cron')) {
                 wp_schedule_event(time(), 'e2pdf_bulk_export_interval', 'e2pdf_bulk_export_cron');
             }

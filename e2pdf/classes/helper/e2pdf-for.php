@@ -32,7 +32,6 @@ class Helper_E2pdf_For {
         $result = array();
         $implode = isset($atts['implode']) ? $atts['implode'] : '';
         $for_index = $for ? '-' . $for : '';
-        add_filter('e2pdf_for_do_shortcode_data_process', array($this, 'filter_do_shortcode_data_process'));
 
         $tags = array(
             'e2pdf-for-data' => 'e2pdf-for-data',
@@ -47,8 +46,10 @@ class Helper_E2pdf_For {
                 'e2pdf-for-else' => 'e2pdf-else'
             );
         }
+
+        add_filter('e2pdf_for_do_shortcode_data_process', array($this, 'filter_do_shortcode_data_process'));
         if ($extension && method_exists($extension, 'render')) {
-            $data = $this->data($extension->render($this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-data'] . $for_index, $value)));
+            $data = $this->data($extension->render($this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-data'] . $for_index, $value), array(), false, true));
         } else {
             $data = $this->data($this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-data'] . $for_index, $value));
         }
@@ -86,15 +87,8 @@ class Helper_E2pdf_For {
             if (!empty($tagnames)) {
                 preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $value, $shortcodes);
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
-                    $shortcode = array();
-                    $shortcode[1] = $shortcodes[1][$key];
-                    $shortcode[2] = $shortcodes[2][$key];
-                    $shortcode[3] = $shortcodes[3][$key];
-                    $shortcode[4] = $shortcodes[4][$key];
-                    $shortcode[5] = $shortcodes[5][$key];
-                    $shortcode[6] = $shortcodes[6][$key];
+                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-
                     $response = '';
                     $path = isset($atts['path']) ? $atts['path'] : false;
                     $implode = isset($atts['implode']) ? $atts['implode'] : false;

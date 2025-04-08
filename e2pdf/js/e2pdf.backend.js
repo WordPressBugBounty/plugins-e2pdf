@@ -1,24 +1,18 @@
 var e2pdf = {
-    /*
-     * e2pdf.helper
-     */
+    // e2pdf.helper
     helper: {
-        /*
-         * e2pdf.helper.color
-         */
+        // e2pdf.helper.color
         color: {
             close: function (el) {
                 var color_panel = jQuery(el).parent();
                 color_panel.find('.wp-color-result').click();
             }
         },
-        /*
-         * e2pdf.helper.font
-         */
+        // e2pdf.helper.font
         font: {
             fonts: function (field = '') {
                 var options = [];
-                jQuery('#e2pdf-wysiwyg-font').find('option').each(function () {
+                jQuery('.e2pdf-wysiwyg-font').find('option').each(function () {
                     var option = {};
                     option[jQuery(this).attr('value')] = jQuery(this).html();
                     options.push(option);
@@ -27,13 +21,13 @@ var e2pdf = {
             },
             sizes: function (field = '', properties = []) {
                 var options = [];
-                jQuery('#e2pdf-wysiwyg-fontsize').find('option').each(function () {
+                jQuery('.e2pdf-wysiwyg-fontsize').find('option').each(function () {
                     var option = {};
                     option[jQuery(this).attr('value')] = jQuery(this).html();
                     options.push(option);
                     if (jQuery(this).attr('value') === '' && properties.hasOwnProperty('text_font_size') && properties['text_font_size'] == '-1') {
                         option = {};
-                        option['-1'] = e2pdf_lang['Auto'];
+                        option['-1'] = e2pdf.lang.get('Auto');
                         options.push(option);
                     }
                 });
@@ -52,13 +46,9 @@ var e2pdf = {
                 return options;
             }
         },
-        /* 
-         * e2pdf.helper.image
-         */
+        // e2pdf.helper.image
         image: {
-            /*
-             * e2pdf.helper.image.load
-             */
+            // e2pdf.helper.image.load
             load: function (el) {
                 el.addClass('e2pdf-loader');
                 var properties = e2pdf.properties.get(el);
@@ -185,9 +175,7 @@ var e2pdf = {
                 };
                 image.src = value;
             },
-            /*
-             * e2pdf.helper.image.aspectRatio
-             */
+            // e2pdf.helper.image.aspectRatio
             aspectRatio: function (el, img, properties) {
 
                 var padding_top = e2pdf.helper.getFloat(el.css('padding-top'));
@@ -284,17 +272,18 @@ var e2pdf = {
                 return typeof val === 'undefined' || val != '1' ? def : val;
         }
         },
-        /*
-         * e2pdf.helper.toHtml()
-         */
+        // e2pdf.helper.toHtml
         toHtml: function (value) {
             var div = document.createElement('div');
             div.innerHTML = value;
             return (div.innerHTML);
         },
-        /*
-         * e2pdf.helper.sizeToFloat
-         */
+        stripHTML: function (html, ...args) {
+            return html.replace(/<(\/?)(\w+)[^>]*\/?>/g, (_, endMark, tag) => {
+                return args.includes(tag) ? '<' + endMark + tag + '>' : '';
+            }).replace(/<!--.*?-->/g, '').replace(/<!--\[if(.|\n)*?<!\[endif\]-->/g, '').replace(/\s*style=(["'])(.*?)\1/gmi, '').replace(/([ \t]*\n){3,}/g, "\n\n");
+        },
+        // e2pdf.helper.sizeToFloat
         sizeToFloat: function (value, width) {
             if (typeof value === 'string' && value.search("%") > 0) {
                 return parseFloat(width) * (parseFloat(value.replace('%', '')) / 100);
@@ -302,9 +291,7 @@ var e2pdf = {
                 return parseFloat(value);
             }
         },
-        /*
-         * e2pdf.helper.ajaxurl
-         */
+        // e2pdf.helper.ajaxurl
         ajaxurl: function (action, _wpnonce) {
             if (action) {
                 var url = ajaxurl + '?action=' + action + '&e2pdf_check=true&_wpnonce=' + _wpnonce;
@@ -312,15 +299,202 @@ var e2pdf = {
                 var url = ajaxurl + '?e2pdf_check=true&_wpnonce=' + _wpnonce;
             }
             return url;
+        },
+        // e2pdf.helper.css
+        css: function (element_id, css) {
+            var css = css.replace(/([^{}]+?{[^}]+?})/g, function (match) {
+                return '.e2pdf-element[data-element_id="' + element_id + '"] .e2pdf-html ' + match;
+            });
+            var style = jQuery('#e2pdf-html-css-' + element_id);
+            if (style.length !== 0) {
+                style.remove();
+            }
+            if (css) {
+                jQuery('<style>', {id: 'e2pdf-html-css-' + element_id}).html(css).appendTo('head');
+            }
+        },
+        // e2pdf.helper.cssGlobal
+        cssGlobal: function (css) {
+            var css = css.replace(/([^{}]+?{[^}]+?})/g, function (match) {
+                return '.e2pdf-element .e2pdf-html ' + match;
+            });
+            var style = jQuery('#e2pdf-html-css');
+            if (style.length !== 0) {
+                style.remove();
+            }
+            if (css) {
+                jQuery('<style>', {id: 'e2pdf-html-css'}).html(css).appendTo('head');
+            }
         }
     },
-    /*
-     * e2pdf.url
-     */
+    // e2pdf.select2
+    select2: {
+        // e2pdf.select2.init
+        init: function (el) {
+            el.val('');
+            var val = el.closest('.e2pdf-select2-wrapper').find('select').find('option:selected').val();
+            var placeholder = e2pdf.lang.get('--- Select ---');
+            if (val) {
+                placeholder = el.closest('.e2pdf-select2-wrapper').find('select').find('option:selected').text();
+            }
+            el.attr('placeholder', placeholder);
+            var select2 = document.createElement('div');
+            select2.className = 'e2pdf-select2-dropdown';
+            var wrapper = el.closest('.e2pdf-select2-wrapper').get(0);
+            if (wrapper) {
+                var select = wrapper.querySelector('select');
+                if (select) {
+                    Array.from(select.children).forEach(function (option) {
+                        var optionDiv = document.createElement('div');
+                        optionDiv.setAttribute('value', option.value);
+                        optionDiv.innerHTML = option.textContent;
+                        select2.appendChild(optionDiv);
+                    });
+                }
+                el.get(0).insertAdjacentElement('afterend', select2);
+            }
+        },
+        // e2pdf.select2.filter
+        filter: function (el) {
+            var search = el.val();
+            var wrapper = el.closest('.e2pdf-select2-wrapper').get(0);
+            if (wrapper) {
+                var dropdownItems = wrapper.querySelectorAll('.e2pdf-select2-dropdown > div');
+                dropdownItems.forEach(function (item) {
+                    if (!search) {
+                        item.style.display = "block";
+                    } else {
+                        var textContent = item.textContent.toLowerCase();
+                        var valueAttr = item.getAttribute('value') ? item.getAttribute('value').toLowerCase() : '';
+                        if (textContent.includes(search.toLowerCase()) || valueAttr.includes(search.toLowerCase()) || valueAttr === '') {
+                            item.style.display = "block";
+                        } else {
+                            item.style.display = "none";
+                        }
+                    }
+                });
+            }
+        },
+        // e2pdf.select2.update
+        update: function (el) {
+            var val = el.closest('.e2pdf-select2-wrapper').find('select').find('option:selected').val();
+            var text = '';
+            if (val) {
+                text = el.closest('.e2pdf-select2-wrapper').find('select').find('option:selected').text();
+            } else {
+                el.closest('.e2pdf-select2-wrapper').find('.e2pdf-select2').first().attr('placeholder', e2pdf.lang.get('--- Select ---'));
+            }
+            el.closest('.e2pdf-select2-wrapper').find('.e2pdf-select2').first().val(text);
+        },
+        // e2pdf.select2.click
+        click: function (el) {
+            el.closest('.e2pdf-select2-wrapper').find('select').first().val(el.attr('value')).trigger('change');
+            e2pdf.select2.close(el);
+        },
+        // e2pdf.select2.val
+        val: function (el, value) {
+            el.closest('.e2pdf-select2-wrapper').find('select').first().val(value).trigger('change');
+            e2pdf.select2.update(el);
+        },
+        // e2pdf.select2.disable
+        disable: function (el) {
+            el.closest('.e2pdf-select2-wrapper').find('.e2pdf-select2').first().attr('disabled', 'disabled');
+        },
+        // e2pdf.select2.enable
+        enable: function (el) {
+            el.closest('.e2pdf-select2-wrapper').find('.e2pdf-select2').first().attr('disabled', false);
+        },
+        // e2pdf.select2.close
+        close: function (el) {
+            e2pdf.select2.update(el);
+            el.closest('.e2pdf-select2-wrapper').find('.e2pdf-select2-dropdown').remove();
+        }
+    },
+    // e2pdf.hooks
+    hooks: {
+        // e2pdf.hooks.get
+        get: function () {
+            var hooks = {};
+            switch (e2pdf.pdf.settings.get('extension')) {
+                case 'formidable':
+                    hooks = {
+                        'hook_formidable_entry_view': e2pdf.lang.get('Admin View Entry'),
+                        'hook_formidable_entry_edit': e2pdf.lang.get('Admin Edit Entry'),
+                        'hook_formidable_row_actions': e2pdf.lang.get('Admin Row Actions')
+                    };
+                    break;
+                case 'gravity':
+                    hooks = {
+                        'hook_gravity_entry_view': e2pdf.lang.get('Admin View Entry'),
+                        'hook_gravity_row_actions': e2pdf.lang.get('Admin Row Actions')
+                    };
+                    break;
+                case 'jetformbuilder':
+                    hooks = {
+                        'hook_jetformbuilder_entry_view': e2pdf.lang.get('Admin View Entry')
+                    };
+                    break;
+                case 'woocommerce':
+                    if (e2pdf.pdf.settings.get('item') == 'shop_order') {
+                        hooks = {
+                            'hook_woocommerce_order_edit': e2pdf.lang.get('Admin Order Details'),
+                            'hook_woocommerce_order_row_actions': e2pdf.lang.get('Admin Order List Actions'),
+                            'hook_woocommerce_order_row_column': e2pdf.lang.get('Admin Order List Column')
+                        };
+                    }
+                    break;
+                case 'wordpress':
+                    if (e2pdf.pdf.settings.get('item') == '-3') {
+                        hooks = {
+                            'hook_wordpress_row_actions': e2pdf.lang.get('Admin Row Actions')
+                        };
+                    } else {
+                        hooks = {
+                            'hook_wordpress_page_edit': e2pdf.lang.get('Admin Edit Page'),
+                            'hook_wordpress_row_actions': e2pdf.lang.get('Admin Row Actions')
+                        };
+                    }
+                    break;
+                case 'wpforms':
+                    hooks = {
+                        'hook_wpforms_entry_view': e2pdf.lang.get('Admin View Entry'),
+                        'hook_wpforms_entry_edit': e2pdf.lang.get('Admin Edit Entry'),
+                        'hook_wpforms_row_actions': e2pdf.lang.get('Admin Row Actions')
+                    };
+                    break;
+                case 'everest':
+                    hooks = {
+                        'hook_everest_entry_view': e2pdf.lang.get('Admin View Entry'),
+                        'hook_everest_row_actions': e2pdf.lang.get('Admin Row Actions')
+                    };
+                    break;
+                default:
+                    break;
+            }
+            return hooks;
+        },
+        getChecked: function () {
+            var hooks = [];
+            if (e2pdf.pdf.settings.get('hooks')) {
+                hooks = e2pdf.pdf.settings.get('hooks').split(',');
+            }
+            return hooks;
+        }
+    },
+    // e2pdf.lang
+    lang: {
+        // e2pdf.lang.get
+        get: function (key) {
+            if (typeof e2pdf_lang[key] === 'undefined') {
+                return key;
+            } else {
+                return e2pdf_lang[key];
+            }
+        }
+    },
+    // e2pdf.url
     url: {
-        /*
-         * e2pdf.url.change
-         */
+        // e2pdf.url.change
         change: function (page, path) {
             if (window.history && window.history.pushState) {
                 var url = window.location.pathname;
@@ -334,9 +508,7 @@ var e2pdf = {
                 history.pushState({urlPath: url}, "", url);
             }
         },
-        /*
-         * e2pdf.url.build
-         */
+        // e2pdf.url.build
         build: function (page, path, _wpnonce) {
             var url = window.location.pathname;
             if (page) {
@@ -350,9 +522,7 @@ var e2pdf = {
             }
             return url;
         },
-        /*
-         * e2pdf.url.get
-         */
+        // e2pdf.url.get
         get: function (name, url) {
             if (!url) {
                 url = window.location.href;
@@ -377,13 +547,9 @@ var e2pdf = {
             return e2pdf_params['upload_url'];
         }
     },
-    /*
-     * e2pdf.guide
-     */
+    // e2pdf.guide
     guide: {
-        /*
-         * e2pdf.guide.calc
-         */
+        // e2pdf.guide.calc
         calc: function (el, pos, w, h, g) {
             if (el != null) {
                 if (g) {
@@ -423,13 +589,9 @@ var e2pdf = {
             ];
         }
     },
-    /*
-     * e2pdf.bulk
-     */
+    // e2pdf.bulk
     bulk: {
-        /*
-         * e2pdf.bulk.progress
-         */
+        // e2pdf.bulk.progress
         progress: function () {
             setTimeout(function () {
                 var data = {};
@@ -442,18 +604,12 @@ var e2pdf = {
             }, 5000);
         }
     },
-    /*
-     * e2pdf.pdf
-     */
+    // e2pdf.pdf
     pdf: {
-        /*
-         * e2pdf.pdf.settings
-         */
+        // e2pdf.pdf.settings
         settings: {
             options: [],
-            /*
-             * e2pdf.pdf.settings.change
-             */
+            // e2pdf.pdf.settings.change
             change: function (key, value) {
                 e2pdf.pdf.settings.options[key] = value;
                 if (jQuery('.e2pdf-form-builder > input[name="' + key + '"]').length > 0) {
@@ -475,9 +631,7 @@ var e2pdf = {
                     e2pdf.request.submitRequest('e2pdf_get_styles', jQuery('.e2pdf-submit-form'), data);
                 }
             },
-            /*
-             * e2pdf.pdf.settings.set
-             */
+            // e2pdf.pdf.settings.set
             set: function (key, value) {
                 e2pdf.pdf.settings.options[key] = value;
                 if (key == 'item') {
@@ -487,9 +641,7 @@ var e2pdf = {
                     e2pdf.request.submitRequest('e2pdf_get_styles', jQuery('.e2pdf-submit-form'), data);
                 }
             },
-            /*
-             * e2pdf.pdf.settings.get
-             */
+            // e2pdf.pdf.settings.get
             get: function (key) {
                 if (typeof e2pdf.pdf.settings.options[key] === 'undefined') {
                     return null;
@@ -499,109 +651,67 @@ var e2pdf = {
             }
         }
     },
-    /*
-     * e2pdf.static
-     */
+    // e2pdf.static
     static: {
-        /*
-         * e2pdf.static.unsaved
-         */
+        // e2pdf.static.unsaved
         unsaved: false,
-        /*
-         * e2pdf.static.mediaUploader
-         */
+        // e2pdf.static.mediaUploader
         mediaUploader: false,
-        /*
-         * e2pdf.static.autoloadExport
-         */
+        // e2pdf.static.autoloadExport
         autoloadExport: false,
-        /*
-         * e2pdf.static.selectionRange
-         */
+        // e2pdf.static.selectionRange
         selectionRange: null,
-
-        /*
-         * e2pdf.static.observer
-         */
+        // e2pdf.static.observer
         observer: null,
-        /*
-         * e2pdf.static.vm
-         */
+        // e2pdf.static.vm
         vm: {
-            /*
-             * e2pdf.static.vm.hidden
-             */
+            // e2pdf.static.vm.hidden
             hidden: false,
-            /*
-             * e2pdf.static.vm.replace
-             */
+            // e2pdf.static.vm.replace
             replace: true,
-            /*
-             * e2pdf.static.vm.close
-             */
+            // e2pdf.static.vm.close
             close: true
         },
-        /*
-         * e2pdf.static.guide
-         */
+        // e2pdf.static.guide
         guide: {
-            /*
-             * e2pdf.static.guide.guides
-             */
+            // e2pdf.static.guide.guides
             guides: [],
-            /*
-             * e2pdf.static.guide.distance
-             */
+            // e2pdf.static.guide.distance
             distance: 5,
             x: 0,
             y: 0
         },
-        /*
-         * e2pdf.static.drag
-         */
+        // e2pdf.static.drag
         drag: {
-            /*
-             * e2pdf.static.drag.min_top
-             */
+            // e2pdf.static.drag.min_top
             min_top: 0,
-            /*
-             * e2pdf.static.drag.max_top
-             */
+            // e2pdf.static.drag.max_top
             max_top: 0,
-            /*
-             * e2pdf.static.drag.min_left
-             */
+            // e2pdf.static.drag.min_left
             min_left: 0,
-            /*
-             * e2pdf.static.drag.max_left
-             */
+            // e2pdf.static.drag.max_left
             max_left: 0,
-            /*
-             * e2pdf.static.drag.page
-             */
+            // e2pdf.static.drag.page
             page: null
         }
     },
-    /*
-     * e2pdf.event
-     */
+    // e2pdf.event
     event: {
-        /*
-         * e2pdf.event.fire
-         */
+        // e2pdf.event.fire
         fire: function (event, action, el) {
-            if (event === 'after.pages.deletePage'
-                    || event === 'after.createPdf'
-                    || event === 'after.pages.createPage.newpage'
-                    || event === 'after.element.create'
-                    || event === 'after.element.delete'
-                    || event === 'after.settings.style.change'
-                    || event === 'after.settings.template.change'
-                    || event === 'after.wysiwyg.apply'
-                    || event === 'after.request.submitLocal'
-                    || event === 'after.mediaUploader.select'
-                    || event === 'after.element.moved'
-                    || event === 'after.pages.movePage'
+            if (
+                    event === 'after.pages.deletePage' ||
+                    event === 'after.createPdf' ||
+                    event === 'after.pages.createPage.newpage' ||
+                    event === 'after.element.create' ||
+                    event === 'after.element.delete' ||
+                    event === 'after.settings.style.change' ||
+                    event === 'after.settings.template.change' ||
+                    event === 'after.wysiwyg.apply' ||
+                    event === 'after.request.submitLocal' ||
+                    event === 'after.mediaUploader.select' ||
+                    event === 'after.element.moved' ||
+                    event === 'after.pages.movePage'
                     ) {
                 e2pdf.static.unsaved = true;
             }
@@ -629,41 +739,43 @@ var e2pdf = {
                 });
             }
 
-            if (event === 'after.pages.deletePage'
-                    || event === 'after.pages.createPage.newpage') {
+            if (event === 'after.pages.deletePage' || event === 'after.pages.createPage.newpage') {
                 jQuery('#e2pdf-zoom').trigger('change');
             }
 
             if (event === 'before.request.submitRequest') {
                 el.attr('disabled', 'disabled');
-                if (action === 'e2pdf_auto') {
-                    el.closest('form').find('.e2pdf-submit, #e2pdf-extension, #e2pdf-item, #e2pdf-item1, #e2pdf-item2').attr('disabled', 'disabled');
-                }
-                if (action === 'e2pdf_extension') {
-                    el.closest('form').find('.e2pdf-create-pdf, #e2pdf-item, #e2pdf-item1, #e2pdf-item2, #auto_form_label').attr('disabled', 'disabled');
-                }
-
-                if (action === 'e2pdf_templates') {
-                    jQuery('.e2pdf-export-options, .e2pdf-export-item').hide();
-                    jQuery('#e2pdf-export-template-actions').empty();
-                    jQuery('.e2pdf-export-form-submit, .e2pdf-export-dataset').attr('disabled', 'disabled');
-                    jQuery('.e2pdf-export-dataset').data('options', []).empty();
-                    jQuery('.e2pdf-export-dataset-search').val('');
-                    jQuery('.e2pdf-export-dataset-actions').empty();
-                }
-
-                if (action === 'e2pdf_dataset') {
-                    jQuery('.e2pdf-dataset-shortcode-wr').hide();
-                    jQuery('.e2pdf-export-form-submit, .e2pdf-export-dataset').attr('disabled', 'disabled');
-                    el.closest('.e2pdf-export-item').find('.e2pdf-export-dataset-actions').empty();
-                }
-
-                if (action === 'e2pdf_delete_item') {
-                    el.closest('.e2pdf-export-item').find('.e2pdf-export-dataset').attr('disabled', 'disabled');
-                }
-
-                if (action == 'e2pdf_delete_items') {
-                    jQuery('.e2pdf-export-dataset').attr('disabled', 'disabled');
+                switch (action) {
+                    case 'e2pdf_auto':
+                        el.closest('form').find('.e2pdf-submit, .e2pdf-extension, .e2pdf-items').attr('disabled', 'disabled');
+                        break;
+                    case 'e2pdf_extension':
+                        el.closest('form').find('.e2pdf-create-pdf, .e2pdf-items, #auto_form_label').attr('disabled', 'disabled');
+                        break;
+                    case 'e2pdf_templates':
+                        jQuery('.e2pdf-export-form-submit').attr('disabled', 'disabled');
+                        jQuery('.e2pdf-export-options, .e2pdf-export-item, .e2pdf-dataset-shortcode-wr').hide();
+                        jQuery('.e2pdf-export-template-actions, .e2pdf-export-dataset-actions').empty();
+                        jQuery('.e2pdf-export-dataset').data('options', []).empty();
+                        jQuery('.e2pdf-export-dataset-search').val('');
+                        e2pdf.select2.disable(el);
+                        break;
+                    case 'e2pdf_dataset':
+                        jQuery('.e2pdf-export-form-submit').attr('disabled', 'disabled');
+                        jQuery('.e2pdf-dataset-shortcode-wr').hide();
+                        el.closest('.e2pdf-export-item').find('.e2pdf-export-dataset-actions').empty();
+                        e2pdf.select2.disable(el);
+                        break;
+                    case 'e2pdf_datasets_refresh':
+                        el.closest('.e2pdf-select2-wrapper').find('.e2pdf-export-dataset').data('options', []).empty();
+                        e2pdf.select2.disable(el);
+                        break;
+                    case 'e2pdf_delete_item':
+                    case 'e2pdf_delete_items':
+                        e2pdf.select2.disable(el);
+                        break;
+                    default:
+                        break;
                 }
             }
 
@@ -671,47 +783,48 @@ var e2pdf = {
                 if (action !== 'e2pdf_deactivate_all_templates' && action !== 'e2pdf_license_key') {
                     el.attr('disabled', false);
                 }
-                if (action === 'e2pdf_auto') {
-                    el.closest('form').find('.e2pdf-submit, #e2pdf-extension, #e2pdf-item, #e2pdf-item1, #e2pdf-item2').attr('disabled', false);
-                }
-                if (action === 'e2pdf_extension') {
-                    el.closest('form').find('#e2pdf-item, #e2pdf-item1, #e2pdf-item2').find('option').remove();
-                    el.closest('form').find('.e2pdf-create-pdf, #e2pdf-item, #e2pdf-item1, #e2pdf-item2, #auto_form_label').attr('disabled', false);
-                }
-                if (action === 'e2pdf_get_styles') {
-                    jQuery('link[id^="e2pdf-dynamic-style-"]').remove();
-                    jQuery('script[id^="e2pdf-dynamic-script-"]').remove();
-                }
-                if (action === 'e2pdf_delete_item') {
-                    el.closest('.e2pdf-export-item').find('.e2pdf-export-dataset').attr('disabled', false);
-                }
-                if (action == 'e2pdf_delete_items') {
-                    jQuery('.e2pdf-export-dataset').attr('disabled', false);
+                switch (action) {
+                    case 'e2pdf_auto':
+                        el.closest('form').find('.e2pdf-submit, .e2pdf-extension, .e2pdf-items').attr('disabled', false);
+                        break;
+                    case 'e2pdf_extension':
+                        el.closest('form').find('.e2pdf-items').find('option').remove();
+                        el.closest('form').find('.e2pdf-create-pdf, .e2pdf-items, #auto_form_label').attr('disabled', false);
+                        break;
+                    case 'e2pdf_get_styles':
+                        jQuery('link[id^="e2pdf-dynamic-style-"]').remove();
+                        jQuery('script[id^="e2pdf-dynamic-script-"]').remove();
+                        break;
+                    case 'e2pdf_templates':
+                    case 'e2pdf_delete_item':
+                    case 'e2pdf_delete_items':
+                        e2pdf.select2.enable(el);
+                        break;
+                    default:
+                        break;
                 }
             }
 
             if (event === 'before.request.upload') {
-                el.closest('form').find('.e2pdf-submit, #e2pdf-extension, #e2pdf-item, #e2pdf-item1, #e2pdf-item2, #auto_form_label').attr('disabled', 'disabled');
+                el.closest('form').find('.e2pdf-submit, .e2pdf-extension, .e2pdf-items, #auto_form_label').attr('disabled', 'disabled');
             }
 
             if (event === 'after.request.upload.error' || event === 'after.request.upload.success') {
-                el.closest('form').find('.e2pdf-submit, #e2pdf-extension, #e2pdf-item, #e2pdf-item1, #e2pdf-item2, #auto_form_label').attr('disabled', false);
-                el.closest('form').find('#e2pdf-upload-pdf').replaceWith(
-                        jQuery('<input>', {'id': 'e2pdf-upload-pdf', 'type': 'file', 'name': 'pdf', 'class': 'e2pdf-upload-pdf e2pdf-hide'})
+                if (event === 'after.request.upload.error') {
+                    el.closest('form').find('.e2pdf-submit, .e2pdf-extension, .e2pdf-items, #auto_form_label').attr('disabled', false);
+                }
+                el.closest('form').find('.e2pdf-upload-pdf').replaceWith(
+                        jQuery('<input>', {'type': 'file', 'name': 'pdf', 'class': 'e2pdf-upload-pdf e2pdf-hide'})
                         );
-                el.closest('form').find('#e2pdf-reupload-pdf').replaceWith(
-                        jQuery('<input>', {'id': 'e2pdf-reupload-pdf', 'type': 'file', 'name': 'pdf', 'class': 'e2pdf-reupload-pdf e2pdf-hide'})
+                el.closest('form').find('.e2pdf-reupload-pdf').replaceWith(
+                        jQuery('<input>', {'type': 'file', 'name': 'pdf', 'class': 'e2pdf-reupload-pdf e2pdf-hide'})
                         );
             }
         }
     },
-    /*
-     * e2pdf.form
-     */
+    // e2pdf.form
     form: {
-        /*
-         * e2pdf.form.serializeObject
-         */
+        // e2pdf.form.serializeObject
         serializeObject: function (form) {
 
             var o = {};
@@ -746,9 +859,7 @@ var e2pdf = {
             });
             return o;
         },
-        /*
-         * e2pdf.form.serializeElements
-         */
+        // e2pdf.form.serializeElements
         serializeElements: function () {
             var o = {};
             jQuery('.e2pdf-element').each(
@@ -763,7 +874,7 @@ var e2pdf = {
                         el.height = jQuery(this).css('height');
                         switch (jQuery(this).data('data-type')) {
                             case 'e2pdf-html':
-                                if (e2pdf.helper.getCheckbox(el.properties['wysiwyg_disable']) == '1') {
+                                if (jQuery(this).find('.e2pdf-html').is('textarea')) {
                                     el.value = jQuery(this).find('.e2pdf-html').val();
                                 } else {
                                     el.value = jQuery(this).find('.e2pdf-html').html();
@@ -808,13 +919,9 @@ var e2pdf = {
             return o;
         }
     },
-    /*
-     * e2pdf.font
-     */
+    // e2pdf.font
     font: {
-        /*
-         * e2pdf.font.load
-         */
+        // e2pdf.font.load
         load: function (el) {
             if (el.is('select')) {
                 var name = el.val();
@@ -828,9 +935,7 @@ var e2pdf = {
                 jQuery("head").append("<style name='" + name + "' type='text/css'>@font-face {font-family: " + name + "; src: url('" + e2pdf.url.uploadUrl() + "/fonts/" + value + "')}</style>");
             }
         },
-        /*
-         * e2pdf.font.apply
-         */
+        // e2pdf.font.apply
         apply: function (el, font) {
             var font_name = font.find('option:selected').html();
             if (font_name) {
@@ -839,50 +944,37 @@ var e2pdf = {
                 el.css('font-family', '');
             }
         },
-        /*
-         * e2pdf.font.size
-         */
+        // e2pdf.font.size
         size: function (el, size) {
             var font_size = size.val();
             el.css({'font-size': font_size + "px"});
         },
-        /*
-         * e2pdf.font.line
-         */
+        // e2pdf.font.line
         line: function (el, height) {
             var line_height = height.val();
             el.css({'line-height': line_height + "px"});
         },
-        /*
-         * e2pdf.font.color
-         */
+        // e2pdf.font.color
         fontcolor: function (el, color) {
             var font_color = color.val();
             el.css({'color': font_color});
         },
-        /*
-         * e2pdf.font.delete
-         */
+        // e2pdf.font.delete
         delete: function (el) {
             var font = el.attr('data-font');
             e2pdf.request.submitRequest('e2pdf_delete_font', el, font);
         }
     },
-    /*
-     * e2pdf.request
-     */
+    // e2pdf.request
     request: {
-        /*
-         * e2pdf.request.upload
-         */
+        // e2pdf.request.upload
         upload: function (action, el) {
             if (el.attr('disabled')) {
                 return;
             }
             var data = new FormData(el.closest('form')[0]);
             e2pdf.event.fire('before.request.upload', action, el);
-            var loader = el.closest('form').find('.e2pdf-form-loader .spinner');
-            loader.css('visibility', 'visible').fadeIn();
+            jQuery('html').addClass('e2pdf-loading');
             jQuery.ajax({
                 url: e2pdf.helper.ajaxurl(action, e2pdf_params['nonce']['e2pdf_templates']),
                 type: 'POST',
@@ -891,33 +983,32 @@ var e2pdf = {
                 contentType: false,
                 processData: false,
                 success: function (response) {
-                    loader.css('visibility', 'hidden').fadeOut();
-                    e2pdf.event.fire('after.request.upload.success', action, el);
                     if (response.redirect !== undefined) {
+                        e2pdf.event.fire('after.request.upload.success', action, el);
                         e2pdf.static.unsaved = false;
                         location.href = response.redirect;
                     } else if (response.error !== undefined) {
+                        jQuery('html').removeClass('e2pdf-loading');
+                        e2pdf.event.fire('after.request.upload.error', action, el);
                         alert(response.error);
-                    } else if (response.content) {
-                        e2pdf.request.callBack(action, response.content);
+                    } else {
+                        jQuery('html').removeClass('e2pdf-loading');
+                        e2pdf.event.fire('after.request.upload.error', action, el);
                     }
                 },
                 error: function (response) {
-                    loader.css('visibility', 'hidden').fadeOut();
-                    e2pdf.event.fire('after.request.upload.success', action, el);
+                    jQuery('html').removeClass('e2pdf-loading');
+                    e2pdf.event.fire('after.request.upload.error', action, el);
                 }
             });
         },
-        /*
-         * e2pdf.request.submitForm
-         */
+        // e2pdf.request.submitForm
         submitForm: function (el) {
             if (el.attr('disabled')) {
                 return;
             }
             el.attr('disabled', 'disabled');
-            var loader = el.closest('form').find('.e2pdf-form-loader .spinner');
-            loader.css('visibility', 'visible').fadeIn();
+            jQuery('html').addClass('e2pdf-loading');
             e2pdf.event.fire('before.request.submitForm');
             var form_id = el.attr('form-id');
             var form = jQuery(document.getElementById(form_id));
@@ -945,7 +1036,8 @@ var e2pdf = {
                     for (var key in elements) {
                         data.pages[elements[key].page_id]['elements'].push(elements[key]);
                     }
-                    data.actions = e2pdf.actions.get(jQuery('#e2pdf-tpl'));
+                    data.actions = e2pdf.actions.get(jQuery('.e2pdf-tpl'));
+                    data.properties = e2pdf.properties.get(jQuery('.e2pdf-tpl'));
                     data = JSON.stringify(data);
                     break;
                 case 'e2pdf-export-form':
@@ -960,7 +1052,7 @@ var e2pdf = {
                     }
                     break;
             }
-            el.parent().find('.spinner').css('visibility', 'visible').fadeIn();
+            jQuery('html').addClass('e2pdf-loading');
             if (el.attr('target') === '_blank') {
                 var post_form = jQuery('<form>', {'target': '_blank', 'method': 'POST', 'action': el.attr('href')}).append(
                         jQuery('<textarea>', {'name': 'preview'}).val(data)
@@ -968,8 +1060,7 @@ var e2pdf = {
                 jQuery('body').append(post_form);
                 post_form.submit();
                 post_form.remove();
-                el.parent().find('.spinner').css('visibility', 'hidden').fadeOut();
-                loader.css('visibility', 'hidden').fadeOut();
+                jQuery('html').removeClass('e2pdf-loading');
                 el.attr('disabled', false);
                 return false;
             }
@@ -980,32 +1071,30 @@ var e2pdf = {
                     if (response.redirect !== undefined) {
                         location.href = response.redirect;
                     } else {
-                        el.parent().find('.spinner').css('visibility', 'hidden').fadeOut();
-                        loader.css('visibility', 'hidden').fadeOut();
                         el.attr('disabled', false);
                         if (response.error !== undefined) {
+                            jQuery('html').removeClass('e2pdf-loading');
                             alert(response.error);
                         } else if (response.content) {
                             e2pdf.request.callBack(action, response.content, el);
+                            jQuery('html').removeClass('e2pdf-loading');
+                        } else {
+                            jQuery('html').removeClass('e2pdf-loading');
                         }
                     }
                 },
                 error: function (response) {
-                    el.parent().find('.spinner').css('visibility', 'hidden').fadeOut();
-                    loader.css('visibility', 'hidden').fadeOut();
+                    jQuery('html').removeClass('e2pdf-loading');
                     el.attr('disabled', false);
                 }
             });
         },
-        /*
-         * e2pdf.request.submitRequest
-         */
+        // e2pdf.request.submitRequest
         submitRequest: function (action, el, value) {
             if (el.attr('disabled')) {
                 return;
             }
-            var loader = el.closest('form').find('.e2pdf-form-loader .spinner');
-            loader.css('visibility', 'visible').fadeIn();
+            jQuery('html').addClass('e2pdf-loading');
             if (!value) {
                 var value = el.val();
             }
@@ -1020,25 +1109,26 @@ var e2pdf = {
                 type: 'POST', url: e2pdf.helper.ajaxurl(false, _wpnonce),
                 data: {action: action, data: value},
                 success: function (response) {
-                    loader.css('visibility', 'hidden').fadeOut();
                     e2pdf.event.fire('after.request.submitRequest.success', action, el);
                     if (response.redirect !== undefined) {
                         location.href = response.redirect;
                     } else if (response.error !== undefined) {
+                        jQuery('html').removeClass('e2pdf-loading');
                         alert(response.error);
                     } else if (response.content) {
                         e2pdf.request.callBack(action, response.content, el);
+                        jQuery('html').removeClass('e2pdf-loading');
+                    } else {
+                        jQuery('html').removeClass('e2pdf-loading');
                     }
                 },
                 error: function (response) {
-                    loader.css('visibility', 'hidden').fadeOut();
+                    jQuery('html').removeClass('e2pdf-loading');
                     e2pdf.event.fire('after.request.submitRequest.error', action, el);
                 }
             });
         },
-        /*
-         * e2pdf.request.submitLocal
-         */
+        // e2pdf.request.submitLocal
         submitLocal: function (el, noclose = false) {
             var form_id = el.attr('form-id');
             var form = jQuery(document.getElementById(form_id));
@@ -1054,7 +1144,19 @@ var e2pdf = {
                     e2pdf.event.fire('after.request.submitLocal', false, page);
                     break;
                 case 'e2pdf-tpl-actions':
-                    e2pdf.actions.apply(jQuery('#e2pdf-tpl'), data['actions']);
+                    e2pdf.actions.apply(jQuery('.e2pdf-tpl'), data['actions']);
+                    break;
+                case 'e2pdf-tpl-properties':
+                    e2pdf.properties.apply(jQuery('.e2pdf-tpl'), data);
+                    e2pdf.helper.cssGlobal(e2pdf.helper.getString(data['css']));
+                    break;
+                case 'e2pdf-tpl-hooks':
+                    var hooks = data['hooks'];
+                    if (hooks) {
+                        e2pdf.pdf.settings.change('hooks', hooks.join(','));
+                    } else {
+                        e2pdf.pdf.settings.change('hooks', '');
+                    }
                     break;
                 default:
                     var element = jQuery(".e2pdf-element[data-element_id='" + data.element_id + "']").first();
@@ -1069,478 +1171,493 @@ var e2pdf = {
                 e2pdf.dialog.close();
         }
         },
-        /*
-         * e2pdf.request.callBack
-         */
+        // e2pdf.request.callBack
         callBack: function (action, result, el) {
-            if (action === 'e2pdf_email') {
-                if (result === 'subscribed') {
-                    jQuery('.e2pdf-email-lock').remove();
-                } else {
-                    jQuery('.e2pdf-email-lock .e2pdf-form-loader').addClass('e2pdf-hidden-loader');
-                    var form_id = el.attr('form-id');
-                    var form = jQuery(document.getElementById(form_id));
-                    form.find('label').html(e2pdf_lang['Confirmation Code'] + ":");
-                    form.find('input[name="email"]').attr('type', 'hidden');
-                    jQuery('<input>', {'type': 'text', 'name': 'email_code', 'class': 'e2pdf-w100 e2pdf-enter', 'placeholder': e2pdf_lang['Code']}).insertAfter(form.find('input[name="email"]'));
-                }
-            }
-
-            if (action === 'e2pdf_extension') {
-                for (var key in result) {
-                    var option = jQuery('<option>',
-                            {
-                                'value': result[key]['id']
-                            }).html(result[key]['name']);
-                    if (e2pdf.pdf.settings.get('item') === result[key]['id']) {
-                        option.attr('selected', 'selected');
-                    }
-                    option.data('data-item', result[key]);
-                    jQuery('#e2pdf-item').append(option);
-                }
-
-                for (var key in result) {
-                    if (result[key]['id'] != '-1' && result[key]['id'] != '-2') {
-                        var option = jQuery('<option>',
-                                {
-                                    'value': result[key]['id']
-                                }).html(result[key]['name']);
-                        if (e2pdf.pdf.settings.get('item1') === result[key]['id']) {
-                            option.attr('selected', 'selected');
-                        }
-                        option.data('data-item', result[key]);
-                        jQuery('#e2pdf-item1').append(option);
-                    }
-                }
-
-                for (var key in result) {
-                    if (result[key]['id'] != '-1' && result[key]['id'] != '-2') {
-                        var option = jQuery('<option>',
-                                {
-                                    'value': result[key]['id']
-                                }).html(result[key]['name']);
-                        if (e2pdf.pdf.settings.get('item2') === result[key]['id']) {
-                            option.attr('selected', 'selected');
-                        }
-                        option.data('data-item', result[key]);
-                        jQuery('#e2pdf-item2').append(option);
-                    }
-                }
-
-                el.closest('form').find('#e2pdf-item').trigger('change');
-            }
-
-            if (action === 'e2pdf_get_styles') {
-                for (var key in result) {
-                    if (result[key].split('.').pop() == 'js') {
-                        jQuery('<script>', {'id': 'e2pdf-dynamic-script-' + key + '-js', 'type': 'text/javascript', 'href': result[key]}).appendTo('head');
+            switch (action) {
+                case 'e2pdf_email':
+                    if (result === 'subscribed') {
+                        jQuery('.e2pdf-email-lock').remove();
                     } else {
-                        jQuery('<link>', {'id': 'e2pdf-dynamic-style-' + key + '-css', 'type': 'text/css', 'rel': 'stylesheet', 'href': result[key]}).appendTo('head');
+                        jQuery('.e2pdf-email-lock .e2pdf-form-loader').addClass('e2pdf-hidden-loader');
+                        var form_id = el.attr('form-id');
+                        var form = jQuery(document.getElementById(form_id));
+                        form.find('label').html(e2pdf.lang.get('Confirmation Code') + ":");
+                        form.find('input[name="email"]').attr('type', 'hidden');
+                        jQuery('<input>', {'type': 'text', 'name': 'email_code', 'class': 'e2pdf-w100 e2pdf-enter', 'placeholder': e2pdf.lang.get('Code')}).insertAfter(form.find('input[name="email"]'));
                     }
-                }
-            }
-            if (action === 'e2pdf_visual_mapper') {
-                el.html(result);
-                var height = el.outerHeight();
-                e2pdf.visual.mapper.markup();
-                if (window.ResizeObserver) {
-                    e2pdf.static.observer = new ResizeObserver((mutationsList, observer) => {
-                        for (var mutation of mutationsList) {
-                            if (el.outerHeight() != height) {
+                    break;
+                case 'e2pdf_extension':
+                    for (var key in result) {
+                        var option = jQuery('<option>',
+                                {
+                                    'value': result[key]['id']
+                                }).html(result[key]['name']);
+                        if (e2pdf.pdf.settings.get('item') === result[key]['id']) {
+                            option.attr('selected', 'selected');
+                        }
+                        option.data('data-item', result[key]);
+                        jQuery('.e2pdf-item').append(option);
+                    }
+                    for (var key in result) {
+                        if (result[key]['id'] != '-1' && result[key]['id'] != '-2') {
+                            var option = jQuery('<option>',
+                                    {
+                                        'value': result[key]['id']
+                                    }).html(result[key]['name']);
+                            if (e2pdf.pdf.settings.get('item1') === result[key]['id']) {
+                                option.attr('selected', 'selected');
+                            }
+                            option.data('data-item', result[key]);
+                            jQuery('.e2pdf-item1').append(option);
+                        }
+                    }
+                    for (var key in result) {
+                        if (result[key]['id'] != '-1' && result[key]['id'] != '-2') {
+                            var option = jQuery('<option>',
+                                    {
+                                        'value': result[key]['id']
+                                    }).html(result[key]['name']);
+                            if (e2pdf.pdf.settings.get('item2') === result[key]['id']) {
+                                option.attr('selected', 'selected');
+                            }
+                            option.data('data-item', result[key]);
+                            jQuery('.e2pdf-item2').append(option);
+                        }
+                    }
+                    el.closest('form').find('.e2pdf-item').trigger('change');
+                    break;
+                case 'e2pdf_get_styles':
+                    for (var key in result) {
+                        if (result[key].split('.').pop() == 'js') {
+                            jQuery('<script>', {'id': 'e2pdf-dynamic-script-' + key + '-js', 'type': 'text/javascript', 'href': result[key]}).appendTo('head');
+                        } else {
+                            jQuery('<link>', {'id': 'e2pdf-dynamic-style-' + key + '-css', 'type': 'text/css', 'rel': 'stylesheet', 'href': result[key]}).appendTo('head');
+                        }
+                    }
+                    break;
+                case 'e2pdf_visual_mapper':
+                    el.html(result);
+                    var height = el.outerHeight();
+                    e2pdf.visual.mapper.markup();
+                    if (window.ResizeObserver) {
+                        e2pdf.static.observer = new ResizeObserver((mutationsList, observer) => {
+                            for (var mutation of mutationsList) {
+                                if (el.outerHeight() != height) {
+                                    e2pdf.visual.mapper.rebuild();
+                                }
+                            }
+                        });
+                        e2pdf.static.observer.observe(el[0]);
+                    }
+                    var images = el.find('img');
+                    var counter = 0;
+                    counter = images.length;
+                    images.each(function () {
+                        var img = new Image();
+                        img.onload = function () {
+                            counter--;
+                            if (counter === 0) {
                                 e2pdf.visual.mapper.rebuild();
                             }
-                        }
-                    });
-                    e2pdf.static.observer.observe(el[0]);
-                }
-
-                var images = el.find('img');
-                var counter = 0;
-                counter = images.length;
-                images.each(function () {
-                    var img = new Image();
-                    img.onload = function () {
-                        counter--;
-                        if (counter === 0) {
-                            e2pdf.visual.mapper.rebuild();
-                        }
-                    };
-                    img.onerror = function () {
-                        counter--;
-                        if (counter === 0) {
-                            e2pdf.visual.mapper.rebuild();
-                        }
-                    };
-                    img.src = jQuery(this).attr('src');
-                });
-            }
-            if (action === 'e2pdf_templates') {
-                var template_id = result['id'];
-                if (template_id) {
-                    jQuery('#e2pdf-template-shortcode').val('[e2pdf-download id="' + template_id + '"]');
-                    for (var key in result['datasets']) {
-                        var options = [];
-                        var dataset_field = jQuery('.e2pdf-export-dataset[name="' + key + '"]');
-                        var search_field = jQuery('.e2pdf-export-dataset-search[field="' + key + '"]');
-                        dataset_field.closest('.e2pdf-export-item').show();
-                        for (var subkey in result['datasets'][key]) {
-                            var option = {
-                                key: result['datasets'][key][subkey]['key'].toString(),
-                                value: result['datasets'][key][subkey]['value'].toString()
-                            };
-                            options.push(option);
-                            if (e2pdf.url.get('action') == 'bulk') {
-                                dataset_field.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').html(option.value).prepend(jQuery('<input>', {'name': key + '[]', 'type': 'checkbox', 'value': option.key}))));
-                            } else {
-                                dataset_field.append(jQuery('<option>', {'value': option.key}).html(option.value));
+                        };
+                        img.onerror = function () {
+                            counter--;
+                            if (counter === 0) {
+                                e2pdf.visual.mapper.rebuild();
                             }
-                        }
-                        dataset_field.data('options', options);
-                        if (e2pdf.url.get('action') !== 'bulk') {
-                            dataset_field.val('');
-                        }
-                        if (Object.keys(result['datasets'][key]).length > 1) {
-                            dataset_field.attr('disabled', false);
-                            search_field.attr('disabled', false);
+                        };
+                        img.src = jQuery(this).attr('src');
+                    });
+                    break;
+                case 'e2pdf_templates':
+                    var template_id = result['id'];
+                    if (template_id) {
+                        jQuery('.e2pdf-template-shortcode').val('[e2pdf-download id="' + template_id + '"]');
+                        for (var key in result['datasets']) {
+                            var options = [];
+                            var dataset_field = jQuery('.e2pdf-export-dataset[name="' + key + '"]');
+                            dataset_field.closest('.e2pdf-export-item').show();
+                            for (var subkey in result['datasets'][key]) {
+                                var option = {
+                                    key: result['datasets'][key][subkey]['key'].toString(),
+                                    value: result['datasets'][key][subkey]['value'].toString()
+                                };
+                                options.push(option);
+                                if (e2pdf.url.get('action') == 'bulk') {
+                                    dataset_field.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').html(option.value).prepend(jQuery('<input>', {'name': key + '[]', 'type': 'checkbox', 'value': option.key}))));
+                                } else {
+                                    dataset_field.append(jQuery('<option>', {'value': option.key}).html(option.value));
+                                }
+                            }
+                            dataset_field.data('options', options);
                             if (e2pdf.url.get('action') == 'bulk') {
                                 dataset_field.find('input[type="checkbox"][value=""]').prop('checked', true).trigger('change');
-                            }
-                        }
-                    }
-
-                    if (result['actions']) {
-                        var ul = jQuery('<ul>', {'class': 'e2pdf-inline-links'});
-                        for (var key in result['actions']) {
-                            ul.append(jQuery('<li>').html(result['actions'][key]));
-                        }
-                        jQuery('#e2pdf-export-template-actions').append(ul);
-                    }
-
-                    jQuery('.e2pdf-export-option').each(function () {
-                        jQuery(this).closest('.e2pdf-grid').addClass('e2pdf-hide');
-                        var key = jQuery(this).attr('name').replace('options[', '').replace(']', '');
-                        if (result['options'].hasOwnProperty(key)) {
-                            jQuery(this).closest('.e2pdf-grid').removeClass('e2pdf-hide');
-                            if (result['options'][key]) {
-                                jQuery(this).val(result['options'][key]);
-                            } else {
-                                if (e2pdf.url.get('action') == 'bulk' && key == 'name') {
-                                    jQuery(this).val('[e2pdf-dataset]');
+                                if (Object.keys(result['datasets'][key]).length > 1) {
+                                    dataset_field.attr('disabled', false);
+                                    jQuery('.e2pdf-export-form-submit').attr('disabled', false);
                                 } else {
-                                    if (key == 'args') {
-                                        jQuery(this).closest('.e2pdf-grid').find('.e2pdf-argument').first().find('input').val('');
-                                        jQuery(this).closest('.e2pdf-grid').find('.e2pdf-argument').not(':first').remove();
-                                    }
-                                    jQuery(this).val('');
+                                    dataset_field.attr('disabled', 'disabled');
+                                    jQuery('.e2pdf-export-form-submit').attr('disabled', 'disabled');
                                 }
-                            }
-                        } else {
-                            jQuery(this).val('');
-                        }
-                    });
-                    if (e2pdf.static.autoloadExport) {
-                        var datasets = [
-                            'dataset',
-                            'dataset2'
-                        ];
-                        for (var key in datasets) {
-                            if (e2pdf.url.get(datasets[key]) && jQuery('.e2pdf-export-dataset[name="' + datasets[key] + '"]').find('option[value="' + e2pdf.url.get(datasets[key]) + '"]').length > 0) {
-                                jQuery('.e2pdf-export-dataset[name="' + datasets[key] + '"]').val(e2pdf.url.get(datasets[key]));
+                            } else {
+                                dataset_field.val('');
+                                e2pdf.select2.update(dataset_field);
+                                e2pdf.select2.enable(dataset_field);
                             }
                         }
-                        jQuery('.e2pdf-export-dataset').first().change();
-                        e2pdf.static.autoloadExport = false;
-                    } else {
-                        var url = '';
-                        if (e2pdf.url.get('action')) {
-                            url += 'action=' + e2pdf.url.get('action') + '&';
-                        }
-                        url += 'id=' + template_id;
-                        e2pdf.url.change('e2pdf', url);
-                    }
-
-                    if (e2pdf.url.get('action') == 'bulk') {
-                        jQuery('.e2pdf-export-form').attr('action', e2pdf.url.build('e2pdf', 'action=bulk&id=' + template_id));
-                    }
-                    jQuery('.e2pdf-export-options').slideDown();
-                } else {
-                    if (e2pdf.url.get('action') == 'bulk') {
-                        e2pdf.url.change('e2pdf', 'action=bulk');
-                    } else {
-                        e2pdf.url.change('e2pdf');
-                    }
-                }
-            }
-
-            if (action === 'e2pdf_dataset') {
-                var template_id = result['id'];
-                var url = 'id=' + template_id;
-                var shortcode = '[e2pdf-download id="' + template_id + '"';
-                if (result['datasets']) {
-                    for (var key in result['datasets']) {
-                        var dataset = jQuery('.e2pdf-export-dataset[name="' + key + '"]');
-                        var actions = dataset.closest('.e2pdf-export-item').find('.e2pdf-export-dataset-actions');
-                        dataset.attr('disabled', false);
-                        if (result['datasets'][key]['id'] == '') {
-                            dataset.val('');
-                        } else {
-                            url += '&' + key + '=' + result['datasets'][key]['id'];
-                            shortcode += ' ' + key + '="' + result['datasets'][key]['id'] + '"';
-                        }
-
-                        if (result['datasets'][key]['actions']) {
+                        if (result['actions']) {
                             var ul = jQuery('<ul>', {'class': 'e2pdf-inline-links'});
-                            for (var dkey in result['datasets'][key]['actions']) {
-                                ul.append(jQuery('<li>').html(result['datasets'][key]['actions'][dkey]));
+                            for (var key in result['actions']) {
+                                ul.append(jQuery('<li>').html(result['actions'][key]));
                             }
-                            actions.empty().append(ul);
+                            jQuery('.e2pdf-export-template-actions').append(ul);
                         }
-                    }
-                    jQuery('.e2pdf-export-form').attr('action', e2pdf.url.build('e2pdf', 'action=export&' + url));
-                }
-                shortcode += "]";
-                if (result['export']) {
-                    jQuery('.e2pdf-dataset-shortcode-wr').show();
-                    jQuery('.e2pdf-dataset-shortcode').val(shortcode);
-                    jQuery('.e2pdf-export-form-submit').attr('disabled', false);
-                }
-                e2pdf.url.change('e2pdf', url);
-            }
-
-            if (action === 'e2pdf_delete_item' || action === 'e2pdf_delete_items') {
-                jQuery('.e2pdf-export-template').trigger('change');
-            }
-
-            if (action === 'e2pdf_activate_template' || action === 'e2pdf_deactivate_template') {
-                if (result == 'activated') {
-                    el.removeClass('e2pdf-activate-template e2pdf-color-red').addClass('e2pdf-deactivate-template e2pdf-color-green').text(e2pdf_lang['Activated']);
-                } else {
-                    el.removeClass('e2pdf-deactivate-template e2pdf-color-green').addClass('e2pdf-activate-template e2pdf-color-red').text(e2pdf_lang['Not Activated']);
-                }
-            }
-
-            if (action === 'e2pdf_auto') {
-                var hidden_elements = [];
-                var elements = result.elements;
-                var width = parseFloat(e2pdf.pdf.settings.get('width'));
-                var height = parseFloat(e2pdf.pdf.settings.get('height'));
-                e2pdf.pages.changeTplSize(width, height);
-                e2pdf.pages.createPage();
-                jQuery('.ui-dialog-content').dialog('close');
-                var i = 1;
-                var page = jQuery('.e2pdf-page').last();
-                var auto = {
-                    'block': {
-                        'top': 0,
-                        'left': 0,
-                        'right': 0,
-                        'bottom': 0,
-                        'width': 0,
-                        'page': page.attr('data-page_id')
-                    },
-                    'element': {
-                        'top': 0,
-                        'left': 0,
-                        'right': 0,
-                        'bottom': 0,
-                        'width': 0,
-                        'properties': {}
-                    },
-                    page: {
-                        'top': typeof result.page.top !== 'undefined' ? parseFloat(result.page.top) : 0,
-                        'left': typeof result.page.left !== 'undefined' ? parseFloat(result.page.left) : 0,
-                        'right': typeof result.page.right !== 'undefined' ? parseFloat(result.page.right) : 0,
-                        'bottom': typeof result.page.bottom !== 'undefined' ? parseFloat(result.page.bottom) : 0
-                    }
-                };
-                for (var key in elements) {
-                    var element = elements[key];
-                    var type = element.type;
-                    var properties = {};
-                    element['properties'] = typeof element.properties === 'undefined' ? {} : element.properties;
-                    element['block'] = typeof element.block === 'undefined' ? false : element.block;
-                    element['float'] = typeof element.float === 'undefined' ? false : element.float;
-                    element['hidden'] = typeof element.hidden === 'undefined' ? false : element.hidden;
-                    element.properties['width'] = typeof element.properties.width === 'undefined' ? '0' : element.properties.width;
-                    element.properties['height'] = typeof element.properties.height === 'undefined' ? '0' : element.properties.height;
-                    element.properties['top'] = typeof element.properties.top === 'undefined' ? '0' : element.properties.top;
-                    element.properties['left'] = typeof element.properties.left === 'undefined' ? '0' : element.properties.left;
-                    element.properties['right'] = typeof element.properties.right === 'undefined' ? '0' : element.properties.right;
-
-                    for (var property in element.properties) {
-                        properties[property] = element.properties[property];
-                    }
-
-                    if (element.block) {
-                        properties['width'] = Math.floor(e2pdf.helper.sizeToFloat(element.properties.width, width) - parseFloat(element.properties.left) - parseFloat(element.properties.right));
-                        if (element.float && auto.block.width > 0 && (auto.block.right + Math.floor(e2pdf.helper.sizeToFloat(properties.width, width) - parseFloat(properties.left) - parseFloat(properties.right)) <= width - auto.page.right)) {
-                            page = jQuery('.e2pdf-page[data-page_id="' + auto.block.page + '"]');
-                            properties['left'] = auto.block.right + parseFloat(properties.left);
-                            properties['top'] = auto.block.top;
-                        } else {
-                            page = jQuery('.e2pdf-page').last();
-                            auto.block['bottom'] = 0;
-                            page.find('.e2pdf-element').each(function () {
-                                auto.block['bottom'] = Math.max(auto.block['bottom'], e2pdf.properties.getValue(jQuery(this), 'top') + e2pdf.properties.getValue(jQuery(this), 'height'));
-                            });
-                            properties['left'] = parseFloat(properties.left);
-                            properties['top'] = auto.block.bottom + parseFloat(properties.top);
-                        }
-                    } else {
-                        if (element.float) {
-                            if (element.properties.width !== 'auto') {
-                                properties['width'] = Math.floor(e2pdf.helper.sizeToFloat(properties.width, auto.block.width) - e2pdf.helper.sizeToFloat(properties.left, auto.block.width) - e2pdf.helper.sizeToFloat(properties.right, auto.block.width));
-                                if (auto.element.properties.width === 'auto') {
-                                    properties['width'] = properties['width'] - auto.element.width;
+                        jQuery('.e2pdf-export-option').each(function () {
+                            jQuery(this).closest('.e2pdf-grid').addClass('e2pdf-hide');
+                            var key = jQuery(this).attr('name').replace('options[', '').replace(']', '');
+                            if (result['options'].hasOwnProperty(key)) {
+                                jQuery(this).closest('.e2pdf-grid').removeClass('e2pdf-hide');
+                                if (result['options'][key]) {
+                                    jQuery(this).val(result['options'][key]);
+                                } else {
+                                    if (e2pdf.url.get('action') == 'bulk' && key == 'name') {
+                                        jQuery(this).val('[e2pdf-dataset]');
+                                    } else {
+                                        if (key == 'args') {
+                                            jQuery(this).closest('.e2pdf-grid').find('.e2pdf-argument').first().find('input').val('');
+                                            jQuery(this).closest('.e2pdf-grid').find('.e2pdf-argument').not(':first').remove();
+                                        }
+                                        jQuery(this).val('');
+                                    }
+                                }
+                            } else {
+                                jQuery(this).val('');
+                            }
+                        });
+                        if (e2pdf.static.autoloadExport) {
+                            var datasets = [
+                                'dataset',
+                                'dataset2'
+                            ];
+                            for (var key in datasets) {
+                                if (e2pdf.url.get(datasets[key])) {
+                                    jQuery('.e2pdf-export-dataset[name="' + datasets[key] + '"]').val(e2pdf.url.get(datasets[key]));
                                 }
                             }
-                            properties['left'] = auto.element.right + e2pdf.helper.sizeToFloat(properties.left, auto.block.width);
-                            properties['top'] = auto.element.top;
-                        } else {
-                            if (element.properties.width !== 'auto') {
-                                properties['width'] = Math.floor(e2pdf.helper.sizeToFloat(properties.width, auto.block.width) - e2pdf.helper.sizeToFloat(properties.left, auto.block.width) - e2pdf.helper.sizeToFloat(properties.right, auto.block.width));
+                            for (var key in datasets) {
+                                if (e2pdf.url.get(datasets[key])) {
+                                    e2pdf.select2.val(jQuery('.e2pdf-export-dataset[name="' + datasets[key] + '"]'), e2pdf.url.get(datasets[key]));
+                                }
                             }
-                            properties['left'] = auto.block.left + e2pdf.helper.sizeToFloat(properties.left, auto.block.width);
-                            properties['top'] = auto.block.bottom + parseFloat(properties.top);
+                            e2pdf.static.autoloadExport = false;
+                        } else {
+                            var url = '';
+                            if (e2pdf.url.get('action')) {
+                                url += 'action=' + e2pdf.url.get('action') + '&';
+                            }
+                            url += 'id=' + template_id;
+                            e2pdf.url.change('e2pdf', url);
+                        }
+
+                        if (e2pdf.url.get('action') == 'bulk') {
+                            jQuery('.e2pdf-export-form').attr('action', e2pdf.url.build('e2pdf', 'action=bulk&id=' + template_id));
+                        }
+                        jQuery('.e2pdf-export-options').slideDown();
+                    } else {
+                        if (e2pdf.url.get('action') == 'bulk') {
+                            e2pdf.url.change('e2pdf', 'action=bulk');
+                        } else {
+                            e2pdf.url.change('e2pdf');
                         }
                     }
-
-                    var obj = e2pdf.element.create(type, page, properties, false, true);
-                    e2pdf.properties.render(obj);
-
-                    page.append(obj);
-                    if (typeof element.actions !== 'undefined' && Object.keys(element.actions).length !== 0) {
-                        e2pdf.actions.apply(obj, element.actions);
-                    }
-
-                    if (element.properties.height === 'auto') {
-                        e2pdf.properties.set(obj, 'height', obj.height());
-                        e2pdf.properties.render(obj);
-                    } else if (element.properties.height === 'max') {
-                        e2pdf.properties.set(obj, 'height', height - auto.page.bottom - e2pdf.properties.getValue(obj, 'top'));
-                        e2pdf.properties.render(obj);
-                    }
-
-                    if (!element.block
-                            && element.float
-                            && auto.block.width > 0
-                            && e2pdf.properties.getValue(obj, 'left') + e2pdf.properties.getValue(obj, 'width') > auto.block.left + auto.block.width) {
-                        e2pdf.properties.set(obj, 'left', auto.block.left);
-                        e2pdf.properties.set(obj, 'top', auto.element.bottom + 1);
-                        e2pdf.properties.render(obj);
-                    }
-
-                    if (e2pdf.properties.getValue(obj, 'top') + e2pdf.properties.getValue(obj, 'height') + auto.page.bottom > height) {
-                        if (page.is(':last-child')) {
-                            if (e2pdf_params['license_type'] == 'FREE') {
-                                obj.remove();
-                                alert(e2pdf_lang['Only 1 page allowed with "FREE" license type']);
-                                return;
+                    break;
+                case 'e2pdf_dataset':
+                    var template_id = result['id'];
+                    var url = 'id=' + template_id;
+                    var shortcode = '[e2pdf-download id="' + template_id + '"';
+                    if (result['datasets']) {
+                        for (var key in result['datasets']) {
+                            var dataset_field = jQuery('.e2pdf-export-dataset[name="' + key + '"]');
+                            var actions = dataset_field.closest('.e2pdf-export-item').find('.e2pdf-export-dataset-actions');
+                            e2pdf.select2.enable(dataset_field);
+                            if (result['datasets'][key]['id'] == '') {
+                                dataset_field.val('');
+                                e2pdf.select2.update(dataset_field);
+                            } else {
+                                url += '&' + key + '=' + result['datasets'][key]['id'];
+                                shortcode += ' ' + key + '="' + result['datasets'][key]['id'] + '"';
                             }
+                            if (result['datasets'][key]['actions']) {
+                                var ul = jQuery('<ul>', {'class': 'e2pdf-inline-links'});
+                                for (var dkey in result['datasets'][key]['actions']) {
+                                    ul.append(jQuery('<li>').html(result['datasets'][key]['actions'][dkey]));
+                                }
+                                actions.empty().append(ul);
+                            }
+                        }
+                        jQuery('.e2pdf-export-form').attr('action', e2pdf.url.build('e2pdf', 'action=export&' + url));
+                    }
+                    shortcode += "]";
+                    if (result['export']) {
+                        jQuery('.e2pdf-dataset-shortcode').val(shortcode);
+                        jQuery('.e2pdf-export-form-submit').attr('disabled', false);
+                        jQuery('.e2pdf-dataset-shortcode-wr').show();
+                    }
+                    e2pdf.url.change('e2pdf', url);
+                    break;
+                case 'e2pdf_datasets_refresh':
+                    var options = [];
+                    var dataset_field = el.closest('.e2pdf-select2-wrapper').find('select').first();
+                    for (var key in result['datasets']) {
+                        var option = {
+                            key: result['datasets'][key]['key'].toString(),
+                            value: result['datasets'][key]['value'].toString()
+                        };
+                        options.push(option);
+                        if (e2pdf.url.get('action') == 'bulk') {
+                            dataset_field.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').html(option.value).prepend(jQuery('<input>', {'name': key + '[]', 'type': 'checkbox', 'value': option.key}))));
+                        } else {
+                            dataset_field.append(jQuery('<option>', {'value': option.key}).html(option.value));
+                        }
+                    }
+                    dataset_field.data('options', options);
+                    e2pdf.select2.val(dataset_field, result['dataset']);
+                    break;
+                case 'e2pdf_delete_item':
+                case 'e2pdf_delete_items':
+                    jQuery('.e2pdf-export-template').trigger('change');
+                    break;
+                case 'e2pdf_activate_template':
+                case 'e2pdf_deactivate_template':
+                    if (result == 'activated') {
+                        el.removeClass('e2pdf-activate-template e2pdf-color-red').addClass('e2pdf-deactivate-template e2pdf-color-green').text(e2pdf.lang.get('Activated'));
+                        if (el.parent().attr('id') === 'e2pdf-post-activation') {
+                            el.closest("#minor-publishing").find('.e2pdf-generate-pdf-button').attr('disabled', false);
+                        }
+                    } else {
+                        el.removeClass('e2pdf-deactivate-template e2pdf-color-green').addClass('e2pdf-activate-template e2pdf-color-red').text(e2pdf.lang.get('Not Activated'));
+                        if (el.parent().attr('id') === 'e2pdf-post-activation') {
+                            el.closest("#minor-publishing").find('.e2pdf-generate-pdf-button').attr('disabled', 'disabled');
+                        }
+                    }
+                    break;
+                case  'e2pdf_auto':
+                    var hidden_elements = [];
+                    var elements = result.elements;
+                    var width = parseFloat(e2pdf.pdf.settings.get('width'));
+                    var height = parseFloat(e2pdf.pdf.settings.get('height'));
+                    e2pdf.pages.changeTplSize(width, height);
+                    e2pdf.pages.createPage();
+                    jQuery('.ui-dialog-content').dialog('close');
+                    var i = 1;
+                    var page = jQuery('.e2pdf-page').last();
+                    var auto = {
+                        'block': {
+                            'top': 0,
+                            'left': 0,
+                            'right': 0,
+                            'bottom': 0,
+                            'width': 0,
+                            'page': page.attr('data-page_id')
+                        },
+                        'element': {
+                            'top': 0,
+                            'left': 0,
+                            'right': 0,
+                            'bottom': 0,
+                            'width': 0,
+                            'properties': {}
+                        },
+                        page: {
+                            'top': typeof result.page.top !== 'undefined' ? parseFloat(result.page.top) : 0,
+                            'left': typeof result.page.left !== 'undefined' ? parseFloat(result.page.left) : 0,
+                            'right': typeof result.page.right !== 'undefined' ? parseFloat(result.page.right) : 0,
+                            'bottom': typeof result.page.bottom !== 'undefined' ? parseFloat(result.page.bottom) : 0
+                        }
+                    };
+                    for (var key in elements) {
+                        var element = elements[key];
+                        var type = element.type;
+                        var properties = {};
+                        element['properties'] = typeof element.properties === 'undefined' ? {} : element.properties;
+                        element['block'] = typeof element.block === 'undefined' ? false : element.block;
+                        element['float'] = typeof element.float === 'undefined' ? false : element.float;
+                        element['hidden'] = typeof element.hidden === 'undefined' ? false : element.hidden;
+                        element.properties['width'] = typeof element.properties.width === 'undefined' ? '0' : element.properties.width;
+                        element.properties['height'] = typeof element.properties.height === 'undefined' ? '0' : element.properties.height;
+                        element.properties['top'] = typeof element.properties.top === 'undefined' ? '0' : element.properties.top;
+                        element.properties['left'] = typeof element.properties.left === 'undefined' ? '0' : element.properties.left;
+                        element.properties['right'] = typeof element.properties.right === 'undefined' ? '0' : element.properties.right;
+                        for (var property in element.properties) {
+                            properties[property] = element.properties[property];
+                        }
 
-                            if (page.find('.e2pdf-element').not(obj).length > 0) {
-                                e2pdf.pages.createPage();
+                        if (element.block) {
+                            properties['width'] = Math.floor(e2pdf.helper.sizeToFloat(element.properties.width, width) - parseFloat(element.properties.left) - parseFloat(element.properties.right));
+                            if (element.float && auto.block.width > 0 && (auto.block.right + Math.floor(e2pdf.helper.sizeToFloat(properties.width, width) - parseFloat(properties.left) - parseFloat(properties.right)) <= width - auto.page.right)) {
+                                page = jQuery('.e2pdf-page[data-page_id="' + auto.block.page + '"]');
+                                properties['left'] = auto.block.right + parseFloat(properties.left);
+                                properties['top'] = auto.block.top;
+                            } else {
                                 page = jQuery('.e2pdf-page').last();
+                                auto.block['bottom'] = 0;
+                                page.find('.e2pdf-element').each(function () {
+                                    auto.block['bottom'] = Math.max(auto.block['bottom'], e2pdf.properties.getValue(jQuery(this), 'top') + e2pdf.properties.getValue(jQuery(this), 'height'));
+                                });
+                                properties['left'] = parseFloat(properties.left);
+                                properties['top'] = auto.block.bottom + parseFloat(properties.top);
                             }
                         } else {
-                            if (page.find('.e2pdf-element').not(obj).length > 0) {
-                                page = page.next('.e2pdf-page');
+                            if (element.float) {
+                                if (element.properties.width !== 'auto') {
+                                    properties['width'] = Math.floor(e2pdf.helper.sizeToFloat(properties.width, auto.block.width) - e2pdf.helper.sizeToFloat(properties.left, auto.block.width) - e2pdf.helper.sizeToFloat(properties.right, auto.block.width));
+                                    if (auto.element.properties.width === 'auto') {
+                                        properties['width'] = properties['width'] - auto.element.width;
+                                    }
+                                }
+                                properties['left'] = auto.element.right + e2pdf.helper.sizeToFloat(properties.left, auto.block.width);
+                                properties['top'] = auto.element.top;
+                            } else {
+                                if (element.properties.width !== 'auto') {
+                                    properties['width'] = Math.floor(e2pdf.helper.sizeToFloat(properties.width, auto.block.width) - e2pdf.helper.sizeToFloat(properties.left, auto.block.width) - e2pdf.helper.sizeToFloat(properties.right, auto.block.width));
+                                }
+                                properties['left'] = auto.block.left + e2pdf.helper.sizeToFloat(properties.left, auto.block.width);
+                                properties['top'] = auto.block.bottom + parseFloat(properties.top);
                             }
                         }
 
-                        e2pdf.element.delete(obj);
-                        if (element.properties.height === 'auto') {
-                            properties['height'] = element.properties.height;
-                        }
-
-                        auto.block['bottom'] = auto.page.top;
-                        properties['top'] = auto.block.bottom;
-                        obj = e2pdf.element.create(type, page, properties, false, true);
+                        var obj = e2pdf.element.create(type, page, properties, false, true);
                         e2pdf.properties.render(obj);
                         page.append(obj);
+                        if (typeof element.actions !== 'undefined' && Object.keys(element.actions).length !== 0) {
+                            e2pdf.actions.apply(obj, element.actions);
+                        }
+
                         if (element.properties.height === 'auto') {
                             e2pdf.properties.set(obj, 'height', obj.height());
+                            e2pdf.properties.render(obj);
+                        } else if (element.properties.height === 'max') {
+                            e2pdf.properties.set(obj, 'height', height - auto.page.bottom - e2pdf.properties.getValue(obj, 'top'));
+                            e2pdf.properties.render(obj);
+                        }
+
+                        if (!element.block
+                                && element.float
+                                && auto.block.width > 0
+                                && e2pdf.properties.getValue(obj, 'left') + e2pdf.properties.getValue(obj, 'width') > auto.block.left + auto.block.width) {
+                            e2pdf.properties.set(obj, 'left', auto.block.left);
+                            e2pdf.properties.set(obj, 'top', auto.element.bottom + 1);
                             e2pdf.properties.render(obj);
                         }
 
                         if (e2pdf.properties.getValue(obj, 'top') + e2pdf.properties.getValue(obj, 'height') + auto.page.bottom > height) {
-                            e2pdf.properties.set(obj, 'height', height - e2pdf.properties.getValue(obj, 'top') - auto.page.bottom);
-                            e2pdf.properties.render(obj);
-                            e2pdf.properties.set(obj, 'top', properties['top']);
-                            e2pdf.properties.render(obj);
-                        }
-                    }
+                            if (page.is(':last-child')) {
+                                if (e2pdf_params['license_type'] == 'FREE') {
+                                    obj.remove();
+                                    alert(e2pdf.lang.get('Only single-page PDFs are allowed with the "FREE" license type'));
+                                    return;
+                                }
 
-                    auto.element = {
-                        'top': e2pdf.properties.getValue(obj, 'top'),
-                        'left': e2pdf.properties.getValue(obj, 'left'),
-                        'right': e2pdf.properties.getValue(obj, 'left') + e2pdf.properties.getValue(obj, 'width') + e2pdf.helper.sizeToFloat(properties.right, auto.block.width),
-                        'bottom': e2pdf.properties.getValue(obj, 'top') + e2pdf.properties.getValue(obj, 'height'),
-                        'width': e2pdf.properties.getValue(obj, 'width'),
-                        'properties': element.properties
-                    };
-                    if (element.block) {
-                        auto.block = {
+                                if (page.find('.e2pdf-element').not(obj).length > 0) {
+                                    e2pdf.pages.createPage();
+                                    page = jQuery('.e2pdf-page').last();
+                                }
+                            } else {
+                                if (page.find('.e2pdf-element').not(obj).length > 0) {
+                                    page = page.next('.e2pdf-page');
+                                }
+                            }
+
+                            e2pdf.element.delete(obj);
+                            if (element.properties.height === 'auto') {
+                                properties['height'] = element.properties.height;
+                            }
+
+                            auto.block['bottom'] = auto.page.top;
+                            properties['top'] = auto.block.bottom;
+                            obj = e2pdf.element.create(type, page, properties, false, true);
+                            e2pdf.properties.render(obj);
+                            page.append(obj);
+                            if (element.properties.height === 'auto') {
+                                e2pdf.properties.set(obj, 'height', obj.height());
+                                e2pdf.properties.render(obj);
+                            }
+
+                            if (e2pdf.properties.getValue(obj, 'top') + e2pdf.properties.getValue(obj, 'height') + auto.page.bottom > height) {
+                                e2pdf.properties.set(obj, 'height', height - e2pdf.properties.getValue(obj, 'top') - auto.page.bottom);
+                                e2pdf.properties.render(obj);
+                                e2pdf.properties.set(obj, 'top', properties['top']);
+                                e2pdf.properties.render(obj);
+                            }
+                        }
+
+                        auto.element = {
                             'top': e2pdf.properties.getValue(obj, 'top'),
                             'left': e2pdf.properties.getValue(obj, 'left'),
-                            'right': e2pdf.properties.getValue(obj, 'left') + e2pdf.properties.getValue(obj, 'width') + parseFloat(properties.right),
+                            'right': e2pdf.properties.getValue(obj, 'left') + e2pdf.properties.getValue(obj, 'width') + e2pdf.helper.sizeToFloat(properties.right, auto.block.width),
                             'bottom': e2pdf.properties.getValue(obj, 'top') + e2pdf.properties.getValue(obj, 'height'),
                             'width': e2pdf.properties.getValue(obj, 'width'),
-                            'page': page.attr('data-page_id')
+                            'properties': element.properties
                         };
-                    } else {
-                        auto.block['bottom'] = e2pdf.properties.getValue(obj, 'top') + e2pdf.properties.getValue(obj, 'height');
+                        if (element.block) {
+                            auto.block = {
+                                'top': e2pdf.properties.getValue(obj, 'top'),
+                                'left': e2pdf.properties.getValue(obj, 'left'),
+                                'right': e2pdf.properties.getValue(obj, 'left') + e2pdf.properties.getValue(obj, 'width') + parseFloat(properties.right),
+                                'bottom': e2pdf.properties.getValue(obj, 'top') + e2pdf.properties.getValue(obj, 'height'),
+                                'width': e2pdf.properties.getValue(obj, 'width'),
+                                'page': page.attr('data-page_id')
+                            };
+                        } else {
+                            auto.block['bottom'] = e2pdf.properties.getValue(obj, 'top') + e2pdf.properties.getValue(obj, 'height');
+                        }
+                        if (element.hidden) {
+                            hidden_elements.push(obj);
+                        }
+                        i++;
                     }
-                    if (element.hidden) {
-                        hidden_elements.push(obj);
+                    hidden_elements.forEach(function (element) {
+                        e2pdf.element.delete(element);
+                    });
+                    break;
+                case  'e2pdf_bulk_action':
+                    if (result.action == 'delete') {
+                        el.closest('.e2pdf-bulk').remove();
+                        if (jQuery('.e2pdf-bulks-list .e2pdf-bulk').length == 0) {
+                            jQuery('.e2pdf-bulks-list').remove();
+                        }
+                    } else if (result.action == 'stop' && el.closest('.e2pdf-bulk').attr('status') != 'completed') {
+                        el.closest('.e2pdf-bulk').attr('status', 'stop');
+                        el.attr('action', 'start').html(jQuery('<i>', {'class': 'dashicons dashicons-controls-play'}));
+                    } else if (result.action == 'start' && el.closest('.e2pdf-bulk').attr('status') != 'completed') {
+                        el.closest('.e2pdf-bulk').attr('status', 'pending');
+                        el.attr('action', 'stop').html(jQuery('<i>', {'class': 'dashicons dashicons-controls-pause'}));
                     }
-                    i++;
-                }
-                hidden_elements.forEach(function (element) {
-                    e2pdf.element.delete(element);
-                });
-            }
-
-            if (action === 'e2pdf_bulk_action') {
-                if (result.action == 'delete') {
-                    el.closest('.e2pdf-bulk').remove();
-                    if (jQuery('.e2pdf-bulks-list .e2pdf-bulk').length == 0) {
-                        jQuery('.e2pdf-bulks-list').remove();
+                    break;
+                case 'e2pdf_bulk_progress':
+                    for (var key in result.bulks) {
+                        var bulk = result.bulks[key];
+                        jQuery('.e2pdf-bulk[bulk="' + bulk['ID'] + '"]').find('.e2pdf-bulk-count').html(bulk['count']);
+                        if (bulk['status'] == 'completed') {
+                            jQuery('.e2pdf-bulk[bulk="' + bulk['ID'] + '"]').attr('status', 'completed');
+                            jQuery('.e2pdf-bulk[bulk="' + bulk['ID'] + '"]').find('.e2pdf-bulk-action:not([action="delete"])').replaceWith(
+                                    jQuery('<a>', {'class': 'e2pdf-link', 'href': e2pdf.url.build('e2pdf', 'action=bulk&uid=' + bulk['uid'])}).append(
+                                    jQuery('<i>', {'class': 'dashicons dashicons-download'})
+                                    ));
+                        }
                     }
-                } else if (result.action == 'stop' && el.closest('.e2pdf-bulk').attr('status') != 'completed') {
-                    el.closest('.e2pdf-bulk').attr('status', 'stop');
-                    el.attr('action', 'start').html(jQuery('<i>', {'class': 'dashicons dashicons-controls-play'}));
-                } else if (result.action == 'start' && el.closest('.e2pdf-bulk').attr('status') != 'completed') {
-                    el.closest('.e2pdf-bulk').attr('status', 'pending');
-                    el.attr('action', 'stop').html(jQuery('<i>', {'class': 'dashicons dashicons-controls-pause'}));
-                }
-            }
-
-            if (action === 'e2pdf_bulk_progress') {
-                for (var key in result.bulks) {
-                    var bulk = result.bulks[key];
-                    jQuery('.e2pdf-bulk[bulk="' + bulk['ID'] + '"]').find('.e2pdf-bulk-count').html(bulk['count']);
-                    if (bulk['status'] == 'completed') {
-                        jQuery('.e2pdf-bulk[bulk="' + bulk['ID'] + '"]').attr('status', 'completed');
-                        jQuery('.e2pdf-bulk[bulk="' + bulk['ID'] + '"]').find('.e2pdf-bulk-action:not([action="delete"])').replaceWith(
-                                jQuery('<a>', {'class': 'e2pdf-link', 'href': e2pdf.url.build('e2pdf', 'action=bulk&uid=' + bulk['uid'])}).append(
-                                jQuery('<i>', {'class': 'dashicons dashicons-download'})
-                                ));
-                    }
-                }
+                    break;
+                default:
+                    break;
             }
         }
     },
-    /*
-     * e2pdf.dialog
-     */
+    // e2pdf.dialog
     dialog: {
         top: null,
         left: null,
         center: true,
-        /*
-         * e2pdf.dialog.create
-         */
+        // e2pdf.dialog.create
         create: function (el) {
             e2pdf.dialog.close();
             var modal = el.attr('data-modal');
@@ -1557,18 +1674,18 @@ var e2pdf = {
                         ),
                         jQuery('<ul>').append(
                         jQuery('<li>').append(
-                        jQuery('<label>', {'class': 'e2pdf-mb5'}).html(e2pdf_lang['License Key'] + ':'),
-                        jQuery('<input>', {'type': 'text', 'name': 'license_key', 'class': 'e2pdf-w100 e2pdf-enter', 'placeholder': e2pdf_lang['E2Pdf License Key']})
+                        jQuery('<label>', {'class': 'e2pdf-mb5'}).html(e2pdf.lang.get('License Key') + ':'),
+                        jQuery('<input>', {'type': 'text', 'name': 'license_key', 'class': 'e2pdf-w100 e2pdf-enter'})
                         ),
                         jQuery('<li>', {'class': 'e2pdf-center'}).append(
-                        jQuery('<input>', {'form-id': "license_key", 'action': 'e2pdf_license_key', 'type': 'button', 'class': 'e2pdf-submit-form button-primary button-small', 'value': e2pdf_lang['Apply'], '_wpnonce': e2pdf_params['nonce']['e2pdf_license']})
+                        jQuery('<input>', {'form-id': "license_key", 'action': 'e2pdf_license_key', 'type': 'button', 'class': 'e2pdf-submit-form button-primary button-small', 'value': e2pdf.lang.get('Apply'), '_wpnonce': e2pdf_params['nonce']['e2pdf_license']})
                         )
                         )
                         )
                         );
             } else if (modal === 'properties') {
                 for (var key in e2pdf.element.selected) {
-                    var title = e2pdf_lang['Properties'];
+                    var title = e2pdf.lang.get('Properties');
                     var selected = e2pdf.element.selected[key];
                     var fields = e2pdf.properties.renderFields(selected);
                     var content = jQuery('<div>').append(
@@ -1580,7 +1697,7 @@ var e2pdf = {
                             );
                 }
             } else if (modal === 'page-options') {
-                var title = e2pdf_lang['Page Options'];
+                var title = e2pdf.lang.get('Page Options');
                 var page = el.closest('.e2pdf-page');
                 var readonly_size = false;
                 if (e2pdf.pdf.settings.get('pdf')) {
@@ -1592,7 +1709,7 @@ var e2pdf = {
                         jQuery('<span>', {'class': 'spinner'})
                         ),
                         jQuery('<div>', {'class': 'e2pdf-center'}).append(
-                        jQuery('<h3>').html(e2pdf_lang['Page Options'])
+                        jQuery('<h3>').html(e2pdf.lang.get('Page Options'))
                         )),
                         jQuery('<div>', {'class': 'e2pdf-form-loader'}).append(
                         jQuery('<span>', {'class': 'spinner'})
@@ -1603,21 +1720,29 @@ var e2pdf = {
                         ));
             } else if (modal === 'tpl-actions') {
                 width = '600';
-                var title = e2pdf_lang['Global Actions'];
+                var title = e2pdf.lang.get('Global Actions');
+                var fields = e2pdf.properties.renderFields(jQuery('.e2pdf-tpl'));
                 var content = jQuery('<div>').append(
                         jQuery('<form>', {'id': 'e2pdf-tpl-actions'}).append(
-                        jQuery('<div>', {'class': 'e2pdf-tpl-actions e2pdf-popup-inner'}).append(
+                        jQuery('<div>', {'class': 'e2pdf-el-properties e2pdf-popup-inner'}).append(
                         fields
                         )
                         )
                         );
-                var fields = e2pdf.properties.renderFields(jQuery('#e2pdf-tpl'));
-                content.find('form').append(jQuery('<div>', {'class': 'e2pdf-el-properties e2pdf-popup-inner'}).append(
+            } else if (modal === 'tpl-properties') {
+                width = '600';
+                var title = e2pdf.lang.get('Global Properties');
+                var fields = e2pdf.properties.renderFields(jQuery('.e2pdf-tpl'), false);
+                var content = jQuery('<div>').append(
+                        jQuery('<form>', {'id': 'e2pdf-tpl-properties'}).append(
+                        jQuery('<div>', {'class': 'e2pdf-el-properties e2pdf-popup-inner'}).append(
                         fields
-                        ));
+                        )
+                        )
+                        );
             } else if (modal === 'tpl-options') {
                 width = '500';
-                var title = e2pdf_lang['PDF Options'];
+                var title = e2pdf.lang.get('Options');
                 var readonly_size = false;
                 if (e2pdf.pdf.settings.get('pdf')) {
                     readonly_size = true;
@@ -1627,7 +1752,7 @@ var e2pdf = {
                         jQuery('<option>',
                                 {
                                     'value': ''
-                                }).html(e2pdf_lang['--- Select ---']).attr('selected', 'selected')
+                                }).html(e2pdf.lang.get('--- Select ---')).attr('selected', 'selected')
                         );
                 for (var size in e2pdf_params['template_sizes']) {
                     var option = jQuery('<option>',
@@ -1637,7 +1762,7 @@ var e2pdf = {
                     sizes.append(option);
                 }
 
-                var extensions = jQuery('<select>', {'name': 'extension', 'id': 'e2pdf-extension', 'class': 'e2pdf-extension e2pdf-w100', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']});
+                var extensions = jQuery('<select>', {'name': 'extension', 'class': 'e2pdf-extension e2pdf-w100', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']});
                 for (var extension in e2pdf_params['extensions']) {
                     var option = jQuery('<option>',
                             {
@@ -1654,7 +1779,7 @@ var e2pdf = {
                         jQuery('<span>', {'class': 'spinner'})
                         ),
                         jQuery('<div>', {'class': 'e2pdf-center'}).append(
-                        jQuery('<h3>').html(e2pdf_lang['PDF Options'])
+                        jQuery('<h3>').html(e2pdf.lang.get('Options'))
                         )),
                         jQuery('<div>', {'class': 'e2pdf-form-loader'}).append(
                         jQuery('<span>', {'class': 'spinner'})
@@ -1671,8 +1796,8 @@ var e2pdf = {
 
                 content.find('form').append(
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).html(e2pdf_lang['Width'] + ':'),
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).html(e2pdf_lang['Height'] + ':')
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).html(e2pdf.lang.get('Width') + ':'),
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).html(e2pdf.lang.get('Height') + ':')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).append(
@@ -1684,13 +1809,13 @@ var e2pdf = {
                         )
                         );
                 content.find('form').append(
-                        jQuery('<label>').html(e2pdf_lang['Size Preset'] + ':'),
+                        jQuery('<label>').html(e2pdf.lang.get('Size') + ':'),
                         sizes);
                 content.find('form').append(
                         jQuery('<div>', {'class': 'e2pdf-grid e2pdf-mt5'}).append(
-                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w60 e2pdf-small e2pdf-pr10'}).html(e2pdf_lang['Font'] + ':'),
-                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-small e2pdf-pl10 e2pdf-pr10'}).html(e2pdf_lang['Size'] + ':'),
-                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-small e2pdf-pl10'}).html(e2pdf_lang['Line Height'] + ':')
+                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w60 e2pdf-small e2pdf-pr10'}).html(e2pdf.lang.get('Font') + ':'),
+                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-small e2pdf-pl10 e2pdf-pr10'}).html(e2pdf.lang.get('Size') + ':'),
+                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-small e2pdf-pl10'}).html(e2pdf.lang.get('Line Height') + ':')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w60 e2pdf-pr10'}).append(
@@ -1706,7 +1831,7 @@ var e2pdf = {
                         );
                 content.find('form').append(
                         jQuery('<div>', {'class': 'e2pdf-grid e2pdf-mt5'}).append(
-                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-small e2pdf-pr10'}).html(e2pdf_lang['Text Align'] + ':'),
+                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-small e2pdf-pr10'}).html(e2pdf.lang.get('Text Align') + ':'),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-small e2pdf-pl10'}).html('')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
@@ -1715,32 +1840,32 @@ var e2pdf = {
                         ),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-pr10 e2pdf-mt5'}).append(
                         jQuery('#e2pdf-rtl').clone().removeAttr('id').val(jQuery('#e2pdf-rtl').val()),
-                        e2pdf_lang['RTL']
+                        e2pdf.lang.get('RTL')
                         )
                         )
                         );
                 content.find('form').append(
-                        jQuery('<label>', {'class': 'e2pdf-mt5'}).html(e2pdf_lang['Extension'] + ':'),
+                        jQuery('<label>', {'class': 'e2pdf-mt5'}).html(e2pdf.lang.get('Extension') + ':'),
                         extensions,
-                        jQuery('<label>').html(e2pdf_lang['Item'] + ':'),
-                        jQuery('<select>', {'id': 'e2pdf-item', 'name': 'item', 'class': 'e2pdf-item e2pdf-w100'})
+                        jQuery('<label>').html(e2pdf.lang.get('Connection') + ':'),
+                        jQuery('<select>', {'name': 'item', 'class': 'e2pdf-item e2pdf-items e2pdf-w100'})
                         );
                 content.find('form').append(
                         jQuery('<div>', {'id': 'e2pdf-item-options', 'class': 'e2pdf-hide'}).append(
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
-                        jQuery('<label>', {'class': 'e2pdf-ib'}).html(e2pdf_lang['Labels'] + ':')
+                        jQuery('<label>', {'class': 'e2pdf-ib'}).html(e2pdf.lang.get('Labels') + ':')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(
                         jQuery('<select>', {'id': 'auto_form_label', 'class': 'e2pdf-w100', 'name': 'auto_form_label'}).append(
-                        jQuery('<option>', {'value': '0'}).text(e2pdf_lang['None']),
-                        jQuery('<option>', {'value': 'value'}).text(e2pdf_lang['Field Values']),
-                        jQuery('<option>', {'value': 'name'}).text(e2pdf_lang['Field Names'])
+                        jQuery('<option>', {'value': '0'}).text(e2pdf.lang.get('None')),
+                        jQuery('<option>', {'value': 'value'}).text(e2pdf.lang.get('Field Values')),
+                        jQuery('<option>', {'value': 'name'}).text(e2pdf.lang.get('Field Names'))
                         ).val('0'),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100 e2pdf-align-right e2pdf-mt5'}).append(
                         jQuery('<label>', {'class': 'e2pdf-label e2pdf-small e2pdf-wauto'}).append(
                         jQuery('<input>', {'type': 'checkbox', 'class': 'e2pdf-ib', 'name': 'auto_form_shortcode', 'value': '1'}),
-                        e2pdf_lang['Shortcodes']
+                        e2pdf.lang.get('Shortcodes')
                         )
                         )
                         )
@@ -1748,30 +1873,30 @@ var e2pdf = {
                         )
                         );
                 content.find('form').append(
-                        jQuery('<div>', {'id': 'e2pdf-item-merged', 'class': 'e2pdf-hide'}).append(
+                        jQuery('<div>', {'class': 'e2pdf-item-merged e2pdf-hide'}).append(
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).html(e2pdf_lang['Item'] + ' #1:'),
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).html(e2pdf_lang['Item'] + ' #2:')
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).html(e2pdf.lang.get('Connection') + ' #1:'),
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).html(e2pdf.lang.get('Connection') + ' #2:')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).append(
-                        jQuery('<select>', {'class': 'e2pdf-w100', 'id': 'e2pdf-item1', 'type': 'text', 'name': 'item1'})
+                        jQuery('<select>', {'class': 'e2pdf-w100 e2pdf-item1 e2pdf-items', 'type': 'text', 'name': 'item1'})
                         ),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).append(
-                        jQuery('<select>', {'class': 'e2pdf-w100', 'id': 'e2pdf-item2', 'type': 'text', 'name': 'item2'})
+                        jQuery('<select>', {'class': 'e2pdf-w100 e2pdf-item2 e2pdf-items', 'type': 'text', 'name': 'item2'})
                         )
                         )
                         )
                         );
                 content.find('form').append(
-                        jQuery('<input>', {'id': 'e2pdf-upload-pdf', 'type': 'file', 'name': 'pdf', 'class': 'e2pdf-upload-pdf e2pdf-hide'})
+                        jQuery('<input>', {'type': 'file', 'name': 'pdf', 'class': 'e2pdf-upload-pdf e2pdf-hide'})
                         );
                 if (e2pdf.pdf.settings.get('pdf')) {
                     content.find('form').append(
                             jQuery('<ul>', {'class': 'e2pdf-mb0 e2pdf-mt15'}).append(
                             jQuery('<li>'),
                             jQuery('<li>').append(
-                            jQuery('<a>', {'id': 'e2pdf-w-apply', 'href': 'javascript:void(0);', 'data-action': 'apply', 'class': 'e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf_lang['Apply'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'data-action': 'apply', 'class': 'e2pdf-w-apply e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf.lang.get('Apply'))
                             ),
                             jQuery('<li>')
                             )
@@ -1780,25 +1905,55 @@ var e2pdf = {
                     content.find('form').append(
                             jQuery('<ul>', {'class': 'e2pdf-mb0 e2pdf-mt15'}).append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'id': 'e2pdf-w-apply', 'href': 'javascript:void(0);', 'data-action': 'apply', 'class': 'e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf_lang['Apply'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'data-action': 'apply', 'class': 'e2pdf-w-apply e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf.lang.get('Apply'))
                             ),
                             jQuery('<li>'),
                             jQuery('<li>').append(
-                            jQuery('<a>', {'id': 'e2pdf-w-auto', 'href': 'javascript:void(0);', 'data-action': 'auto', 'class': 'e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']}).html(e2pdf_lang['Auto PDF'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'data-action': 'auto', 'class': 'e2pdf-w-auto e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']}).html(e2pdf.lang.get('Auto PDF'))
                             )
                             )
                             );
                 }
 
+            } else if (modal === 'tpl-hooks') {
+                width = '600';
+                var title = e2pdf.lang.get('Hooks');
+                var hooks = e2pdf.hooks.get();
+                var checked = e2pdf.hooks.getChecked();
+                var fields = jQuery('<div>');
+                fields.append(jQuery('<p>', {'class': 'e2pdf-bold'}).html(e2pdf.lang.get('PDF Download Hooks') + ':'));
+                for (var hook in hooks) {
+                    var option = jQuery('<label>', {'class': 'e2pdf-label e2pdf-w50'}).append(
+                            jQuery(
+                                    '<input>', {
+                                        'type': 'checkbox', 'name': 'hooks[]',
+                                        'class': 'e2pdf-ib',
+                                        'value': hook,
+                                        'checked': jQuery.inArray(hook, checked) !== -1 ? 'checked' : false
+                                    }
+                            )
+                            ).append(hooks[hook]);
+                    fields.append(option);
+                }
+                if (Object.keys(hooks).length === 0) {
+                    fields.append(jQuery('<p>').html(e2pdf.lang.get('No hooks are available for this extension')));
+                }
+                var content = jQuery('<div>').append(
+                        jQuery('<form>', {'id': 'e2pdf-tpl-hooks'}).append(
+                        jQuery('<div>', {'class': 'e2pdf-el-properties e2pdf-popup-inner'}).append(
+                        fields
+                        )
+                        )
+                        );
             } else if (modal === 'welcome-screen') {
                 var noclose = true;
                 width = '500';
-                var title = e2pdf_lang['Create PDF'];
+                var title = e2pdf.lang.get('Create PDF');
                 var sizes = jQuery('<select>', {'id': 'e2pdf-preset', 'name': 'preset', 'class': 'e2pdf-preset e2pdf-w100'}).append(
                         jQuery('<option>',
                                 {
                                     'value': ''
-                                }).html(e2pdf_lang['--- Select ---']).attr('selected', 'selected')
+                                }).html(e2pdf.lang.get('--- Select ---')).attr('selected', 'selected')
                         );
                 for (var size in e2pdf_params['template_sizes']) {
                     var option = jQuery('<option>',
@@ -1810,7 +1965,7 @@ var e2pdf = {
                     sizes.append(option);
                 }
 
-                var extensions = jQuery('<select>', {'name': 'extension', 'id': 'e2pdf-extension', 'class': 'e2pdf-extension e2pdf-w100', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']});
+                var extensions = jQuery('<select>', {'name': 'extension', 'class': 'e2pdf-extension e2pdf-w100', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']});
                 for (var extension in e2pdf_params['extensions']) {
                     var option = jQuery('<option>',
                             {
@@ -1827,7 +1982,7 @@ var e2pdf = {
                         jQuery('<span>', {'class': 'spinner'})
                         ),
                         jQuery('<div>', {'class': 'e2pdf-center'}).append(
-                        jQuery('<h3>').html(e2pdf_lang['PDF Options'])
+                        jQuery('<h3>').html(e2pdf.lang.get('Options'))
                         )),
                         jQuery('<div>', {'class': 'e2pdf-form-loader'}).append(
                         jQuery('<span>', {'class': 'spinner'})
@@ -1844,7 +1999,7 @@ var e2pdf = {
 
                 content.find('form').append(
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w100'}).html(e2pdf_lang['Title'] + ':'),
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w100'}).html(e2pdf.lang.get('Title') + ':'),
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(
@@ -1854,8 +2009,8 @@ var e2pdf = {
                         );
                 content.find('form').append(
                         jQuery('<div>', {'class': 'e2pdf-grid e2pdf-mt5'}).append(
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).html(e2pdf_lang['Width'] + ':'),
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).html(e2pdf_lang['Height'] + ':')
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).html(e2pdf.lang.get('Width') + ':'),
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).html(e2pdf.lang.get('Height') + ':')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).append(
@@ -1867,13 +2022,13 @@ var e2pdf = {
                         )
                         );
                 content.find('form').append(
-                        jQuery('<label>').html(e2pdf_lang['Size Preset'] + ':'),
+                        jQuery('<label>').html(e2pdf.lang.get('Size') + ':'),
                         sizes);
                 content.find('form').append(
                         jQuery('<div>', {'class': 'e2pdf-grid e2pdf-mt5'}).append(
-                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w60 e2pdf-small e2pdf-pr10'}).html(e2pdf_lang['Font'] + ':'),
-                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-small e2pdf-pl10 e2pdf-pr10'}).html(e2pdf_lang['Size'] + ':'),
-                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-small e2pdf-pl10'}).html(e2pdf_lang['Line Height'] + ':'),
+                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w60 e2pdf-small e2pdf-pr10'}).html(e2pdf.lang.get('Font') + ':'),
+                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-small e2pdf-pl10 e2pdf-pr10'}).html(e2pdf.lang.get('Size') + ':'),
+                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-small e2pdf-pl10'}).html(e2pdf.lang.get('Line Height') + ':'),
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w60 e2pdf-pr10'}).append(
@@ -1889,7 +2044,7 @@ var e2pdf = {
                         );
                 content.find('form').append(
                         jQuery('<div>', {'class': 'e2pdf-grid e2pdf-mt5'}).append(
-                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-small e2pdf-pr10'}).html(e2pdf_lang['Text Align'] + ':'),
+                        jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-small e2pdf-pr10'}).html(e2pdf.lang.get('Text Align') + ':'),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-small e2pdf-pl10'}).html('')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
@@ -1898,32 +2053,32 @@ var e2pdf = {
                         ),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-pr10 e2pdf-mt5'}).append(
                         jQuery('#e2pdf-rtl').clone().removeAttr('id').val(jQuery('#e2pdf-rtl').val()),
-                        e2pdf_lang['RTL']
+                        e2pdf.lang.get('RTL')
                         )
                         )
                         );
                 content.find('form').append(
-                        jQuery('<label>', {'class': 'e2pdf-mt5'}).html(e2pdf_lang['Extension'] + ':'),
+                        jQuery('<label>', {'class': 'e2pdf-mt5'}).html(e2pdf.lang.get('Extension') + ':'),
                         extensions,
-                        jQuery('<label>').html(e2pdf_lang['Item'] + ':'),
-                        jQuery('<select>', {'id': 'e2pdf-item', 'name': 'item', 'class': 'e2pdf-item e2pdf-w100'})
+                        jQuery('<label>').html(e2pdf.lang.get('Connection') + ':'),
+                        jQuery('<select>', {'name': 'item', 'class': 'e2pdf-item e2pdf-items e2pdf-w100'})
                         );
                 content.find('form').append(
                         jQuery('<div>', {'id': 'e2pdf-item-options', 'class': 'e2pdf-hide'}).append(
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
-                        jQuery('<label>', {'class': 'e2pdf-ib'}).html(e2pdf_lang['Labels'] + ':')
+                        jQuery('<label>', {'class': 'e2pdf-ib'}).html(e2pdf.lang.get('Labels') + ':')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(
                         jQuery('<select>', {'id': 'auto_form_label', 'class': 'e2pdf-w100', 'name': 'auto_form_label'}).append(
-                        jQuery('<option>', {'value': '0'}).text(e2pdf_lang['None']),
-                        jQuery('<option>', {'value': 'value'}).text(e2pdf_lang['Field Values']),
-                        jQuery('<option>', {'value': 'name'}).text(e2pdf_lang['Field Names'])
+                        jQuery('<option>', {'value': '0'}).text(e2pdf.lang.get('None')),
+                        jQuery('<option>', {'value': 'value'}).text(e2pdf.lang.get('Field Values')),
+                        jQuery('<option>', {'value': 'name'}).text(e2pdf.lang.get('Field Names'))
                         ).val('0'),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100 e2pdf-align-right e2pdf-mt5'}).append(
                         jQuery('<label>', {'class': 'e2pdf-label e2pdf-small e2pdf-wauto'}).append(
                         jQuery('<input>', {'type': 'checkbox', 'class': 'e2pdf-ib', 'name': 'auto_form_shortcode', 'value': '1'}),
-                        e2pdf_lang['Shortcodes']
+                        e2pdf.lang.get('Shortcodes')
                         )
                         )
                         )
@@ -1931,23 +2086,23 @@ var e2pdf = {
                         )
                         );
                 content.find('form').append(
-                        jQuery('<div>', {'id': 'e2pdf-item-merged', 'class': 'e2pdf-hide'}).append(
+                        jQuery('<div>', {'class': 'e2pdf-item-merged e2pdf-hide'}).append(
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).html(e2pdf_lang['Item'] + ' #1:'),
-                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).html(e2pdf_lang['Item'] + ' #2:')
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).html(e2pdf.lang.get('Connection') + ' #1:'),
+                        jQuery('<label>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).html(e2pdf.lang.get('Connection') + ' #2:')
                         ),
                         jQuery('<div>', {'class': 'e2pdf-grid'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr10'}).append(
-                        jQuery('<select>', {'class': 'e2pdf-w100', 'id': 'e2pdf-item1', 'type': 'text', 'name': 'item1'})
+                        jQuery('<select>', {'class': 'e2pdf-w100 e2pdf-item1 e2pdf-items', 'type': 'text', 'name': 'item1'})
                         ),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pl10'}).append(
-                        jQuery('<select>', {'class': 'e2pdf-w100', 'id': 'e2pdf-item2', 'type': 'text', 'name': 'item2'})
+                        jQuery('<select>', {'class': 'e2pdf-w100 e2pdf-item2 e2pdf-items', 'type': 'text', 'name': 'item2'})
                         )
                         )
                         )
                         );
                 content.find('form').append(
-                        jQuery('<input>', {'id': 'e2pdf-upload-pdf', 'type': 'file', 'name': 'pdf', 'class': 'e2pdf-upload-pdf e2pdf-hide'})
+                        jQuery('<input>', {'type': 'file', 'name': 'pdf', 'class': 'e2pdf-upload-pdf e2pdf-hide'})
                         );
                 content.find('form').append(
                         jQuery('<input>', {'type': 'hidden', 'name': 'pdf', 'value': ''})
@@ -1961,42 +2116,45 @@ var e2pdf = {
                 content.find('form').append(
                         jQuery('<ul>', {'class': 'e2pdf-mb0 e2pdf-mt15'}).append(
                         jQuery('<li>').append(
-                        jQuery('<a>', {'id': 'e2pdf-w-empty', 'href': 'javascript:void(0);', 'data-action': 'empty', 'class': 'e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf_lang['Empty PDF'])
+                        jQuery('<a>', {'href': 'javascript:void(0);', 'data-action': 'empty', 'class': 'e2pdf-w-empty e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf.lang.get('Empty PDF'))
                         ),
                         jQuery('<li>').append(
-                        jQuery('<a>', {'id': 'e2pdf-w-upload', 'href': 'javascript:void(0);', 'data-action': 'upload', 'class': 'e2pdf-create-pdf e2pdf-w-upload e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf_lang['Upload PDF']).append(jQuery('<span>').html(e2pdf_lang['Max Filesize'] + ": " + e2pdf_params['upload_max_filesize']))
+                        jQuery('<a>', {'href': 'javascript:void(0);', 'data-action': 'upload', 'class': 'e2pdf-w-upload e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf.lang.get('Upload PDF')).append(jQuery('<span>').html(e2pdf.lang.get('Max Upload File Size') + ": " + e2pdf_params['upload_max_filesize']))
                         ),
                         jQuery('<li>').append(
-                        jQuery('<a>', {'id': 'e2pdf-w-auto', 'href': 'javascript:void(0);', 'data-action': 'auto', 'class': 'e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']}).html(e2pdf_lang['Auto PDF'])
+                        jQuery('<a>', {'href': 'javascript:void(0);', 'data-action': 'auto', 'class': 'e2pdf-w-auto e2pdf-create-pdf e2pdf-submit button-primary button-large e2pdf-link', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']}).html(e2pdf.lang.get('Auto PDF'))
                         )
                         )
                         );
             } else if (modal === 'visual-mapper') {
-                var title = e2pdf_lang['Visual Mapper'];
-                var content = jQuery('<div>', {'id': 'visual-mapper', 'class': 'visual-mapper'}).append(
+                var title = e2pdf.lang.get('Visual Mapper');
+                var content = jQuery('<div>', {'class': 'visual-mapper'}).append(
                         jQuery('<form>', {'class': 'e2pdf-rel'}).append(
                         jQuery('<div>', {'class': 'e2pdf-form-loader'}).append(
                         jQuery('<span>', {'class': 'spinner'})
                         )).append(
-                        jQuery('<div>', {'id': 'e2pdf-vm-inner', 'class': 'e2pdf-popup-inner'}).append(
-                        jQuery('<div>', {'id': 'e2pdf-vm-content', 'class': 'e2pdf-vm-content e2pdf-rel', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']})
+                        jQuery('<div>', {'class': 'e2pdf-popup-inner'}).append(
+                        jQuery('<div>', {'class': 'e2pdf-vm-content e2pdf-rel', '_wpnonce': e2pdf_params['nonce']['e2pdf_templates']}).append(
+                        jQuery('<span>', {'class': 'spinner'})
+                        )
                         )
                         ));
             } else if (modal === 'pdf-reupload') {
-                var title = e2pdf_lang['PDF Upload'];
+                var title = e2pdf.lang.get('PDF Upload');
                 width = '500';
-                var content = jQuery('<div>', {'class': 'e2pdf-welcome'}).append(jQuery('<form>', {'id': 'e2pdf-reupload-pdf-form', 'class': 'e2pdf-rel'}).append(
+                var content = jQuery('<div>', {'class': 'e2pdf-welcome'}).append(
+                        jQuery('<form>', {'id': 'e2pdf-reupload-pdf-form', 'class': 'e2pdf-rel'}).append(
                         jQuery('<div>', {'class': 'e2pdf-form-loader'}).append(
                         jQuery('<span>', {'class': 'spinner'})
                         ),
                         jQuery('<div>', {'class': 'e2pdf-center'}).append(
-                        jQuery('<h3>').html(e2pdf_lang['PDF Options'])
+                        jQuery('<h3>').html(e2pdf.lang.get('Options'))
                         )),
                         jQuery('<div>', {'class': 'e2pdf-form-loader'}).append(
                         jQuery('<span>', {'class': 'spinner'})
                         ));
                 content.find('form').append(
-                        jQuery('<input>', {'id': 'e2pdf-reupload-pdf', 'type': 'file', 'name': 'pdf', 'class': 'e2pdf-reupload-pdf e2pdf-hide'})
+                        jQuery('<input>', {'type': 'file', 'name': 'pdf', 'class': 'e2pdf-reupload-pdf e2pdf-hide'})
                         );
                 if (e2pdf.pdf.settings.get('ID')) {
                     content.find('form').append(
@@ -2008,16 +2166,16 @@ var e2pdf = {
                 pages.append(
                         jQuery('<div>', {'class': 'e2pdf-grid e2pdf-reupload-pages-header'}).append(
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w20 e2pdf-pr10 e2pdf-center'}).append(
-                        jQuery('<label>').text(e2pdf_lang['Page ID'])
+                        jQuery('<label>').text(e2pdf.lang.get('Page ID'))
                         ),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w30 e2pdf-pl10 e2pdf-pr10 e2pdf-center'}).append(
-                        jQuery('<label>').text(e2pdf_lang['Page ID inside Upload PDF'])
+                        jQuery('<label>').text(e2pdf.lang.get('Page ID inside Upload PDF'))
                         ),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w25 e2pdf-pl10 e2pdf-center'}).append(
-                        jQuery('<label>').text(e2pdf_lang['Render Fields from Upload PDF'])
+                        jQuery('<label>').text(e2pdf.lang.get('Render Fields from Upload PDF'))
                         ),
                         jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w25 e2pdf-pl10 e2pdf-pr10 e2pdf-center'}).append(
-                        jQuery('<label>').text(e2pdf_lang['Delete created E2Pdf Fields'])
+                        jQuery('<label>').text(e2pdf.lang.get('Delete created E2Pdf Fields'))
                         )));
                 jQuery('.e2pdf-page').each(function () {
                     var page_id = jQuery(this).attr('data-page_id');
@@ -2047,7 +2205,7 @@ var e2pdf = {
                         jQuery('<li>').append(
                         ),
                         jQuery('<li>').append(
-                        jQuery('<a>', {'id': 'e2pdf-w-reupload', 'href': 'javascript:void(0);', 'class': 'e2pdf-w-reupload e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf_lang['Upload PDF'])
+                        jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-w-reupload e2pdf-submit button-primary button-large e2pdf-link'}).html(e2pdf.lang.get('Upload PDF'))
                         ),
                         jQuery('<li>').append(
                         )
@@ -2072,7 +2230,7 @@ var e2pdf = {
                     modal: true,
                     width: width,
                     height: Math.min(height, jQuery(window).height() - 200),
-                    resizable: modal === 'visual-mapper' || modal === 'properties' ? true : false,
+                    resizable: modal === 'visual-mapper' || modal === 'properties' || modal === 'page-options' || modal === 'tpl-actions' || modal === 'tpl-properties' ? true : false,
                     minWidth: 200,
                     closeText: '',
                     my: 'center',
@@ -2089,6 +2247,9 @@ var e2pdf = {
                         } else {
                             jQuery('.ui-widget-overlay').bind('click', function ()
                             {
+                                if (!confirm(e2pdf.lang.get('Changes will not be saved! Continue?'))) {
+                                    return;
+                                }
                                 content.dialog('close');
                             });
                         }
@@ -2096,14 +2257,26 @@ var e2pdf = {
                         if (modal === 'properties') {
                             jQuery(".ui-dialog-titlebar").after(
                                     jQuery('<div>', {'class': 'e2pdf-dialog-over e2pdf-align-right'}).append(
-                                    jQuery('<input>', {'form-id': "e2pdf-properties", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small e2pdf-noclose', 'value': e2pdf_lang['Apply']}),
-                                    jQuery('<input>', {'form-id': "e2pdf-properties", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small e2pdf-ml5', 'value': e2pdf_lang['Save']})
+                                    jQuery('<input>', {'form-id': "e2pdf-properties", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small e2pdf-noclose', 'value': e2pdf.lang.get('Apply')}),
+                                    jQuery('<input>', {'form-id': "e2pdf-properties", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small e2pdf-ml5', 'value': e2pdf.lang.get('Save')})
                                     )
                                     );
                         } else if (modal === 'tpl-actions') {
                             jQuery(".ui-dialog-titlebar").after(
                                     jQuery('<div>', {'class': 'e2pdf-dialog-over e2pdf-align-right'}).append(
-                                    jQuery('<input>', {'form-id': "e2pdf-tpl-actions", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small', 'value': e2pdf_lang['Save']})
+                                    jQuery('<input>', {'form-id': "e2pdf-tpl-actions", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small', 'value': e2pdf.lang.get('Save')})
+                                    )
+                                    );
+                        } else if (modal === 'tpl-properties') {
+                            jQuery(".ui-dialog-titlebar").after(
+                                    jQuery('<div>', {'class': 'e2pdf-dialog-over e2pdf-align-right'}).append(
+                                    jQuery('<input>', {'form-id': "e2pdf-tpl-properties", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small', 'value': e2pdf.lang.get('Save')})
+                                    )
+                                    );
+                        } else if (modal === 'tpl-hooks') {
+                            jQuery(".ui-dialog-titlebar").after(
+                                    jQuery('<div>', {'class': 'e2pdf-dialog-over e2pdf-align-right'}).append(
+                                    jQuery('<input>', {'form-id': "e2pdf-tpl-hooks", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small', 'value': e2pdf.lang.get('Save')})
                                     )
                                     );
                         } else if (modal === 'visual-mapper') {
@@ -2111,18 +2284,18 @@ var e2pdf = {
                                     jQuery('<div>', {'class': 'e2pdf-dialog-over'}).append(
                                     jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(
                                     jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w40 e2pdf-pr10'}).append(
-                                    jQuery('<input>', {'type': 'text', 'name': 'vm_search', 'class': 'e2pdf-ib e2pdf-w100 e2pdf-hide', 'value': '', 'placeholder': e2pdf_lang['Search...']})
+                                    jQuery('<input>', {'type': 'text', 'name': 'vm_search', 'class': 'e2pdf-ib e2pdf-w100 e2pdf-hide', 'value': '', 'placeholder': e2pdf.lang.get('Filter...')})
                                     ),
                                     jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w60 e2pdf-align-right'}).append(
                                     jQuery('<label>', {'class': 'e2pdf-label e2pdf-wauto e2pdf-pr10'}).append(
                                     jQuery('<input>', {'type': 'checkbox', 'name': 'vm_hidden', 'class': 'e2pdf-ib', 'value': '1', 'checked': e2pdf.static.vm.hidden ? 'checked' : false})
-                                    ).append(e2pdf_lang['Hidden Fields']),
+                                    ).append(e2pdf.lang.get('Hidden Fields')),
                                     jQuery('<label>', {'class': 'e2pdf-label e2pdf-wauto e2pdf-pl10 e2pdf-pr10'}).append(
                                     jQuery('<input>', {'type': 'checkbox', 'name': 'vm_replace', 'class': 'e2pdf-ib', 'value': '1', 'checked': e2pdf.static.vm.replace ? 'checked' : false})
-                                    ).append(e2pdf_lang['Replace Value']),
+                                    ).append(e2pdf.lang.get('Replace Value')),
                                     jQuery('<label>', {'class': 'e2pdf-label e2pdf-wauto e2pdf-pl10'}).append(
                                     jQuery('<input>', {'type': 'checkbox', 'name': 'vm_close', 'class': 'e2pdf-ib', 'value': '1', 'checked': e2pdf.static.vm.close ? 'checked' : false})
-                                    ).append(e2pdf_lang['Auto-Close'])
+                                    ).append(e2pdf.lang.get('Auto-Close'))
                                     )
                                     )
                                     )
@@ -2130,7 +2303,7 @@ var e2pdf = {
                         } else if (modal === 'page-options') {
                             jQuery(".ui-dialog-titlebar").after(
                                     jQuery('<div>', {'class': 'e2pdf-dialog-over e2pdf-align-right'}).append(
-                                    jQuery('<input>', {'form-id': "e2pdf-page-options", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small', 'value': e2pdf_lang['Save']})
+                                    jQuery('<input>', {'form-id': "e2pdf-page-options", 'type': 'button', 'class': 'e2pdf-submit-local button-primary button-small', 'value': e2pdf.lang.get('Save')})
                                     )
                                     );
                         }
@@ -2176,14 +2349,14 @@ var e2pdf = {
             }
 
             if (modal === 'welcome-screen' || modal === 'tpl-options') {
-                jQuery('#e2pdf-extension').trigger('change');
+                jQuery('.e2pdf-extension').trigger('change');
             } else if (modal === 'visual-mapper') {
                 var data = {};
                 data['extension'] = e2pdf.pdf.settings.get('extension');
                 data['item'] = e2pdf.pdf.settings.get('item');
                 data['item1'] = e2pdf.pdf.settings.get('item1');
                 data['item2'] = e2pdf.pdf.settings.get('item2');
-                e2pdf.request.submitRequest('e2pdf_visual_mapper', jQuery('#e2pdf-vm-content'), data);
+                e2pdf.request.submitRequest('e2pdf_visual_mapper', jQuery('.e2pdf-vm-content'), data);
             }
 
             if (modal !== 'visual-mapper') {
@@ -2192,17 +2365,14 @@ var e2pdf = {
 
             e2pdf.event.fire('after.dialog.create');
         },
-        /*
-         * e2pdf.dialog.close
-         */
+        // e2pdf.dialog.close
         close: function () {
             if (jQuery('.e2pdf-dialog').length > 0) {
                 jQuery('.ui-dialog-content').dialog('close');
             }
         },
-        /*
-         * e2pdf.dialog.rebuild
-         */
+        // e2pdf.dialog.rebuild
+
         rebuild: function () {
             if (jQuery('.e2pdf-dialog').not('.ui-dialog-resizing').length > 0) {
                 if (jQuery('.e2pdf-dialog').width() > jQuery(window).width()) {
@@ -2215,19 +2385,15 @@ var e2pdf = {
             }
         }
     },
-    /*
-     * e2pdf.mediaUploader
-     */
+    // e2pdf.mediaUploader
     mediaUploader: {
-        /*
-         * e2pdf.mediaUploader.init
-         */
+        // e2pdf.mediaUploader.init
         init: function (el) {
             var mediaUploader;
             mediaUploader = wp.media.frames.file_frame = wp.media({
-                title: e2pdf_lang['Choose Image'],
+                title: e2pdf.lang.get('Media Library'),
                 button: {
-                    text: e2pdf_lang['Choose Image']
+                    text: e2pdf.lang.get('Select')
                 }, multiple: false});
             mediaUploader.on('select', function () {
                 var attachment = mediaUploader.state().get('selection').first().toJSON();
@@ -2238,13 +2404,9 @@ var e2pdf = {
             mediaUploader.open();
         }
     },
-    /*
-     * e2pdf.actions
-     */
+    // e2pdf.actions
     actions: {
-        /*
-         * e2pdf.actions.add
-         */
+        // e2pdf.actions.add
         add: function (el, target, action) {
             var last_id = -1;
             target.find('.e2pdf-action').each(function () {
@@ -2261,9 +2423,7 @@ var e2pdf = {
             }
 
         },
-        /*
-         * e2pdf.actions.change
-         */
+        // e2pdf.actions.change
         change: function (action, trigger) {
             var action_id = action.attr("data-action_id");
             var form = action.closest('form');
@@ -2272,7 +2432,7 @@ var e2pdf = {
             if (form.attr('id') === 'e2pdf-page-options') {
                 el = jQuery('.e2pdf-page[data-page_id="' + data.page_id + '"]');
             } else if (form.attr('id') === 'e2pdf-tpl-actions') {
-                el = jQuery('#e2pdf-tpl');
+                el = jQuery('.e2pdf-tpl');
             } else {
                 el = jQuery(".e2pdf-element[data-element_id='" + data.element_id + "']").first();
             }
@@ -2285,10 +2445,7 @@ var e2pdf = {
             action.replaceWith(e2pdf.actions.renderField(el, action_id, data['actions'][action_id]));
             e2pdf.event.fire('after.actions.change');
         },
-
-        /*
-         * e2pdf.actions.duplicate
-         */
+        // e2pdf.actions.duplicate
         duplicate: function (action) {
             var actions = action.closest('.e2pdf-actions-wrapper').find('.e2pdf-actions');
             var action_id = action.attr("data-action_id");
@@ -2298,26 +2455,21 @@ var e2pdf = {
             if (form.attr('id') === 'e2pdf-page-options') {
                 el = jQuery('.e2pdf-page[data-page_id="' + data.page_id + '"]');
             } else if (form.attr('id') === 'e2pdf-tpl-actions') {
-                el = jQuery('#e2pdf-tpl');
+                el = jQuery('.e2pdf-tpl');
             } else {
                 el = jQuery(".e2pdf-element[data-element_id='" + data.element_id + "']").first();
             }
             e2pdf.actions.add(el, actions, data['actions'][action_id]);
             e2pdf.event.fire('after.actions.change');
         },
-        /*
-         * e2pdf.actions.delete
-         */
+        // e2pdf.actions.delete
+
         delete: function (action) {
             action.remove();
         },
-        /*
-         * e2pdf.actions.conditions
-         */
+        // e2pdf.actions.conditions
         conditions: {
-            /*
-             * e2pdf.actions.conditions.add
-             */
+            // e2pdf.actions.conditions.add
             add: function (el, target) {
                 var action = target.closest('.e2pdf-action');
                 var action_id = action.attr('data-action_id');
@@ -2333,9 +2485,7 @@ var e2pdf = {
                         e2pdf.actions.conditions.renderField(el, action_id, condition_id)
                         );
             },
-            /*
-             * e2pdf.actions.conditions.getFields
-             */
+            // e2pdf.actions.conditions.getFields
             getFields: function (el, action_id, condition_id, condition) {
                 var obj = {
                     'condition': {
@@ -2353,16 +2503,14 @@ var e2pdf = {
                 };
                 return obj;
             },
-            /*
-             * e2pdf.actions.conditions.getField
-             */
+            // e2pdf.actions.conditions.getField
             getField: function (field, el, action_id, condition_id, condition) {
                 var obj = false;
                 switch (field) {
                     case 'if':
                         var value = condition ? condition.if : '';
                         obj = {
-                            'name': e2pdf_lang['If'],
+                            'name': e2pdf.lang.get('If'),
                             'key': 'actions[' + action_id + '][conditions][' + condition_id + '][if]',
                             'type': 'textarea',
                             'value': value,
@@ -2372,7 +2520,7 @@ var e2pdf = {
                     case 'condition':
                         var value = condition ? condition.condition : '=';
                         obj = {
-                            'name': e2pdf_lang['Condition'],
+                            'name': e2pdf.lang.get('Condition'),
                             'key': 'actions[' + action_id + '][conditions][' + condition_id + '][condition]',
                             'type': 'select',
                             'value': value,
@@ -2383,10 +2531,14 @@ var e2pdf = {
                                 {'>=': '>='},
                                 {'<': '<'},
                                 {'<=': '<='},
-                                {'like': e2pdf_lang['Contains']},
-                                {'not_like': e2pdf_lang['Not Contains']},
-                                {'in_array': e2pdf_lang['In Array']},
-                                {'array_key_exists': e2pdf_lang['Array Key Exists']}
+                                {'like': e2pdf.lang.get('Contains')},
+                                {'not_like': e2pdf.lang.get('Not Contains')},
+                                {'in_array': e2pdf.lang.get('In Array')},
+                                {'not_in_array': e2pdf.lang.get('Not In Array')},
+                                {'in_list': e2pdf.lang.get('In List')},
+                                {'not_in_list': e2pdf.lang.get('Not In List')},
+                                {'array_key_exists': e2pdf.lang.get('Array Key Exists')},
+                                {'array_key_not_exists': e2pdf.lang.get('Array Key Not Exists')}
                             ],
                             'atts': []
                         };
@@ -2394,7 +2546,7 @@ var e2pdf = {
                     case 'value':
                         var value = condition ? condition.value : '';
                         obj = {
-                            'name': e2pdf_lang['Value'],
+                            'name': e2pdf.lang.get('Value'),
                             'key': 'actions[' + action_id + '][conditions][' + condition_id + '][value]',
                             'type': 'textarea',
                             'value': value,
@@ -2404,15 +2556,11 @@ var e2pdf = {
                 }
                 return obj;
             },
-            /*
-             * e2pdf.actions.conditions.delete
-             */
+            // e2pdf.actions.conditions.delete
             delete: function (condition) {
                 condition.remove();
             },
-            /*
-             * e2pdf.actions.conditions.renderField
-             */
+            // e2pdf.actions.conditions.renderField
             renderField: function (el, action_id, condition_id, condition) {
                 var groups = e2pdf.actions.conditions.getFields(el, action_id, condition_id, condition);
                 if (groups) {
@@ -2491,9 +2639,7 @@ var e2pdf = {
                 return new_condition;
             }
         },
-        /*
-         * e2pdf.actions.get
-         */
+        // e2pdf.actions.get
         get: function (el) {
             var actions = [];
             if (typeof el.data('data-actions') !== 'undefined') {
@@ -2507,26 +2653,21 @@ var e2pdf = {
             }
             return actions;
         },
-        /*
-         * e2pdf.actions.apply
-         */
+        // e2pdf.actions.apply
         apply: function (el, data) {
             if (!data) {
                 data = [];
             }
             el.data('data-actions', JSON.stringify(data));
         },
-        /*
-         * e2pdf.actions.getField
-         */
+        // e2pdf.actions.getField
         getField: function (field, el, action_id, action) {
-
             var obj = false;
             switch (field) {
                 case 'order':
                     var value = action ? action.order : '0';
                     obj = {
-                        'name': e2pdf_lang['Order'],
+                        'name': e2pdf.lang.get('Sort'),
                         'key': 'actions[' + action_id + '][order]',
                         'type': 'text',
                         'value': value,
@@ -2536,20 +2677,19 @@ var e2pdf = {
                 case 'format':
                     var value = action && typeof action.format !== 'undefined' ? action.format : 'replace';
                     obj = {
-                        'name': e2pdf_lang['Format'],
+                        'name': e2pdf.lang.get('Format'),
                         'key': 'actions[' + action_id + '][format]',
                         'type': 'select',
                         'value': value,
                         'options': [
-                            {'insert_before': e2pdf_lang['Insert Before']},
-                            {'insert_after': e2pdf_lang['Insert After']},
-                            {'replace': e2pdf_lang['Full Replacement']},
-                            {'search': e2pdf_lang['Search & Replace']},
+                            {'insert_before': e2pdf.lang.get('Insert Before')},
+                            {'insert_after': e2pdf.lang.get('Insert After')},
+                            {'replace': e2pdf.lang.get('Full Replacement')},
+                            {'search': e2pdf.lang.get('Search / Replace')},
                         ],
                         'atts': []
                     };
                     break;
-
                 case 'search':
                     var value = action && typeof action.search !== 'undefined' ? action.search : '';
                     obj = {
@@ -2564,29 +2704,29 @@ var e2pdf = {
                     if (el.data('data-type') == 'e2pdf-tpl') {
                         var value = action ? action.action : 'access_by_url';
                         var options = [
-                            {'access_by_url': e2pdf_lang['Allow PDF Access By URL']},
-                            {'restrict_access_by_url': e2pdf_lang['Restrict PDF Access By URL']},
-                            {'process_shortcodes': e2pdf_lang['Process Shortcodes']},
-                            {'restrict_process_shortcodes': e2pdf_lang['Restrict Process Shortcodes']}
+                            {'access_by_url': e2pdf.lang.get('Allow PDF Access By URL')},
+                            {'restrict_access_by_url': e2pdf.lang.get('Restrict PDF Access By URL')},
+                            {'process_shortcodes': e2pdf.lang.get('Process Shortcodes')},
+                            {'restrict_process_shortcodes': e2pdf.lang.get('Restrict Process Shortcodes')}
                         ];
                     } else if (el.data('data-type') == 'e2pdf-page') {
                         var value = action ? action.action : 'hide';
                         var options = [
-                            {'hide': e2pdf_lang['Hide Page']},
-                            {'show': e2pdf_lang['Show Page']},
-                            {'change': e2pdf_lang['Change Property']}
+                            {'hide': e2pdf.lang.get('Hide Page')},
+                            {'show': e2pdf.lang.get('Show Page')},
+                            {'change': e2pdf.lang.get('Change Property')}
                         ];
                     } else {
                         var value = action ? action.action : 'hide';
                         var options = [
-                            {'hide': e2pdf_lang['Hide Element']},
-                            {'show': e2pdf_lang['Show Element']},
-                            {'change': e2pdf_lang['Change Property']}
+                            {'hide': e2pdf.lang.get('Hide Element')},
+                            {'show': e2pdf.lang.get('Show Element')},
+                            {'change': e2pdf.lang.get('Change Property')}
                         ];
                     }
 
                     obj = {
-                        'name': e2pdf_lang['Action'],
+                        'name': e2pdf.lang.get('Action'),
                         'key': 'actions[' + action_id + '][action]',
                         'type': 'select',
                         'value': value,
@@ -2598,7 +2738,7 @@ var e2pdf = {
                     if (el.data('data-type') == 'e2pdf-tpl') {
                         var value = action ? action.error_message : '';
                         obj = {
-                            'name': e2pdf_lang['Error Message'],
+                            'name': e2pdf.lang.get('Error Message'),
                             'key': 'actions[' + action_id + '][error_message]',
                             'type': 'textarea',
                             'value': value,
@@ -2610,18 +2750,18 @@ var e2pdf = {
                     if (el.data('data-type') == 'e2pdf-page') {
                         var options = [
                             {'': '-'},
-                            {'hide': e2pdf_lang['Hide Page']}
+                            {'hide': e2pdf.lang.get('Hide Page')}
                         ];
                     } else {
                         var options = [
                             {'': '-'},
-                            {'hide': e2pdf_lang['Hide Element']}
+                            {'hide': e2pdf.lang.get('Hide Element')}
                         ];
                     }
 
                     var value = action && typeof action.else !== 'undefined' ? action.else : 'hide';
                     obj = {
-                        'name': e2pdf_lang['Else'],
+                        'name': e2pdf.lang.get('Else'),
                         'key': 'actions[' + action_id + '][else]',
                         'type': 'select',
                         'options': options,
@@ -2634,7 +2774,7 @@ var e2pdf = {
                     if (action && action.action === 'change') {
                         var options = [];
                         var option = {
-                            '': e2pdf_lang['--- Select ---']
+                            '': e2pdf.lang.get('--- Select ---')
                         };
                         options.push(option);
                         var groups = e2pdf.properties.getFields(el);
@@ -2644,7 +2784,10 @@ var e2pdf = {
                                 var group_field = group.fields[field_key];
                                 if (jQuery.inArray('uneditable', group_field.atts) === -1 && (jQuery.inArray('readonly', group_field.atts) === -1 || (jQuery.inArray('readonly', group_field.atts) !== -1 && jQuery.inArray('editable', group_field.atts) !== -1))) {
                                     var option = {};
-                                    if (group.classes && group.classes[field_key] && group.classes[field_key].includes("e2pdf-hide-label")) {
+
+                                    if (group_field.key == 'g_multiline') {
+                                        option[group_field.key] = e2pdf.lang.get('Type');
+                                    } else if (group.classes && group.classes[field_key] && group.classes[field_key].includes("e2pdf-hide-label") && group_field.key != 'html_worker') {
                                         option[group_field.key] = group.name;
                                     } else {
                                         option[group_field.key] = group.name + ' ' + group_field.name;
@@ -2655,7 +2798,7 @@ var e2pdf = {
                         }
 
                         obj = {
-                            'name': e2pdf_lang['Property'],
+                            'name': e2pdf.lang.get('Property'),
                             'key': 'actions[' + action_id + '][property]',
                             'type': 'select',
                             'value': value,
@@ -2679,9 +2822,9 @@ var e2pdf = {
                             if (action.property == 'value'
                                     && typeof action.format !== 'undefined'
                                     && (action.format == 'insert_before' || action.format == 'insert_after')) {
-                                property.name = e2pdf_lang['Value'];
+                                property.name = e2pdf.lang.get('Value');
                             } else if (property.type != 'checkbox') {
-                                property.name = e2pdf_lang['Change to'];
+                                property.name = e2pdf.lang.get('Change to');
                             }
                             property.key = 'actions[' + action_id + '][change]';
                             if (jQuery.inArray('readonly', property.atts) !== -1 && jQuery.inArray('editable', property.atts) !== -1) {
@@ -2712,13 +2855,13 @@ var e2pdf = {
                 case 'apply':
                     var value = action ? action.apply : 'any';
                     obj = {
-                        'name': e2pdf_lang['Apply If'],
+                        'name': e2pdf.lang.get('Apply If'),
                         'key': 'actions[' + action_id + '][apply]',
                         'type': 'select',
                         'value': value,
                         'options': [
-                            {'any': e2pdf_lang['Any']},
-                            {'all': e2pdf_lang['All']}
+                            {'any': e2pdf.lang.get('Any')},
+                            {'all': e2pdf.lang.get('All')}
                         ],
                         'atts': []
                     };
@@ -2726,9 +2869,7 @@ var e2pdf = {
             }
             return obj;
         },
-        /*
-         * e2pdf.actions.getFields
-         */
+        // e2pdf.actions.getFields
         getFields: function (el, action_id, action) {
             var obj = {
                 'action': {
@@ -2782,13 +2923,11 @@ var e2pdf = {
 
             return obj;
         },
-        /*
-         * e2pdf.actions.renderField
-         */
+        // e2pdf.actions.renderField
         renderField: function (el, action_id, action) {
             var conditions = jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100 e2pdf-conditions'});
             if (action) {
-                /* Backward Compatibility for Merge option */
+                // Backward Compatibility for Merge option
                 if (typeof action.action !== 'undefined' && action.action == 'merge') {
                     action.action = 'change';
                     action.format = 'insert_after';
@@ -2897,21 +3036,17 @@ var e2pdf = {
                     );
             return new_action;
         },
-        /*
-         * e2pdf.actions.renderFields
-         */
+        // e2pdf.actions.renderFields
         renderFields: function (el) {
 
             var add_action = jQuery('<div>', {'class': 'e2pdf-action-add-wrapper'}).append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'button-primary button-small e2pdf-action-add'}).html(e2pdf_lang['Add Action'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'button-primary button-small e2pdf-action-add'}).html(e2pdf.lang.get('Add Action'))
                     );
             var block = jQuery('<div>', {'class': 'e2pdf-actions-wrapper e2pdf-mt5 e2pdf-w100'});
             var action_wrapper = jQuery('<div>', {'class': 'e2pdf-actions'});
             var actions = e2pdf.actions.get(el);
             for (var action in actions) {
-                /*
-                 * Backward compatiability Show Element / Page
-                 */
+                // Backward compatiability Show Element / Page
                 if (actions[action].action == 'show') {
                     if (typeof actions[action].else === 'undefined') {
                         actions[action].else = '';
@@ -2924,13 +3059,9 @@ var e2pdf = {
             return block;
         }
     },
-    /*
-     * e2pdf.properties
-     */
+    // e2pdf.properties
     properties: {
-        /*
-         * e2pdf.properties.getLink
-         */
+        // e2pdf.properties.getLink
         getLink: function (title, href, classes, collapse) {
             obj = {
                 'name': title,
@@ -2946,9 +3077,7 @@ var e2pdf = {
             };
             return obj;
         },
-        /*
-         * e2pdf.properties.getField
-         */
+        // e2pdf.properties.getField
         getField: function (field, el) {
 
             var obj = false;
@@ -2957,7 +3086,7 @@ var e2pdf = {
             switch (field) {
                 case 'page_id':
                     obj = {
-                        'name': e2pdf_lang['Page ID'],
+                        'name': e2pdf.lang.get('Page ID'),
                         'type': 'text',
                         'value': el.data('data-type') === 'e2pdf-page' ? e2pdf.helper.getInt(el.attr('data-page_id')) : e2pdf.helper.getInt(el.closest('.e2pdf-page').attr('data-page_id')),
                         'atts': [
@@ -2979,7 +3108,7 @@ var e2pdf = {
                     break;
                 case 'element_type':
                     obj = {
-                        'name': e2pdf_lang['Type'],
+                        'name': e2pdf.lang.get('Type'),
                         'type': 'text',
                         'value': el.data('data-type'),
                         'atts': ['readonly']
@@ -2987,7 +3116,7 @@ var e2pdf = {
                     break;
                 case 'width':
                     obj = {
-                        'name': e2pdf_lang['Width'],
+                        'name': e2pdf.lang.get('Width'),
                         'type': 'text',
                         'value': el.data('data-type') == 'e2pdf-page' ? e2pdf.helper.getFloat(el.attr('data-width')) : e2pdf.helper.getFloat(el.css('width')),
                         'atts': ['number']
@@ -2998,7 +3127,7 @@ var e2pdf = {
                     break;
                 case 'height':
                     obj = {
-                        'name': e2pdf_lang['Height'],
+                        'name': e2pdf.lang.get('Height'),
                         'type': 'text',
                         'value': el.data('data-type') == 'e2pdf-page' ? e2pdf.helper.getFloat(el.attr('data-height')) : e2pdf.helper.getFloat(el.css('height')),
                         'atts': ['number']
@@ -3009,7 +3138,7 @@ var e2pdf = {
                     break;
                 case 'top':
                     obj = {
-                        'name': e2pdf_lang['Position Top'],
+                        'name': e2pdf.lang.get('Position Top'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(el.css('top')),
                         'atts': ['number']
@@ -3017,7 +3146,7 @@ var e2pdf = {
                     break;
                 case 'left':
                     obj = {
-                        'name': e2pdf_lang['Position Left'],
+                        'name': e2pdf.lang.get('Position Left'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(el.css('left')),
                         'atts': ['number']
@@ -3025,14 +3154,14 @@ var e2pdf = {
                     break;
                 case 'name':
                     obj = {
-                        'name': e2pdf_lang['Field Name'],
+                        'name': e2pdf.lang.get('Field Name'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'field_name':
                     obj = {
-                        'name': e2pdf_lang['As Field Name'],
+                        'name': e2pdf.lang.get('As Field Name'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3040,7 +3169,7 @@ var e2pdf = {
                     break;
                 case 'dynamic_height':
                     obj = {
-                        'name': e2pdf_lang['Dynamic Height'],
+                        'name': e2pdf.lang.get('Dynamic Height'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3048,7 +3177,7 @@ var e2pdf = {
                     break;
                 case 'multipage':
                     obj = {
-                        'name': e2pdf_lang['Multipage'],
+                        'name': e2pdf.lang.get('Multipage'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3056,7 +3185,7 @@ var e2pdf = {
                     break;
                 case 'hide_if_empty':
                     obj = {
-                        'name': e2pdf_lang['Hide (If Empty)'],
+                        'name': e2pdf.lang.get('Hide (If Empty)'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3064,7 +3193,7 @@ var e2pdf = {
                     break;
                 case 'hide_page_if_empty':
                     obj = {
-                        'name': e2pdf_lang['Hide Page (If Empty)'],
+                        'name': e2pdf.lang.get('Hide Page (If Empty)'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3072,7 +3201,15 @@ var e2pdf = {
                     break;
                 case 'nl2br':
                     obj = {
-                        'name': e2pdf_lang['New Lines to BR'],
+                        'name': e2pdf.lang.get('New Lines to BR'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
+                    };
+                    break;
+                case 'preload_img':
+                    obj = {
+                        'name': e2pdf.lang.get('Preload Images'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3080,21 +3217,21 @@ var e2pdf = {
                     break;
                 case 'text_color':
                     obj = {
-                        'name': e2pdf_lang['Font Color'],
+                        'name': e2pdf.lang.get('Font Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'color':
                     obj = {
-                        'name': e2pdf_lang['Color'],
+                        'name': e2pdf.lang.get('Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'text_type':
                     obj = {
-                        'name': e2pdf_lang['Type'],
+                        'name': e2pdf.lang.get('Type'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'check'),
                         'options': [
@@ -3109,7 +3246,7 @@ var e2pdf = {
                     break;
                 case 'text_font':
                     obj = {
-                        'name': e2pdf_lang['Font'],
+                        'name': e2pdf.lang.get('Font'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': e2pdf.helper.font.fonts(field)
@@ -3122,7 +3259,7 @@ var e2pdf = {
                         var value = e2pdf.helper.getCheckbox(properties[field]);
                     }
                     obj = {
-                        'name': e2pdf_lang['Auto Font Size'],
+                        'name': e2pdf.lang.get('Auto Font Size'),
                         'type': 'checkbox',
                         'value': value,
                         'option': '1'
@@ -3130,7 +3267,7 @@ var e2pdf = {
                     break;
                 case 'text_font_size':
                     obj = {
-                        'name': e2pdf_lang['Font Size'],
+                        'name': e2pdf.lang.get('Font Size'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': e2pdf.helper.font.sizes(field, properties)
@@ -3138,7 +3275,7 @@ var e2pdf = {
                     break;
                 case 'text_line_height':
                     obj = {
-                        'name': e2pdf_lang['Line Height'],
+                        'name': e2pdf.lang.get('Line Height'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': e2pdf.helper.font.lines(field)
@@ -3146,7 +3283,7 @@ var e2pdf = {
                     break;
                 case 'text_letter_spacing':
                     obj = {
-                        'name': e2pdf_lang['Char Spacing'],
+                        'name': e2pdf.lang.get('Char Spacing'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(properties[field]),
                         'atts': ['number']
@@ -3162,7 +3299,7 @@ var e2pdf = {
                     break;
                 case 'background':
                     obj = {
-                        'name': e2pdf_lang['Background'],
+                        'name': e2pdf.lang.get('Background'),
                         'key': 'background',
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
@@ -3170,7 +3307,7 @@ var e2pdf = {
                     break;
                 case 'border':
                     obj = {
-                        'name': e2pdf_lang['Border'],
+                        'name': e2pdf.lang.get('Border'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3178,7 +3315,7 @@ var e2pdf = {
                     break;
                 case 'border_top':
                     obj = {
-                        'name': e2pdf_lang['Border Top'],
+                        'name': e2pdf.lang.get('Border Top'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3186,7 +3323,7 @@ var e2pdf = {
                     break;
                 case 'border_left':
                     obj = {
-                        'name': e2pdf_lang['Border Left'],
+                        'name': e2pdf.lang.get('Border Left'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3194,7 +3331,7 @@ var e2pdf = {
                     break;
                 case 'border_right':
                     obj = {
-                        'name': e2pdf_lang['Border Right'],
+                        'name': e2pdf.lang.get('Border Right'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3202,7 +3339,7 @@ var e2pdf = {
                     break;
                 case 'border_bottom':
                     obj = {
-                        'name': e2pdf_lang['Border Bottom'],
+                        'name': e2pdf.lang.get('Border Bottom'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3210,7 +3347,7 @@ var e2pdf = {
                     break;
                 case 'border_radius':
                     obj = {
-                        'name': e2pdf_lang['Border Radius'],
+                        'name': e2pdf.lang.get('Border Radius'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3218,14 +3355,14 @@ var e2pdf = {
                     break;
                 case 'border_color':
                     obj = {
-                        'name': e2pdf_lang['Border Color'],
+                        'name': e2pdf.lang.get('Border Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field], '#000000'),
                     };
                     break;
                 case 'padding_top':
                     obj = {
-                        'name': e2pdf_lang['Padding Top'],
+                        'name': e2pdf.lang.get('Padding Top'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3233,7 +3370,7 @@ var e2pdf = {
                     break;
                 case 'padding_left':
                     obj = {
-                        'name': e2pdf_lang['Padding Left'],
+                        'name': e2pdf.lang.get('Padding Left'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3241,7 +3378,7 @@ var e2pdf = {
                     break;
                 case 'padding_right':
                     obj = {
-                        'name': e2pdf_lang['Padding Right'],
+                        'name': e2pdf.lang.get('Padding Right'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3249,7 +3386,7 @@ var e2pdf = {
                     break;
                 case 'padding_bottom':
                     obj = {
-                        'name': e2pdf_lang['Padding Bottom'],
+                        'name': e2pdf.lang.get('Padding Bottom'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3257,7 +3394,7 @@ var e2pdf = {
                     break;
                 case 'margin_top':
                     obj = {
-                        'name': e2pdf_lang['Margin Top'],
+                        'name': e2pdf.lang.get('Margin Top'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3268,7 +3405,7 @@ var e2pdf = {
                     break;
                 case 'margin_left':
                     obj = {
-                        'name': e2pdf_lang['Margin Left'],
+                        'name': e2pdf.lang.get('Margin Left'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3279,7 +3416,7 @@ var e2pdf = {
                     break;
                 case 'margin_right':
                     obj = {
-                        'name': e2pdf_lang['Margin Right'],
+                        'name': e2pdf.lang.get('Margin Right'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3290,7 +3427,7 @@ var e2pdf = {
                     break;
                 case 'margin_bottom':
                     obj = {
-                        'name': e2pdf_lang['Margin Bottom'],
+                        'name': e2pdf.lang.get('Margin Bottom'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3301,7 +3438,7 @@ var e2pdf = {
                     break;
                 case 'length':
                     obj = {
-                        'name': e2pdf_lang['Length'],
+                        'name': e2pdf.lang.get('Length'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3309,7 +3446,7 @@ var e2pdf = {
                     break;
                 case 'comb':
                     obj = {
-                        'name': e2pdf_lang['Comb'],
+                        'name': e2pdf.lang.get('Comb'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3317,20 +3454,20 @@ var e2pdf = {
                     break;
                 case 'rtl':
                     obj = {
-                        'name': e2pdf_lang['Direction'],
+                        'name': e2pdf.lang.get('Direction'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options':
                                 [
                                     {'': '-'},
-                                    {'0': e2pdf_lang['LTR']},
-                                    {'1': e2pdf_lang['RTL']}
+                                    {'0': 'LTR'},
+                                    {'1': 'RTL'}
                                 ]
                     };
                     break;
                 case 'required':
                     obj = {
-                        'name': e2pdf_lang['Required'],
+                        'name': e2pdf.lang.get('Required'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3338,7 +3475,7 @@ var e2pdf = {
                     break;
                 case 'readonly':
                     obj = {
-                        'name': e2pdf_lang['Read-only'],
+                        'name': e2pdf.lang.get('Read-only'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3346,7 +3483,7 @@ var e2pdf = {
                     break;
                 case 'pass':
                     obj = {
-                        'name': e2pdf_lang['Password'],
+                        'name': e2pdf.lang.get('Password'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3354,7 +3491,7 @@ var e2pdf = {
                     break;
                 case 'multiline':
                     obj = {
-                        'name': e2pdf_lang['Multiline'],
+                        'name': e2pdf.lang.get('Multiline'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3362,7 +3499,7 @@ var e2pdf = {
                     break;
                 case 'dimension':
                     obj = {
-                        'name': e2pdf_lang['Keep Image Ratio'],
+                        'name': e2pdf.lang.get('Keep Image Ratio'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3370,7 +3507,7 @@ var e2pdf = {
                     break;
                 case 'block_dimension':
                     obj = {
-                        'name': e2pdf_lang['Lock Aspect Ratio'],
+                        'name': e2pdf.lang.get('Lock Aspect Ratio'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1',
@@ -3382,7 +3519,7 @@ var e2pdf = {
                     break;
                 case 'keep_lower_size':
                     obj = {
-                        'name': e2pdf_lang['Keep Lower Size'],
+                        'name': e2pdf.lang.get('Keep Lower Size'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3390,7 +3527,7 @@ var e2pdf = {
                     break;
                 case 'fill_image':
                     obj = {
-                        'name': e2pdf_lang['Fill Image'],
+                        'name': e2pdf.lang.get('Fill Image'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3398,7 +3535,7 @@ var e2pdf = {
                     break;
                 case 'pdf_page':
                     obj = {
-                        'name': e2pdf_lang['Page'],
+                        'name': e2pdf.lang.get('Page'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3406,34 +3543,51 @@ var e2pdf = {
                     break;
                 case 'pdf_resample':
                     obj = {
-                        'name': e2pdf_lang['Resample'],
+                        'name': e2pdf.lang.get('Resolution'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], '100'),
                         'options':
                                 [
-                                    {'100': '100%'},
-                                    {'125': '125%'},
-                                    {'150': '150%'},
-                                    {'175': '175%'},
-                                    {'200': '200%'}
+                                    {'100': '72dpi'},
+                                    {'125': '90dpi'},
+                                    {'150': '108dpi'},
+                                    {'175': '126dpi'},
+                                    {'200': '144dpi'}
                                 ]
                     };
                     break;
                 case 'pdf_append':
                     obj = {
-                        'name': e2pdf_lang['Append'],
+                        'name': e2pdf.lang.get('Append'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'vertical'),
                         'options':
                                 [
-                                    {'vertical': e2pdf_lang['Vertical']},
-                                    {'horizontal': e2pdf_lang['Horizontal']}
+                                    {'vertical': e2pdf.lang.get('Vertical')},
+                                    {'horizontal': e2pdf.lang.get('Horizontal')},
+                                    {'grid': e2pdf.lang.get('Grid')}
                                 ]
+                    };
+                    break;
+                case 'pdf_space':
+                    obj = {
+                        'name': e2pdf.lang.get('Space'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field]),
+                        'atts': ['number']
+                    };
+                    break;
+                case 'pdf_border':
+                    obj = {
+                        'name': e2pdf.lang.get('Border'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field]),
+                        'atts': ['number']
                     };
                     break;
                 case 'hl':
                     obj = {
-                        'name': e2pdf_lang['Hide Label'],
+                        'name': e2pdf.lang.get('Hide Label'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3441,7 +3595,7 @@ var e2pdf = {
                     break;
                 case 'only_image':
                     obj = {
-                        'name': e2pdf_lang['Disable Text to Image'],
+                        'name': e2pdf.lang.get('Disable Text to Image'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3449,7 +3603,7 @@ var e2pdf = {
                     break;
                 case 'esig':
                     obj = {
-                        'name': e2pdf_lang['E-Signature'],
+                        'name': e2pdf.lang.get('E-Signature'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3457,69 +3611,69 @@ var e2pdf = {
                     break;
                 case 'esig_contact':
                     obj = {
-                        'name': e2pdf_lang['Contact'],
+                        'name': e2pdf.lang.get('Contact'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'esig_location':
                     obj = {
-                        'name': e2pdf_lang['Location'],
+                        'name': e2pdf.lang.get('Location'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'esig_reason':
                     obj = {
-                        'name': e2pdf_lang['Reason'],
+                        'name': e2pdf.lang.get('Reason'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'placeholder':
                     obj = {
-                        'name': e2pdf_lang['Placeholder'],
+                        'name': e2pdf.lang.get('Placeholder'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'horizontal':
                     obj = {
-                        'name': e2pdf_lang['Horizontal Align'],
+                        'name': e2pdf.lang.get('Horizontal Align'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'left'),
                         'options':
                                 [
-                                    {'left': e2pdf_lang['Left']},
-                                    {'center': e2pdf_lang['Center']},
-                                    {'right': e2pdf_lang['Right']}
+                                    {'left': e2pdf.lang.get('Left')},
+                                    {'center': e2pdf.lang.get('Center')},
+                                    {'right': e2pdf.lang.get('Right')}
                                 ]
                     };
                     break;
                 case 'vertical':
                     obj = {
-                        'name': e2pdf_lang['Vertical Align'],
+                        'name': e2pdf.lang.get('Vertical Align'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'top'),
                         'options':
                                 [
-                                    {'top': e2pdf_lang['Top']},
-                                    {'middle': e2pdf_lang['Middle']},
-                                    {'bottom': e2pdf_lang['Bottom']}
+                                    {'top': e2pdf.lang.get('Top')},
+                                    {'middle': e2pdf.lang.get('Middle')},
+                                    {'bottom': e2pdf.lang.get('Bottom')}
                                 ]
                     };
                     break;
                 case 'scale':
                     obj = {
-                        'name': e2pdf_lang['Scale'],
+                        'name': e2pdf.lang.get('Scale'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], '0'),
                         'options':
                                 [
-                                    {'0': e2pdf_lang['Auto']},
-                                    {'1': e2pdf_lang['Width&Height']},
-                                    {'2': e2pdf_lang['Width']},
-                                    {'3': e2pdf_lang['Height']}
+                                    {'0': e2pdf.lang.get('Auto')},
+                                    {'1': e2pdf.lang.get('Width&Height')},
+                                    {'2': e2pdf.lang.get('Width')},
+                                    {'3': e2pdf.lang.get('Height')}
                                 ]
                         ,
                         'atts': ['scale']
@@ -3527,40 +3681,56 @@ var e2pdf = {
                     break;
                 case 'text_align':
                     obj = {
-                        'name': e2pdf_lang['Text Align'],
+                        'name': e2pdf.lang.get('Text Align'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options':
                                 [
                                     {'': '-'},
-                                    {'left': e2pdf_lang['Left']},
-                                    {'center': e2pdf_lang['Center']},
-                                    {'right': e2pdf_lang['Right']}
+                                    {'left': e2pdf.lang.get('Left')},
+                                    {'center': e2pdf.lang.get('Center')},
+                                    {'right': e2pdf.lang.get('Right')}
                                 ]
                     };
                     if (el.data('data-type') === 'e2pdf-textarea' || el.data('data-type') === 'e2pdf-html' || el.data('data-type') === 'e2pdf-page-number') {
                         obj.options.push(
-                                {'justify': e2pdf_lang['Justify']}
+                                {'justify': e2pdf.lang.get('Justify')}
                         );
                     }
                     break;
+                case 'page_number':
+                    obj = {
+                        'name': e2pdf.lang.get('Adjust Page Number'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field]),
+                        'atts': ['number', 'number-negative']
+                    };
+                    break;
+                case 'page_total':
+                    obj = {
+                        'name': e2pdf.lang.get('Adjust Page Total'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field]),
+                        'atts': ['number', 'number-negative']
+                    };
+                    break;
                 case 'precision':
                     obj = {
-                        'name': e2pdf_lang['Precision'],
+                        'name': e2pdf.lang.get('Precision'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'qrl'),
                         'options':
                                 [
-                                    {'qrl': e2pdf_lang['L - Smallest']},
-                                    {'qrm': e2pdf_lang['M - Medium']},
-                                    {'qrq': e2pdf_lang['Q - High']},
-                                    {'qrh': e2pdf_lang['H - Best']}
+                                    {'qrl': e2pdf.lang.get('L - Smallest')},
+                                    {'qrm': e2pdf.lang.get('M - Medium')},
+                                    {'qrq': e2pdf.lang.get('Q - High')},
+                                    {'qrh': e2pdf.lang.get('H - Best')}
                                 ]
                     };
                     break;
                 case 'wq':
                     obj = {
-                        'name': e2pdf_lang['Quiet Zone Size'],
+                        'name': e2pdf.lang.get('Quiet Zone Size'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number', 'keep']
@@ -3568,7 +3738,7 @@ var e2pdf = {
                     break;
                 case 'format':
                     obj = {
-                        'name': e2pdf_lang['Format'],
+                        'name': e2pdf.lang.get('Format'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'upc-a'),
                         'options':
@@ -3598,7 +3768,7 @@ var e2pdf = {
                     break;
                 case 'rotation':
                     obj = {
-                        'name': e2pdf_lang['Rotation'],
+                        'name': e2pdf.lang.get('Rotation'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], '0'),
                         'options':
@@ -3610,9 +3780,26 @@ var e2pdf = {
                                 ]
                     };
                     break;
+                case 'quality':
+                    obj = {
+                        'name': e2pdf.lang.get('Optimization'),
+                        'type': 'select',
+                        'value': e2pdf.helper.getInt(properties[field], '0'),
+                        'options':
+                                [
+                                    {'0': e2pdf.lang.get('Inherit')},
+                                    {'-1': e2pdf.lang.get('Not Optimized')},
+                                    {'1': e2pdf.lang.get('Low Quality')},
+                                    {'2': e2pdf.lang.get('Basic Quality')},
+                                    {'3': e2pdf.lang.get('Good Quality')},
+                                    {'4': e2pdf.lang.get('Best Quality')},
+                                    {'5': e2pdf.lang.get('Ultra Quality')},
+                                ]
+                    };
+                    break;
                 case 'opacity':
                     obj = {
-                        'name': e2pdf_lang['Opacity'],
+                        'name': e2pdf.lang.get('Opacity'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(properties[field]),
                         'atts': ['number', 'keep']
@@ -3621,11 +3808,11 @@ var e2pdf = {
                 case 'parent':
                     var options = [];
                     var option = {
-                        '': e2pdf_lang['--- Select ---']
+                        '': e2pdf.lang.get('--- Select ---')
                     };
                     options.push(option);
                     if (el.data('data-type') === 'e2pdf-html') {
-                        jQuery('#e2pdf-tpl').find('.e2pdf-html').each(function () {
+                        jQuery('.e2pdf-tpl').find('.e2pdf-html').each(function () {
                             if (!jQuery(this).is(children)) {
                                 var parent = jQuery(this).parent().attr('data-element_id');
                                 var option = {};
@@ -3635,7 +3822,7 @@ var e2pdf = {
                         });
                     }
                     obj = {
-                        'name': e2pdf_lang['Parent'],
+                        'name': e2pdf.lang.get('Parent'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': options
@@ -3643,7 +3830,7 @@ var e2pdf = {
                     break;
                 case 'group':
                     var source = [];
-                    jQuery('#e2pdf-tpl').find('.e2pdf-radio').each(function () {
+                    jQuery('.e2pdf-tpl').find('.e2pdf-radio').each(function () {
                         if (!jQuery(this).is(children)) {
                             var radio = jQuery(this).parent();
                             var group = e2pdf.properties.getValue(radio, 'group', 'string');
@@ -3653,7 +3840,7 @@ var e2pdf = {
                         }
                     });
                     obj = {
-                        'name': e2pdf_lang['Group'],
+                        'name': e2pdf.lang.get('Group'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field]),
                         'source': source,
@@ -3662,21 +3849,21 @@ var e2pdf = {
                     break;
                 case 'option':
                     obj = {
-                        'name': e2pdf_lang['Option'],
+                        'name': e2pdf.lang.get('Option'),
                         'type': 'textarea',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'options':
                     obj = {
-                        'name': e2pdf_lang['Options'],
+                        'name': e2pdf.lang.get('Options'),
                         'type': 'textarea',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'value':
                     if (el.data('data-type') === 'e2pdf-html') {
-                        if (properties['wysiwyg_disable'] == '1') {
+                        if (children.is('textarea')) {
                             var value = children.val();
                         } else {
                             var value = children.html();
@@ -3686,8 +3873,14 @@ var e2pdf = {
                     } else {
                         var value = properties.hasOwnProperty('value') ? properties['value'] : '';
                     }
+                    var name = e2pdf.lang.get('Value');
+                    if (el.data('data-type') === 'e2pdf-image') {
+                        name = e2pdf.lang.get('Image');
+                    } else if (el.data('data-type') === 'e2pdf-link') {
+                        name = e2pdf.lang.get('Link URL');
+                    }
                     obj = {
-                        'name': e2pdf_lang['Value'],
+                        'name': name,
                         'type': 'textarea',
                         'value': value
                     };
@@ -3702,7 +3895,7 @@ var e2pdf = {
                 case 'preset':
                     var options = [];
                     var option = {
-                        '': e2pdf_lang['--- Select ---']
+                        '': e2pdf.lang.get('--- Select ---')
                     };
                     options.push(option);
                     for (var size in e2pdf_params['template_sizes']) {
@@ -3711,7 +3904,7 @@ var e2pdf = {
                         options.push(option);
                     }
                     obj = {
-                        'name': e2pdf_lang['Size Preset'],
+                        'name': e2pdf.lang.get('Size'),
                         'type': 'select',
                         'value': '',
                         'options': options,
@@ -3725,64 +3918,127 @@ var e2pdf = {
                     break;
                 case 'highlight':
                     obj = {
-                        'name': e2pdf_lang['Highlight'],
+                        'name': e2pdf.lang.get('Highlight'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'none'),
                         'options': [
-                            {'none': e2pdf_lang['None']},
-                            {'invert': e2pdf_lang['Invert']},
-                            {'outline': e2pdf_lang['Outline']},
-                            {'push': e2pdf_lang['Push']}
+                            {'none': e2pdf.lang.get('None')},
+                            {'invert': e2pdf.lang.get('Invert')},
+                            {'outline': e2pdf.lang.get('Outline')},
+                            {'push': e2pdf.lang.get('Push')}
                         ]
+                    };
+                    break;
+                case 'link_url':
+                    obj = {
+                        'name': e2pdf.lang.get('Link URL'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getString(properties[field], ''),
+                    };
+                    break;
+                case 'link_type':
+                    obj = {
+                        'name': e2pdf.lang.get('Link Type'),
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field], ''),
+                        'options': [
+                            {'': e2pdf.lang.get('Url')},
+                            {'attachment': e2pdf.lang.get('Attachment')},
+                        ]
+                    };
+                    break;
+                case 'link_label':
+                    obj = {
+                        'name': e2pdf.lang.get('Link Label'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getString(properties[field], ''),
+                    };
+                    break;
+                case 'underline':
+                    obj = {
+                        'name': e2pdf.lang.get('Underline'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
+                    };
+                    break;
+                case 'underline':
+                    obj = {
+                        'name': e2pdf.lang.get('Underline'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
                     };
                     break;
                 case 'preg_pattern':
                     obj = {
-                        'name': e2pdf_lang['Preg Replace Pattern'],
+                        'name': e2pdf.lang.get('Preg Replace Pattern'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'preg_replacement':
                     obj = {
-                        'name': e2pdf_lang['Preg Replace Replacement'],
+                        'name': e2pdf.lang.get('Preg Replace Replacement'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'preg_match_all_pattern':
                     obj = {
-                        'name': e2pdf_lang['Preg Match All Pattern'],
+                        'name': e2pdf.lang.get('Preg Match All Pattern'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'preg_match_all_output':
                     obj = {
-                        'name': e2pdf_lang['Preg Match All Output'],
+                        'name': e2pdf.lang.get('Preg Match All Output'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'css_priority':
                     obj = {
-                        'name': e2pdf_lang['CSS Priority'],
+                        'name': e2pdf.lang.get('CSS Priority'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
+                    };
+                    break;
+                case 'css_style':
+                    var options = [];
+                    var option = {
+                        '': '--- ' + e2pdf.lang.get('CSS Style') + ' ---'
+                    };
+                    options.push(option);
+                    e2pdf_params['css_styles'].forEach(function (css_style) {
+                        var option = {};
+                        option[css_style] = css_style;
+                        options.push(option);
+                    });
+                    obj = {
+                        'name': e2pdf.lang.get('CSS Style'),
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field], ''),
+                        'options': options
                     };
                     break;
                 case 'html_worker':
                     obj = {
-                        'name': 'HTML Worker 2.0',
-                        'type': 'checkbox',
-                        'value': e2pdf.helper.getCheckbox(properties[field]),
-                        'option': '1'
+                        'name': e2pdf.lang.get('HTML Worker'),
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field], ''),
+                        'options': [
+                            {'': 'HTML Worker: v1'},
+                            {'1': 'HTML Worker: v2'},
+                            {'3': 'HTML Worker: v3 (BETA)'}
+                        ]
                     };
                     break;
                 case 'wysiwyg_disable':
                     obj = {
-                        'name': e2pdf_lang['Disable WYSIWYG Editor'],
+                        'name': e2pdf.lang.get('Disable WYSIWYG Editor'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -3790,7 +4046,7 @@ var e2pdf = {
                     break;
                 case 'g_type':
                     obj = {
-                        'name': e2pdf_lang['Type'],
+                        'name': e2pdf.lang.get('Type'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'BarGraph'),
                         'options':
@@ -3851,21 +4107,21 @@ var e2pdf = {
                     break;
                 case 'g_palette':
                     obj = {
-                        'name': e2pdf_lang['Palette'],
+                        'name': e2pdf.lang.get('Palette'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_stroke_colour':
                     obj = {
-                        'name': e2pdf_lang['Line / Stroke Color'],
+                        'name': e2pdf.lang.get('Line / Stroke Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_stroke_width':
                     obj = {
-                        'name': e2pdf_lang['Width'],
+                        'name': e2pdf.lang.get('Width'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3873,14 +4129,14 @@ var e2pdf = {
                     break;
                 case 'g_graph_title':
                     obj = {
-                        'name': e2pdf_lang['Title'],
+                        'name': e2pdf.lang.get('Title'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_graph_title_font_size':
                     obj = {
-                        'name': e2pdf_lang['Font Size'],
+                        'name': e2pdf.lang.get('Font Size'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': e2pdf.helper.font.sizes(field)
@@ -3888,7 +4144,7 @@ var e2pdf = {
                     break;
                 case 'g_label_font_size':
                     obj = {
-                        'name': e2pdf_lang['Font Size'],
+                        'name': e2pdf.lang.get('Font Size'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': e2pdf.helper.font.sizes(field)
@@ -3896,7 +4152,7 @@ var e2pdf = {
                     break;
                 case 'g_graph_title_space':
                     obj = {
-                        'name': e2pdf_lang['Space'],
+                        'name': e2pdf.lang.get('Space'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3904,7 +4160,7 @@ var e2pdf = {
                     break;
                 case 'g_label_space':
                     obj = {
-                        'name': e2pdf_lang['Space'],
+                        'name': e2pdf.lang.get('Space'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -3912,49 +4168,49 @@ var e2pdf = {
                     break;
                 case 'g_graph_title_colour':
                     obj = {
-                        'name': e2pdf_lang['Color'],
+                        'name': e2pdf.lang.get('Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_label_colour':
                     obj = {
-                        'name': e2pdf_lang['Color'],
+                        'name': e2pdf.lang.get('Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_graph_title_position':
                     obj = {
-                        'name': e2pdf_lang['Position'],
+                        'name': e2pdf.lang.get('Position'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'top'),
                         'options':
                                 [
-                                    {'top': e2pdf_lang['Top']},
-                                    {'left': e2pdf_lang['Left']},
-                                    {'right': e2pdf_lang['Right']},
-                                    {'bottom': e2pdf_lang['Bottom']}
+                                    {'top': e2pdf.lang.get('Top')},
+                                    {'left': e2pdf.lang.get('Left')},
+                                    {'right': e2pdf.lang.get('Right')},
+                                    {'bottom': e2pdf.lang.get('Bottom')}
                                 ]
                     };
                     break;
                 case 'g_label_v':
                     obj = {
-                        'name': e2pdf_lang['Vertical Label'],
+                        'name': e2pdf.lang.get('Vertical Label'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_label_h':
                     obj = {
-                        'name': e2pdf_lang['Horizontal Label'],
+                        'name': e2pdf.lang.get('Horizontal Label'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_data_label_type':
                     obj = {
-                        'name': e2pdf_lang['Type'],
+                        'name': e2pdf.lang.get('Type'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'plain'),
                         'options':
@@ -3974,149 +4230,148 @@ var e2pdf = {
                     break;
                 case 'g_key_sep':
                     obj = {
-                        'name': e2pdf_lang['Key Separator'],
+                        'name': 'Key Separator',
                         'type': 'text',
                         'value': properties.hasOwnProperty('g_key_sep') && properties['g_key_sep'] ? properties['g_key_sep'] : ' => '
                     };
                     break;
                 case 'g_array_sep':
                     obj = {
-                        'name': e2pdf_lang['Array Separator'],
+                        'name': 'Array Separator',
                         'type': 'text',
                         'value': properties.hasOwnProperty('g_array_sep') && properties['g_array_sep'] ? properties['g_array_sep'] : ', '
                     };
                     break;
                 case 'g_sub_array_sep':
                     obj = {
-                        'name': e2pdf_lang['Sub Array Separator'],
+                        'name': 'Sub Array Separator',
                         'type': 'text',
                         'value': properties.hasOwnProperty('g_sub_array_sep') && properties['g_sub_array_sep'] ? properties['g_sub_array_sep'] : '|'
                     };
                     break;
                 case 'g_structure_key':
                     obj = {
-                        'name': e2pdf_lang['Key'],
+                        'name': 'Key',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_value':
                     obj = {
-                        'name': e2pdf_lang['Value'],
+                        'name': 'Value',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_colour':
                     obj = {
-                        'name': e2pdf_lang['Color'],
+                        'name': 'Color',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_axis_text':
                     obj = {
-                        'name': e2pdf_lang['Axis Text'],
+                        'name': 'Axis Text',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_legend_text':
                     obj = {
-                        'name': e2pdf_lang['Legend Text'],
+                        'name': 'Legend Text',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_label':
                     obj = {
-                        'name': e2pdf_lang['Label'],
+                        'name': 'Label',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_area':
                     obj = {
-                        'name': e2pdf_lang['Area'],
+                        'name': 'Area',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_open':
                     obj = {
-                        'name': e2pdf_lang['Open'],
+                        'name': 'Open',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_end':
                     obj = {
-                        'name': e2pdf_lang['End'],
+                        'name': 'End',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_outliers':
                     obj = {
-                        'name': e2pdf_lang['Outliers'],
+                        'name': 'Outliers',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_top':
                     obj = {
-                        'name': e2pdf_lang['Top'],
+                        'name': 'Top',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_bottom':
                     obj = {
-                        'name': e2pdf_lang['Bottom'],
+                        'name': 'Bottom',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_wtop':
                     obj = {
-                        'name': e2pdf_lang['Wtop'],
+                        'name': 'Wtop',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_wbottom':
                     obj = {
-                        'name': e2pdf_lang['Wbottom'],
+                        'name': 'Wbottom',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_high':
                     obj = {
-                        'name': e2pdf_lang['High'],
+                        'name': 'High',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structure_low':
                     obj = {
-                        'name': e2pdf_lang['Low'],
+                        'name': 'Low',
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_structured_data':
                     obj = {
-                        'name': e2pdf_lang['Structured Data'],
+                        'name': 'Structured Data',
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
                     };
                     break;
-
                 case 'g_axis_font_size':
                     obj = {
-                        'name': e2pdf_lang['Font Size'],
+                        'name': e2pdf.lang.get('Font Size'),
                         'key': 'g_axis_font_size',
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
@@ -4125,7 +4380,7 @@ var e2pdf = {
                     break;
                 case 'g_axis_overlap':
                     obj = {
-                        'name': e2pdf_lang['Axis Overlap'],
+                        'name': e2pdf.lang.get('Axis Overlap'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4133,7 +4388,7 @@ var e2pdf = {
                     break;
                 case 'g_axis_stroke_width_v':
                     obj = {
-                        'name': e2pdf_lang['Width'],
+                        'name': e2pdf.lang.get('Width'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4141,7 +4396,7 @@ var e2pdf = {
                     break;
                 case 'g_axis_stroke_width_h':
                     obj = {
-                        'name': e2pdf_lang['Width'],
+                        'name': e2pdf.lang.get('Width'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4149,7 +4404,7 @@ var e2pdf = {
                     break;
                 case 'g_minimum_grid_spacing':
                     obj = {
-                        'name': e2pdf_lang['Grid Spacing'],
+                        'name': e2pdf.lang.get('Grid Spacing'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4157,7 +4412,7 @@ var e2pdf = {
                     break;
                 case 'g_minimum_grid_spacing_v':
                     obj = {
-                        'name': e2pdf_lang['Grid Spacing V'],
+                        'name': e2pdf.lang.get('Grid Spacing (V)'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4165,7 +4420,7 @@ var e2pdf = {
                     break;
                 case 'g_minimum_grid_spacing_h':
                     obj = {
-                        'name': e2pdf_lang['Grid Spacing H'],
+                        'name': e2pdf.lang.get('Grid Spacing (H)'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4173,7 +4428,7 @@ var e2pdf = {
                     break;
                 case 'g_grid_division_v':
                     obj = {
-                        'name': e2pdf_lang['Grid Division V'],
+                        'name': e2pdf.lang.get('Grid Division (V)'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(properties[field]),
                         'atts': ['number']
@@ -4181,7 +4436,7 @@ var e2pdf = {
                     break;
                 case 'g_grid_division_h':
                     obj = {
-                        'name': e2pdf_lang['Grid Division H'],
+                        'name': e2pdf.lang.get('Grid Division (H)'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(properties[field]),
                         'atts': ['number']
@@ -4189,14 +4444,14 @@ var e2pdf = {
                     break;
                 case 'g_axis_colour':
                     obj = {
-                        'name': e2pdf_lang['Axis Color'],
+                        'name': e2pdf.lang.get('Axis Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_grid_colour':
                     obj = {
-                        'name': e2pdf_lang['Grid Color'],
+                        'name': e2pdf.lang.get('Grid Color'),
                         'key': 'g_grid_colour',
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
@@ -4204,23 +4459,22 @@ var e2pdf = {
                     break;
                 case 'g_bar_label_colour':
                     obj = {
-                        'name': e2pdf_lang['Bar Label Color'],
+                        'name': e2pdf.lang.get('Bar Label Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_bar_label_font_size':
                     obj = {
-                        'name': e2pdf_lang['Font Size'],
+                        'name': e2pdf.lang.get('Font Size'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': e2pdf.helper.font.sizes(field)
                     };
                     break;
-
                 case 'g_bar_label_space':
                     obj = {
-                        'name': e2pdf_lang['Space'],
+                        'name': e2pdf.lang.get('Space'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4228,33 +4482,33 @@ var e2pdf = {
                     break;
                 case 'g_bar_label_position_vertical':
                     obj = {
-                        'name': e2pdf_lang['V Position'],
+                        'name': e2pdf.lang.get('Position (V)'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'top'),
                         'options':
                                 [
-                                    {'top': e2pdf_lang['Top']},
-                                    {'centre': e2pdf_lang['Middle']},
-                                    {'bottom': e2pdf_lang['Bottom']}
+                                    {'top': e2pdf.lang.get('Top')},
+                                    {'centre': e2pdf.lang.get('Middle')},
+                                    {'bottom': e2pdf.lang.get('Bottom')}
                                 ]
                     };
                     break;
                 case 'g_bar_label_position_horizontal':
                     obj = {
-                        'name': e2pdf_lang['H Position'],
+                        'name': e2pdf.lang.get('Position (H)'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'centre'),
                         'options':
                                 [
-                                    {'left': e2pdf_lang['Left']},
-                                    {'centre': e2pdf_lang['Center']},
-                                    {'right': e2pdf_lang['Right']}
+                                    {'left': e2pdf.lang.get('Left')},
+                                    {'centre': e2pdf.lang.get('Center')},
+                                    {'right': e2pdf.lang.get('Right')}
                                 ]
                     };
                     break;
                 case 'g_bar_label_position_join':
                     obj = {
-                        'name': e2pdf_lang['Position'],
+                        'name': e2pdf.lang.get('Position'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'outer'),
                         'options':
@@ -4266,7 +4520,7 @@ var e2pdf = {
                     break;
                 case 'g_show_bar_labels':
                     obj = {
-                        'name': e2pdf_lang['Bar Labels'],
+                        'name': e2pdf.lang.get('Bar Labels'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4274,7 +4528,7 @@ var e2pdf = {
                     break;
                 case 'g_marker_type':
                     obj = {
-                        'name': e2pdf_lang['Marker'],
+                        'name': e2pdf.lang.get('Marker'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'circle'),
                         'options':
@@ -4298,29 +4552,37 @@ var e2pdf = {
                     break;
                 case 'g_marker_colour':
                     obj = {
-                        'name': e2pdf_lang['Color'],
+                        'name': e2pdf.lang.get('Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_marker_size':
                     obj = {
-                        'name': e2pdf_lang['Size'],
+                        'name': e2pdf.lang.get('Size'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
                     };
                     break;
+                case 'g_marker_dynamic_colour':
+                    obj = {
+                        'name': e2pdf.lang.get('Dynamic Marker Color'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
+                    };
+                    break;
                 case 'g_grid_subdivision_colour':
                     obj = {
-                        'name': e2pdf_lang['Grid Subdivision Color'],
+                        'name': e2pdf.lang.get('Grid Subdivision Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_show_subdivisions':
                     obj = {
-                        'name': e2pdf_lang['Sub Divisions'],
+                        'name': e2pdf.lang.get('Sub Divisions'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4328,7 +4590,7 @@ var e2pdf = {
                     break;
                 case 'g_show_grid':
                     obj = {
-                        'name': e2pdf_lang['Grid'],
+                        'name': e2pdf.lang.get('Grid'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4336,7 +4598,7 @@ var e2pdf = {
                     break;
                 case 'g_show_axis_v':
                     obj = {
-                        'name': e2pdf_lang['Axis V'],
+                        'name': e2pdf.lang.get('Axis (V)'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4344,7 +4606,7 @@ var e2pdf = {
                     break;
                 case 'g_show_axis_text_v':
                     obj = {
-                        'name': e2pdf_lang['Text V'],
+                        'name': e2pdf.lang.get('Text'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4352,7 +4614,7 @@ var e2pdf = {
                     break;
                 case 'g_show_axis_h':
                     obj = {
-                        'name': e2pdf_lang['Axis H'],
+                        'name': e2pdf.lang.get('Axis (H)'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4360,17 +4622,15 @@ var e2pdf = {
                     break;
                 case 'g_show_axis_text_h':
                     obj = {
-                        'name': e2pdf_lang['Text H'],
+                        'name': e2pdf.lang.get('Text'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
                     };
                     break;
-
-
                 case 'g_axis_min_h':
                     obj = {
-                        'name': e2pdf_lang['Min H'],
+                        'name': e2pdf.lang.get('Min'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number', 'number-negative']
@@ -4378,26 +4638,23 @@ var e2pdf = {
                     break;
                 case 'g_axis_max_h':
                     obj = {
-                        'name': e2pdf_lang['Max H'],
+                        'name': e2pdf.lang.get('Max'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number', 'number-negative']
                     };
                     break;
-
                 case 'g_axis_min_max_h':
                     obj = {
-                        'name': e2pdf_lang['Enable'],
+                        'name': e2pdf.lang.get('Enable'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
                     };
                     break;
-
-
                 case 'g_axis_min_v':
                     obj = {
-                        'name': e2pdf_lang['Min V'],
+                        'name': e2pdf.lang.get('Min'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number', 'number-negative']
@@ -4405,26 +4662,23 @@ var e2pdf = {
                     break;
                 case 'g_axis_max_v':
                     obj = {
-                        'name': e2pdf_lang['Max V'],
+                        'name': e2pdf.lang.get('Max'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number', 'number-negative']
                     };
                     break;
-
                 case 'g_axis_min_max_v':
                     obj = {
-                        'name': e2pdf_lang['Enable'],
+                        'name': e2pdf.lang.get('Enable'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
                     };
                     break;
-
-
                 case 'g_show_grid_subdivisions':
                     obj = {
-                        'name': e2pdf_lang['Sub Divisions'],
+                        'name': e2pdf.lang.get('Sub Divisions'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4432,7 +4686,7 @@ var e2pdf = {
                     break;
                 case 'g_fill_under':
                     obj = {
-                        'name': e2pdf_lang['Fill Under'],
+                        'name': e2pdf.lang.get('Fill Under'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4440,7 +4694,15 @@ var e2pdf = {
                     break;
                 case 'g_reverse':
                     obj = {
-                        'name': e2pdf_lang['Reverse'],
+                        'name': e2pdf.lang.get('Reverse'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
+                    };
+                    break;
+                case 'g_stroke_dynamic_colour':
+                    obj = {
+                        'name': e2pdf.lang.get('Dynamic Line / Stroke Color'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4448,7 +4710,7 @@ var e2pdf = {
                     break;
                 case 'g_sort':
                     obj = {
-                        'name': e2pdf_lang['Sort'],
+                        'name': e2pdf.lang.get('Sort'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4456,7 +4718,7 @@ var e2pdf = {
                     break;
                 case 'g_percentage':
                     obj = {
-                        'name': e2pdf_lang['Percentage'],
+                        'name': e2pdf.lang.get('Percentage'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4464,14 +4726,14 @@ var e2pdf = {
                     break;
                 case 'g_legend_title':
                     obj = {
-                        'name': e2pdf_lang['Title'],
+                        'name': e2pdf.lang.get('Title'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_legend_title_font_size':
                     obj = {
-                        'name': e2pdf_lang['Font Size'],
+                        'name': e2pdf.lang.get('Font Size'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': e2pdf.helper.font.sizes(field)
@@ -4479,7 +4741,7 @@ var e2pdf = {
                     break;
                 case 'g_legend_font_size':
                     obj = {
-                        'name': e2pdf_lang['Font Size'],
+                        'name': e2pdf.lang.get('Font Size'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field]),
                         'options': e2pdf.helper.font.sizes(field)
@@ -4487,46 +4749,46 @@ var e2pdf = {
                     break;
                 case 'g_legend_position_vertical':
                     obj = {
-                        'name': e2pdf_lang['V Position'],
+                        'name': e2pdf.lang.get('Position (V)'),
                         'key': 'g_legend_position_vertical',
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'top'),
                         'options':
                                 [
-                                    {'top': e2pdf_lang['Top']},
-                                    {'middle': e2pdf_lang['Middle']},
-                                    {'bottom': e2pdf_lang['Bottom']}
+                                    {'top': e2pdf.lang.get('Top')},
+                                    {'middle': e2pdf.lang.get('Middle')},
+                                    {'bottom': e2pdf.lang.get('Bottom')}
                                 ]
                     };
                     break;
                 case 'g_legend_position_horizontal':
                     obj = {
-                        'name': e2pdf_lang['H Position'],
+                        'name': e2pdf.lang.get('Position (H)'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'right'),
                         'options':
                                 [
-                                    {'left': e2pdf_lang['Left']},
-                                    {'center': e2pdf_lang['Center']},
-                                    {'right': e2pdf_lang['Right']}
+                                    {'left': e2pdf.lang.get('Left')},
+                                    {'center': e2pdf.lang.get('Center')},
+                                    {'right': e2pdf.lang.get('Right')}
                                 ]
                     };
                     break;
                 case 'g_legend_position_join':
                     obj = {
-                        'name': e2pdf_lang['Position'],
+                        'name': e2pdf.lang.get('Position'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'inner'),
                         'options':
                                 [
-                                    {'inner': 'Inner'},
-                                    {'outer': 'Outer'}
+                                    {'inner': e2pdf.lang.get('Inner')},
+                                    {'outer': e2pdf.lang.get('Outer')}
                                 ]
                     };
                     break;
                 case 'g_legend_position_vertical_margin':
                     obj = {
-                        'name': e2pdf_lang['V Margin'],
+                        'name': e2pdf.lang.get('Margin (V)'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(properties[field]),
                         'atts': ['number', 'number-negative']
@@ -4534,7 +4796,7 @@ var e2pdf = {
                     break;
                 case 'g_legend_position_horizontal_margin':
                     obj = {
-                        'name': e2pdf_lang['H Margin'],
+                        'name': e2pdf.lang.get('Margin (H)'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(properties[field]),
                         'atts': ['number', 'number-negative']
@@ -4542,19 +4804,19 @@ var e2pdf = {
                     break;
                 case 'g_legend_text_side':
                     obj = {
-                        'name': e2pdf_lang['Legend Text Side'],
+                        'name': e2pdf.lang.get('Legend Text Side'),
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], 'left'),
                         'options':
                                 [
-                                    {'left': e2pdf_lang['Left']},
-                                    {'right': e2pdf_lang['Right']}
+                                    {'left': e2pdf.lang.get('Left')},
+                                    {'right': e2pdf.lang.get('Right')}
                                 ]
                     };
                     break;
                 case 'g_legend_columns':
                     obj = {
-                        'name': e2pdf_lang['Columns'],
+                        'name': e2pdf.lang.get('Columns'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field], 1),
                         'atts': ['number']
@@ -4562,7 +4824,7 @@ var e2pdf = {
                     break;
                 case 'g_legend_entry_width':
                     obj = {
-                        'name': e2pdf_lang['Width'],
+                        'name': e2pdf.lang.get('Width'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4570,7 +4832,7 @@ var e2pdf = {
                     break;
                 case 'g_legend_padding_x':
                     obj = {
-                        'name': e2pdf_lang['Padding X'],
+                        'name': e2pdf.lang.get('Padding (X)'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4578,7 +4840,7 @@ var e2pdf = {
                     break;
                 case 'g_legend_padding_y':
                     obj = {
-                        'name': e2pdf_lang['Padding Y'],
+                        'name': e2pdf.lang.get('Padding (Y)'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4586,14 +4848,14 @@ var e2pdf = {
                     break;
                 case 'g_legend_stroke_colour':
                     obj = {
-                        'name': e2pdf_lang['Stroke Color'],
+                        'name': e2pdf.lang.get('Stroke Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_legend_stroke_width':
                     obj = {
-                        'name': e2pdf_lang['Stroke Width'],
+                        'name': e2pdf.lang.get('Stroke Width'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4601,21 +4863,21 @@ var e2pdf = {
                     break;
                 case 'g_legend_back_colour':
                     obj = {
-                        'name': e2pdf_lang['Background'],
+                        'name': e2pdf.lang.get('Background'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_legend_colour':
                     obj = {
-                        'name': e2pdf_lang['Color'],
+                        'name': e2pdf.lang.get('Color'),
                         'type': 'color',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_show_legend':
                     obj = {
-                        'name': e2pdf_lang['Legend'],
+                        'name': e2pdf.lang.get('Legend'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4623,7 +4885,7 @@ var e2pdf = {
                     break;
                 case 'g_bubble_scale':
                     obj = {
-                        'name': e2pdf_lang['Bubble Scale'],
+                        'name': e2pdf.lang.get('Bubble Scale'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]) ? e2pdf.helper.getInt(properties[field]) : '1',
                         'atts': ['number']
@@ -4631,7 +4893,7 @@ var e2pdf = {
                     break;
                 case 'g_increment':
                     obj = {
-                        'name': e2pdf_lang['Increment'],
+                        'name': e2pdf.lang.get('Increment'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4639,21 +4901,21 @@ var e2pdf = {
                     break;
                 case 'g_stack_group':
                     obj = {
-                        'name': e2pdf_lang['Stack Group'],
+                        'name': e2pdf.lang.get('Stack Group'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_line_dataset':
                     obj = {
-                        'name': e2pdf_lang['Line Dataset'],
+                        'name': e2pdf.lang.get('Line Dataset'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_project_angle':
                     obj = {
-                        'name': e2pdf_lang['Project Angle'],
+                        'name': e2pdf.lang.get('Project Angle'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
                         'atts': ['number']
@@ -4661,28 +4923,129 @@ var e2pdf = {
                     break;
                 case 'g_line_curve':
                     obj = {
-                        'name': e2pdf_lang['Line Curve'],
+                        'name': e2pdf.lang.get('Line Curve'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_units_y':
                     obj = {
-                        'name': e2pdf_lang['Units Y'],
+                        'name': e2pdf.lang.get('Units'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_units_x':
                     obj = {
-                        'name': e2pdf_lang['Units X'],
+                        'name': e2pdf.lang.get('Units'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
+                case 'g_axis_text_position_v':
+                    obj = {
+                        'name': e2pdf.lang.get('Position'),
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field], 'outside'),
+                        'options':
+                                [
+                                    {'outside': e2pdf.lang.get('Outer')},
+                                    {'inside': e2pdf.lang.get('Inner')}
+                                ]
+                    };
+                    break;
+                case 'g_axis_text_position_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Position'),
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field], 'outside'),
+                        'options':
+                                [
+                                    {'outside': e2pdf.lang.get('Outer')},
+                                    {'inside': e2pdf.lang.get('Inner')}
+                                ]
+                    };
+                    break;
+                case 'g_axis_text_align_v':
+                    obj = {
+                        'name': e2pdf.lang.get('Align'),
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field], ''),
+                        'options':
+                                [
+                                    {'': e2pdf.lang.get('Auto')},
+                                    {'left': e2pdf.lang.get('Left')},
+                                    {'centre': e2pdf.lang.get('Center')},
+                                    {'right': e2pdf.lang.get('Right')}
+                                ]
+                    };
+                    break;
+                case 'g_axis_text_align_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Align'),
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field], ''),
+                        'options':
+                                [
+                                    {'': e2pdf.lang.get('Auto')},
+                                    {'left': e2pdf.lang.get('Left')},
+                                    {'centre': e2pdf.lang.get('Center')},
+                                    {'right': e2pdf.lang.get('Right')}
+                                ]
+                    };
+                    break;
+                case 'g_axis_text_space_v':
+                    obj = {
+                        'name': e2pdf.lang.get('Space'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field], 2),
+                        'atts': ['number']
+                    };
+                    break;
+                case 'g_axis_text_space_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Space'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field], 2),
+                        'atts': ['number']
+                    };
+                    break;
+                case 'g_axis_text_offset_x_v':
+                    obj = {
+                        'name': e2pdf.lang.get('Offset (X)'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field]),
+                        'atts': ['number', 'number-negative']
+                    };
+                    break;
+                case 'g_axis_text_offset_y_v':
+                    obj = {
+                        'name': e2pdf.lang.get('Offset (Y)'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field]),
+                        'atts': ['number', 'number-negative']
+                    };
+                    break;
+
+                case 'g_axis_text_offset_x_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Offset (X)'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field]),
+                        'atts': ['number', 'number-negative']
+                    };
+                    break;
+                case 'g_axis_text_offset_y_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Offset (Y)'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getInt(properties[field]),
+                        'atts': ['number', 'number-negative']
+                    };
+                    break;
                 case 'g_units_label':
                     obj = {
-                        'name': e2pdf_lang['Units Label'],
+                        'name': e2pdf.lang.get('Units Label'),
                         'type': 'text',
                         'value': e2pdf.helper.getString(properties[field])
                     };
@@ -4710,14 +5073,14 @@ var e2pdf = {
                     break;
                 case 'g_legends':
                     obj = {
-                        'name': e2pdf_lang['Legends'],
+                        'name': e2pdf.lang.get('Legends'),
                         'type': 'textarea',
                         'value': e2pdf.helper.getString(properties[field])
                     };
                     break;
                 case 'g_colors':
                     obj = {
-                        'name': e2pdf_lang['Colors'],
+                        'name': e2pdf.lang.get('Colors'),
                         'type': 'textarea',
                         'value': e2pdf.helper.getString(properties[field])
                     };
@@ -4731,9 +5094,7 @@ var e2pdf = {
             }
             return obj;
         },
-        /*
-         * e2pdf.properties.getFields
-         */
+        // e2pdf.properties.getFields
         getFields: function (el, actions) {
 
             if (el.data('data-type') === 'e2pdf-tpl') {
@@ -4753,7 +5114,7 @@ var e2pdf = {
                         ]
                     },
                     'size': {
-                        'name': e2pdf_lang['Size'],
+                        'name': e2pdf.lang.get('Size'),
                         'fields': [
                             e2pdf.properties.getField('width', el),
                             e2pdf.properties.getField('height', el),
@@ -4770,7 +5131,7 @@ var e2pdf = {
             } else {
                 var obj = {
                     'element': {
-                        'name': e2pdf_lang['Element'],
+                        'name': e2pdf.lang.get('Element'),
                         'fields': [
                             e2pdf.properties.getField('element_id', el),
                             e2pdf.properties.getField('page_id', el),
@@ -4799,7 +5160,7 @@ var e2pdf = {
                     obj['element'].classes.push('e2pdf-w75 e2pdf-pr10');
                     obj['element'].classes.push('e2pdf-w25 e2pdf-mt-label');
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_font', el),
@@ -4833,7 +5194,7 @@ var e2pdf = {
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('border_color', el),
@@ -4849,10 +5210,10 @@ var e2pdf = {
                         ]
                     };
                     obj['value'] = {
-                        'name': e2pdf_lang['Value'],
+                        'name': e2pdf.lang.get('Value'),
                         'fields': [
                             e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -4877,7 +5238,7 @@ var e2pdf = {
                     obj['element'].classes.push('e2pdf-w75 e2pdf-pr10');
                     obj['element'].classes.push('e2pdf-w25 e2pdf-mt-label');
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_font', el),
@@ -4913,7 +5274,7 @@ var e2pdf = {
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('border_color', el),
@@ -4929,10 +5290,10 @@ var e2pdf = {
                         ]
                     };
                     obj['value'] = {
-                        'name': e2pdf_lang['Value'],
+                        'name': e2pdf.lang.get('Value'),
                         'fields': [
                             e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -4957,7 +5318,7 @@ var e2pdf = {
                     obj['element'].classes.push('e2pdf-w75 e2pdf-pr10');
                     obj['element'].classes.push('e2pdf-w25 e2pdf-mt-label');
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_type', el),
@@ -4977,7 +5338,7 @@ var e2pdf = {
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('border_color', el),
                             e2pdf.properties.getField('border', el),
@@ -4995,7 +5356,7 @@ var e2pdf = {
                         'fields': [
                             e2pdf.properties.getField('option', el),
                             e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -5017,7 +5378,7 @@ var e2pdf = {
                 if (el.data('data-type') === 'e2pdf-radio') {
 
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_type', el),
@@ -5038,7 +5399,7 @@ var e2pdf = {
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('border_color', el),
                             e2pdf.properties.getField('border', el),
@@ -5058,7 +5419,7 @@ var e2pdf = {
                             e2pdf.properties.getField('field_name', el),
                             e2pdf.properties.getField('option', el),
                             e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -5086,7 +5447,7 @@ var e2pdf = {
                     obj['element'].classes.push('e2pdf-w75 e2pdf-pr10');
                     obj['element'].classes.push('e2pdf-w25 e2pdf-mt-label');
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_font', el),
@@ -5114,7 +5475,7 @@ var e2pdf = {
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('border_color', el),
@@ -5134,7 +5495,7 @@ var e2pdf = {
                         'fields': [
                             e2pdf.properties.getField('options', el),
                             e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -5160,7 +5521,7 @@ var e2pdf = {
                     obj['element'].classes.push('e2pdf-w75 e2pdf-pr10');
                     obj['element'].classes.push('e2pdf-w25 e2pdf-mt-label');
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_font', el),
@@ -5177,20 +5538,20 @@ var e2pdf = {
                         'position': 'left',
                         'classes': [
                             'e2pdf-w100',
-                            'e2pdf-w70',
-                            'e2pdf-w30 e2pdf-pl10',
+                            'e2pdf-w60 e2pdf-pr10',
+                            'e2pdf-w40',
                             'e2pdf-w100',
                             'e2pdf-w100',
                             'e2pdf-w50',
                             'e2pdf-w50 e2pdf-pl10',
-                            'e2pdf-w50',
-                            'e2pdf-w50 e2pdf-pl10',
-                            'e2pdf-w50',
-                            'e2pdf-w50 e2pdf-pl10'
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10'
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('padding_top', el),
@@ -5222,11 +5583,11 @@ var e2pdf = {
                         ]
                     };
                     obj['value'] = {
-                        'name': e2pdf_lang['Value'],
+                        'name': e2pdf.lang.get('Value'),
                         'fields': [
                             e2pdf.properties.getField('value', el),
                             e2pdf.properties.getField('only_image', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -5247,7 +5608,7 @@ var e2pdf = {
 
                 if (el.data('data-type') === 'e2pdf-html') {
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_font', el),
@@ -5261,6 +5622,7 @@ var e2pdf = {
                             e2pdf.properties.getField('multipage', el),
                             e2pdf.properties.getField('dynamic_height', el),
                             e2pdf.properties.getField('nl2br', el),
+                            e2pdf.properties.getField('preload_img', el),
                             e2pdf.properties.getField('hide_if_empty', el),
                             e2pdf.properties.getField('hide_page_if_empty', el)
                         ],
@@ -5279,11 +5641,12 @@ var e2pdf = {
                             'e2pdf-pr10',
                             'e2pdf-pr10',
                             'e2pdf-pr10',
+                            'e2pdf-pr10',
                             'e2pdf-pr10'
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('padding_top', el),
@@ -5317,11 +5680,11 @@ var e2pdf = {
                         'fields': [
                             e2pdf.properties.getField('parent', el),
                             e2pdf.properties.getField('css', el),
-                            e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getField('wysiwyg_disable', el),
                             e2pdf.properties.getField('css_priority', el),
+                            e2pdf.properties.getField('value', el),
                             e2pdf.properties.getField('html_worker', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getField('wysiwyg_disable', el),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -5331,10 +5694,10 @@ var e2pdf = {
                         'classes': [
                             'e2pdf-w100 e2pdf-strong-label',
                             'e2pdf-w100 e2pdf-strong-label e2pdf-mt10',
-                            'e2pdf-w100 e2pdf-strong-label e2pdf-mt10',
-                            'e2pdf-w30 e2pdf-pr10',
                             'e2pdf-w20 e2pdf-pr10',
-                            'e2pdf-w30 e2pdf-pr10',
+                            'e2pdf-w100 e2pdf-strong-label e2pdf-mt10',
+                            'e2pdf-w30 e2pdf-pr10 e2pdf-hide-label',
+                            'e2pdf-w50 e2pdf-pr10',
                             'e2pdf-w20 e2pdf-align-right e2pdf-small e2pdf-mt6 e2pdf-pl10 e2pdf-pr10',
                             'e2pdf-w50 e2pdf-pr10 e2pdf-preg-filters e2pdf-hide',
                             'e2pdf-w50 e2pdf-pl10 e2pdf-preg-filters e2pdf-hide',
@@ -5346,7 +5709,7 @@ var e2pdf = {
 
                 if (el.data('data-type') === 'e2pdf-page-number') {
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_font', el),
@@ -5371,8 +5734,20 @@ var e2pdf = {
                             'e2pdf-w30 e2pdf-pl10'
                         ]
                     };
+                    obj['page_number'] = {
+                        'name': e2pdf.lang.get('Page Number'),
+                        'fields': [
+                            e2pdf.properties.getField('page_number', el),
+                            e2pdf.properties.getField('page_total', el),
+                        ],
+                        'position': 'left',
+                        'classes': [
+                            'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pl10',
+                        ]
+                    };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('padding_top', el),
@@ -5418,49 +5793,53 @@ var e2pdf = {
                 if (el.data('data-type') === 'e2pdf-image') {
 
                     obj['field'] = {
-                        'name': e2pdf_lang['Field'],
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
                             e2pdf.properties.getField('horizontal', el),
                             e2pdf.properties.getField('vertical', el),
                             e2pdf.properties.getField('rotation', el),
                             e2pdf.properties.getField('opacity', el),
+                            e2pdf.properties.getField('quality', el),
                             e2pdf.properties.getField('dimension', el),
                             e2pdf.properties.getField('block_dimension', el),
                             e2pdf.properties.getField('keep_lower_size', el),
-                            e2pdf.properties.getField('fill_image', el)
-                        ],
-                        'position': 'left',
-                        'classes': [
-                            'e2pdf-w50',
-                            'e2pdf-w50 e2pdf-pl10',
-                            'e2pdf-w50',
-                            'e2pdf-w50 e2pdf-pl10',
-                            'e2pdf-w50',
-                            'e2pdf-w50 e2pdf-pl10',
-                            'e2pdf-w50',
-                            'e2pdf-w50 e2pdf-pl10'
-                        ]
-                    };
-
-                    obj['pdf'] = {
-                        'name': 'Pdf',
-                        'fields': [
-                            e2pdf.properties.getField('pdf_page', el),
-                            e2pdf.properties.getField('pdf_resample', el),
-                            e2pdf.properties.getField('pdf_append', el),
+                            e2pdf.properties.getField('fill_image', el),
                             e2pdf.properties.getField('hide_page_if_empty', el)
                         ],
                         'position': 'left',
                         'classes': [
                             'e2pdf-w50',
                             'e2pdf-w50 e2pdf-pl10',
+                            'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pl10',
                             'e2pdf-w100',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
                             'e2pdf-pr10'
                         ]
                     };
-
+                    obj['pdf'] = {
+                        'name': 'Pdf',
+                        'fields': [
+                            e2pdf.properties.getField('pdf_page', el),
+                            e2pdf.properties.getField('pdf_resample', el),
+                            e2pdf.properties.getField('pdf_append', el),
+                            e2pdf.properties.getField('pdf_space', el),
+                            e2pdf.properties.getField('pdf_border', el)
+                        ],
+                        'position': 'left',
+                        'classes': [
+                            'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pl10',
+                            'e2pdf-w100',
+                            'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pl10'
+                        ]
+                    };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('padding_top', el),
@@ -5492,11 +5871,14 @@ var e2pdf = {
                         ]
                     };
                     obj['value'] = {
-                        'name': e2pdf_lang['Value'],
+                        'name': '',
                         'fields': [
+                            e2pdf.properties.getField('link_url', el),
+                            e2pdf.properties.getField('link_type', el),
+                            e2pdf.properties.getField('highlight', el),
                             e2pdf.properties.getField('value', el),
                             e2pdf.properties.getField('only_image', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -5504,7 +5886,10 @@ var e2pdf = {
                         ],
                         'position': 'bottom',
                         'classes': [
-                            'e2pdf-w100 e2pdf-hide-label',
+                            'e2pdf-w50 e2pdf-pr10',
+                            'e2pdf-w25 e2pdf-pr10',
+                            'e2pdf-w25',
+                            'e2pdf-w100',
                             'e2pdf-w50 e2pdf-pr10',
                             'e2pdf-w50 e2pdf-align-right e2pdf-small e2pdf-mt6 e2pdf-pl10 e2pdf-pr10',
                             'e2pdf-w50 e2pdf-pr10 e2pdf-preg-filters e2pdf-hide',
@@ -5518,7 +5903,7 @@ var e2pdf = {
                 if (el.data('data-type') === 'e2pdf-qrcode') {
 
                     obj['qrcode'] = {
-                        'name': e2pdf_lang['QR Code'],
+                        'name': e2pdf.lang.get('QR Code'),
                         'fields': [
                             e2pdf.properties.getField('color', el),
                             e2pdf.properties.getField('precision', el),
@@ -5532,7 +5917,7 @@ var e2pdf = {
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('margin_top', el),
@@ -5570,10 +5955,10 @@ var e2pdf = {
                         ]
                     };
                     obj['value'] = {
-                        'name': e2pdf_lang['Value'],
+                        'name': e2pdf.lang.get('Value'),
                         'fields': [
                             e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -5592,9 +5977,8 @@ var e2pdf = {
                 }
 
                 if (el.data('data-type') === 'e2pdf-barcode') {
-
                     obj['barcode'] = {
-                        'name': e2pdf_lang['Barcode'],
+                        'name': e2pdf.lang.get('Barcode'),
                         'fields': [
                             e2pdf.properties.getField('text_color', el),
                             e2pdf.properties.getField('text_font', el),
@@ -5606,27 +5990,29 @@ var e2pdf = {
                             e2pdf.properties.getField('horizontal', el),
                             e2pdf.properties.getField('vertical', el),
                             e2pdf.properties.getField('scale', el),
+                            e2pdf.properties.getField('rotation', el),
                             e2pdf.properties.getField('dimension', el),
                             e2pdf.properties.getField('hl', el)
                         ],
                         'position': 'left',
                         'classes': [
                             'e2pdf-w100',
-                            'e2pdf-w70',
-                            'e2pdf-w30 e2pdf-pl10',
+                            'e2pdf-w60 e2pdf-pr10',
+                            'e2pdf-w40',
                             'e2pdf-w100',
                             'e2pdf-w100',
                             'e2pdf-w50',
                             'e2pdf-w50 e2pdf-pl10',
                             'e2pdf-w50',
                             'e2pdf-w50 e2pdf-pl10',
-                            'e2pdf-w100',
+                            'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pl10',
                             'e2pdf-pr10',
                             'e2pdf-pr10'
                         ]
                     };
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('margin_top', el),
@@ -5664,10 +6050,10 @@ var e2pdf = {
                         ]
                     };
                     obj['value'] = {
-                        'name': e2pdf_lang['Value'],
+                        'name': e2pdf.lang.get('Value'),
                         'fields': [
                             e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -5687,13 +6073,14 @@ var e2pdf = {
 
                 if (el.data('data-type') === 'e2pdf-graph') {
                     obj['graph'] = {
-                        'name': e2pdf_lang['Graph'],
+                        'name': e2pdf.lang.get('Graph'),
                         'fields': [
                             e2pdf.properties.getField('g_type', el),
                             e2pdf.properties.getField('text_font', el),
                             e2pdf.properties.getField('g_palette', el),
                             e2pdf.properties.getField('g_stroke_colour', el),
                             e2pdf.properties.getField('g_stroke_width', el),
+                            e2pdf.properties.getField('g_stroke_dynamic_colour', el),
                             e2pdf.properties.getField('g_sort', el),
                             e2pdf.properties.getField('g_fill_under', el),
                             e2pdf.properties.getField('g_reverse', el),
@@ -5706,15 +6093,15 @@ var e2pdf = {
                             'e2pdf-w100',
                             'e2pdf-w70 e2pdf-pr10',
                             'e2pdf-w30',
-                            'e2pdf-w33 e2pdf-pr10',
-                            'e2pdf-w33',
-                            'e2pdf-w33 e2pdf-pl10',
-                            'e2pdf-w33'
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
                         ]
                     };
-
                     obj['title'] = {
-                        'name': e2pdf_lang['Title'],
+                        'name': e2pdf.lang.get('Title'),
                         'fields': [
                             e2pdf.properties.getField('g_graph_title_colour', el),
                             e2pdf.properties.getField('g_graph_title', el),
@@ -5725,15 +6112,14 @@ var e2pdf = {
                         'position': 'left',
                         'classes': [
                             'e2pdf-w100',
-                            'e2pdf-w70 e2pdf-pr10',
-                            'e2pdf-w30',
+                            'e2pdf-w60 e2pdf-pr10',
+                            'e2pdf-w40',
                             'e2pdf-w70 e2pdf-pr10',
                             'e2pdf-w30',
                         ]
                     };
-
                     obj['labels'] = {
-                        'name': e2pdf_lang['Labels'],
+                        'name': e2pdf.lang.get('Labels'),
                         'fields': [
                             e2pdf.properties.getField('g_label_colour', el),
                             e2pdf.properties.getField('g_label_font_size', el),
@@ -5750,12 +6136,12 @@ var e2pdf = {
                             'e2pdf-w50',
                         ]
                     };
-
                     obj['marker'] = {
-                        'name': e2pdf_lang['Markers'],
+                        'name': e2pdf.lang.get('Markers'),
                         'fields': [
                             e2pdf.properties.getField('g_marker_colour', el),
                             e2pdf.properties.getField('g_marker_size', el),
+                            e2pdf.properties.getField('g_marker_dynamic_colour', el),
                             e2pdf.properties.getField('g_marker_type', el),
                         ],
                         'position': 'left',
@@ -5763,12 +6149,11 @@ var e2pdf = {
                             'e2pdf-w70 e2pdf-pr10',
                             'e2pdf-w30',
                             'e2pdf-w100',
+                            'e2pdf-w100'
                         ]
                     };
-
-
                     obj['legend'] = {
-                        'name': e2pdf_lang['Legend'],
+                        'name': e2pdf.lang.get('Legend'),
                         'fields': [
                             e2pdf.properties.getField('g_legend_back_colour', el),
                             e2pdf.properties.getField('g_legend_stroke_colour', el),
@@ -5792,8 +6177,8 @@ var e2pdf = {
                         'position': 'left',
                         'classes': [
                             'e2pdf-w100',
-                            'e2pdf-w70 e2pdf-pr10',
-                            'e2pdf-w30',
+                            'e2pdf-w60 e2pdf-pr10',
+                            'e2pdf-w40',
                             'e2pdf-w33 e2pdf-pr10',
                             'e2pdf-w33',
                             'e2pdf-w33 e2pdf-pl10',
@@ -5804,14 +6189,13 @@ var e2pdf = {
                             'e2pdf-w33 e2pdf-pr10',
                             'e2pdf-w33',
                             'e2pdf-w33 e2pdf-pl10',
-                            'e2pdf-w33 e2pdf-pr10',
-                            'e2pdf-w33',
+                            'e2pdf-w50 e2pdf-pr10',
+                            'e2pdf-w50',
                             'e2pdf-w70 e2pdf-pr10',
                             'e2pdf-w30',
                             'e2pdf-pr10'
                         ]
                     };
-
                     obj['additional'] = {
                         'name': 'Additional',
                         'fields': [
@@ -5832,9 +6216,8 @@ var e2pdf = {
                             'e2pdf-w50'
                         ]
                     };
-
                     obj['grid'] = {
-                        'name': e2pdf_lang['Grid'],
+                        'name': e2pdf.lang.get('Grid'),
                         'fields': [
                             e2pdf.properties.getField('g_grid_colour', el),
                             e2pdf.properties.getField('g_grid_subdivision_colour', el),
@@ -5859,64 +6242,88 @@ var e2pdf = {
                             'e2pdf-pr10'
                         ]
                     };
-
-
                     obj['axis'] = {
-                        'name': e2pdf_lang['Axis'],
+                        'name': e2pdf.lang.get('Axis'),
                         'fields': [
-
                             e2pdf.properties.getField('g_axis_colour', el),
                             e2pdf.properties.getField('g_axis_font_size', el),
-
-                            e2pdf.properties.getField('g_axis_stroke_width_v', el),
-                            e2pdf.properties.getField('g_show_axis_v', el),
-                            e2pdf.properties.getField('g_show_axis_text_v', el),
-
-                            e2pdf.properties.getField('g_axis_min_v', el),
-                            e2pdf.properties.getField('g_axis_max_v', el),
-                            e2pdf.properties.getField('g_axis_min_max_v', el),
-                            e2pdf.properties.getField('g_units_x', el),
-
-                            e2pdf.properties.getField('g_axis_stroke_width_h', el),
-                            e2pdf.properties.getField('g_show_axis_h', el),
-                            e2pdf.properties.getField('g_show_axis_text_h', el),
-
-                            e2pdf.properties.getField('g_axis_min_h', el),
-                            e2pdf.properties.getField('g_axis_max_h', el),
-                            e2pdf.properties.getField('g_axis_min_max_h', el),
-                            e2pdf.properties.getField('g_units_y', el),
-
                             e2pdf.properties.getField('g_axis_overlap', el),
                             e2pdf.properties.getField('g_show_subdivisions', el),
                         ],
                         'position': 'right',
                         'classes': [
-                            'e2pdf-w70 e2pdf-pr10',
-                            'e2pdf-w30',
-
-                            'e2pdf-w33 e2pdf-pr10',
-                            'e2pdf-w33 e2pdf-sublabel',
-                            'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
-
-                            'e2pdf-w33 e2pdf-pr10',
-                            'e2pdf-w33',
-                            'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
-                            'e2pdf-w100',
-
-                            'e2pdf-w33 e2pdf-pr10',
-                            'e2pdf-w33 e2pdf-sublabel',
-                            'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
-
-                            'e2pdf-w33 e2pdf-pr10',
-                            'e2pdf-w33',
-                            'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
-                            'e2pdf-w100',
-
+                            'e2pdf-w60 e2pdf-pr10',
+                            'e2pdf-w40',
                             'e2pdf-w100',
                             'e2pdf-w50 e2pdf-pr10',
                         ]
                     };
 
+                    obj['axis_v'] = {
+                        'name': e2pdf.lang.get('Axis (V)'),
+                        'fields': [
+                            e2pdf.properties.getField('g_axis_stroke_width_v', el),
+                            e2pdf.properties.getField('g_show_axis_v', el),
+                            e2pdf.properties.getField('g_show_axis_text_v', el),
+                            e2pdf.properties.getField('g_axis_min_v', el),
+                            e2pdf.properties.getField('g_axis_max_v', el),
+                            e2pdf.properties.getField('g_axis_min_max_v', el),
+                            e2pdf.properties.getField('g_axis_text_position_v', el),
+                            e2pdf.properties.getField('g_axis_text_align_v', el),
+                            e2pdf.properties.getField('g_axis_text_space_v', el),
+                            e2pdf.properties.getField('g_axis_text_offset_x_v', el),
+                            e2pdf.properties.getField('g_axis_text_offset_y_v', el),
+                            e2pdf.properties.getField('g_units_x', el),
+                        ],
+                        'position': 'right',
+                        'classes': [
+                            'e2pdf-w33 e2pdf-pr10',
+                            'e2pdf-w33 e2pdf-sublabel',
+                            'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
+                            'e2pdf-w33 e2pdf-pr10',
+                            'e2pdf-w33',
+                            'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
+                            'e2pdf-w33 e2pdf-pr10',
+                            'e2pdf-w33',
+                            'e2pdf-w33 e2pdf-pl10',
+                            'e2pdf-w33 e2pdf-pr10',
+                            'e2pdf-w33',
+                            'e2pdf-w33 e2pdf-pl10',
+                        ]
+                    };
+
+                    obj['axis_h'] = {
+                        'name': e2pdf.lang.get('Axis (H)'),
+                        'fields': [
+                            e2pdf.properties.getField('g_axis_stroke_width_h', el),
+                            e2pdf.properties.getField('g_show_axis_h', el),
+                            e2pdf.properties.getField('g_show_axis_text_h', el),
+                            e2pdf.properties.getField('g_axis_min_h', el),
+                            e2pdf.properties.getField('g_axis_max_h', el),
+                            e2pdf.properties.getField('g_axis_min_max_h', el),
+                            e2pdf.properties.getField('g_axis_text_position_h', el),
+                            e2pdf.properties.getField('g_axis_text_align_h', el),
+                            e2pdf.properties.getField('g_axis_text_space_h', el),
+                            e2pdf.properties.getField('g_axis_text_offset_x_h', el),
+                            e2pdf.properties.getField('g_axis_text_offset_y_h', el),
+                            e2pdf.properties.getField('g_units_y', el),
+                        ],
+                        'position': 'right',
+                        'classes': [
+                            'e2pdf-w33 e2pdf-pr10',
+                            'e2pdf-w33 e2pdf-sublabel',
+                            'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
+                            'e2pdf-w33 e2pdf-pr10',
+                            'e2pdf-w33',
+                            'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
+                            'e2pdf-w33 e2pdf-pr10',
+                            'e2pdf-w33',
+                            'e2pdf-w33 e2pdf-pl10',
+                            'e2pdf-w33 e2pdf-pr10',
+                            'e2pdf-w33',
+                            'e2pdf-w33 e2pdf-pl10',
+                        ]
+                    };
                     obj['barlabel'] = {
                         'name': 'Bar Label',
                         'fields': [
@@ -5940,14 +6347,11 @@ var e2pdf = {
                             'e2pdf-w33 e2pdf-pr10',
                             'e2pdf-w33',
                             'e2pdf-w33 e2pdf-pl10',
-                            'e2pdf-w33'
+                            'e2pdf-pr10'
                         ]
                     };
-
-
-
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('margin_top', el),
@@ -5984,9 +6388,8 @@ var e2pdf = {
                             'e2pdf-w100'
                         ]
                     };
-
                     obj['structure'] = {
-                        'name': e2pdf_lang['Structure'],
+                        'name': e2pdf.lang.get('Structure'),
                         'fields': [
                             e2pdf.properties.getField('g_structure_key', el),
                             e2pdf.properties.getField('g_structure_value', el),
@@ -5997,7 +6400,6 @@ var e2pdf = {
                             e2pdf.properties.getField('g_structure_area', el),
                             e2pdf.properties.getField('g_structure_open', el),
                             e2pdf.properties.getField('g_structure_end', el),
-
                             e2pdf.properties.getField('g_structure_outliers', el),
                             e2pdf.properties.getField('g_structure_top', el),
                             e2pdf.properties.getField('g_structure_bottom', el),
@@ -6005,7 +6407,6 @@ var e2pdf = {
                             e2pdf.properties.getField('g_structure_wbottom', el),
                             e2pdf.properties.getField('g_structure_high', el),
                             e2pdf.properties.getField('g_structure_low', el),
-
                             e2pdf.properties.getField('g_structured_data', el)
                         ],
                         'position': 'bottom',
@@ -6029,11 +6430,9 @@ var e2pdf = {
                             'e2pdf-w33 e2pdf-sublabel'
                         ]
                     };
-
                     obj['value'] = {
                         'name': '',
                         'fields': [
-
                             e2pdf.properties.getField('g_key_sep', el),
                             e2pdf.properties.getField('g_array_sep', el),
                             e2pdf.properties.getField('g_sub_array_sep', el),
@@ -6042,7 +6441,7 @@ var e2pdf = {
                             e2pdf.properties.getField('value', el),
                             e2pdf.properties.getField('g_multiline', el),
                             e2pdf.properties.getField('g_reverse_data', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -6069,7 +6468,7 @@ var e2pdf = {
 
                 if (el.data('data-type') === 'e2pdf-rectangle') {
                     obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
                             e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('z_index', el)
@@ -6083,23 +6482,51 @@ var e2pdf = {
                 }
 
                 if (el.data('data-type') === 'e2pdf-link') {
-                    obj['style'] = {
-                        'name': e2pdf_lang['Style'],
+                    obj['field'] = {
+                        'name': e2pdf.lang.get('Field'),
                         'fields': [
-                            e2pdf.properties.getField('highlight', el),
-                            e2pdf.properties.getField('z_index', el)
+                            e2pdf.properties.getField('text_color', el),
+                            e2pdf.properties.getField('text_font', el),
+                            e2pdf.properties.getField('text_font_size', el),
+                            e2pdf.properties.getField('text_letter_spacing', el),
+                            e2pdf.properties.getField('text_line_height', el),
+                            e2pdf.properties.getField('text_align', el),
+                            e2pdf.properties.getField('vertical', el),
+                            e2pdf.properties.getField('rtl', el),
+                            e2pdf.properties.getField('underline', el),
                         ],
-                        'position': 'bottom',
+                        'position': 'left',
                         'classes': [
-                            'e2pdf-w50 e2pdf-pr10',
-                            'e2pdf-w50 e2pdf-pl10'
+                            'e2pdf-w100',
+                            'e2pdf-w100',
+                            'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pl10',
+                            'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pl10',
+                            'e2pdf-w70',
+                            'e2pdf-w30 e2pdf-pl10',
+                            'e2pdf-w33'
                         ]
                     };
-                    obj['value'] = {
-                        'name': e2pdf_lang['Value'],
+                    obj['style'] = {
+                        'name': e2pdf.lang.get('Style'),
                         'fields': [
+                            e2pdf.properties.getField('z_index', el)
+                        ],
+                        'position': 'right',
+                        'classes': [
+                            'e2pdf-w100'
+                        ]
+                    };
+
+                    obj['value'] = {
+                        'name': e2pdf.lang.get('Value'),
+                        'fields': [
+                            e2pdf.properties.getField('link_label', el),
+                            e2pdf.properties.getField('link_type', el),
+                            e2pdf.properties.getField('highlight', el),
                             e2pdf.properties.getField('value', el),
-                            e2pdf.properties.getLink("+ " + e2pdf_lang['Preg Filters'], 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
+                            e2pdf.properties.getLink("+ " + e2pdf.lang.get('Preg Filters'), 'javascript:void(0);', 'e2pdf-collapse e2pdf-link', 'e2pdf-preg-filters'),
                             e2pdf.properties.getField('preg_pattern', el),
                             e2pdf.properties.getField('preg_replacement', el),
                             e2pdf.properties.getField('preg_match_all_pattern', el),
@@ -6107,7 +6534,10 @@ var e2pdf = {
                         ],
                         'position': 'bottom',
                         'classes': [
-                            'e2pdf-w100 e2pdf-hide-label',
+                            'e2pdf-w50 e2pdf-pr10',
+                            'e2pdf-w25 e2pdf-pr10',
+                            'e2pdf-w25',
+                            'e2pdf-w100',
                             'e2pdf-w100 e2pdf-align-right e2pdf-small e2pdf-mt6 e2pdf-pl10 e2pdf-pr10',
                             'e2pdf-w50 e2pdf-pr10 e2pdf-preg-filters e2pdf-hide',
                             'e2pdf-w50 e2pdf-pl10 e2pdf-preg-filters e2pdf-hide',
@@ -6118,22 +6548,41 @@ var e2pdf = {
                 }
             }
 
-            if (actions) {
-                obj['actions'] = {
-                    'name': e2pdf_lang['Actions'],
-                    'fields': e2pdf.actions.renderFields(el),
-                    'position': 'bottom'
-                };
+            // tpl-properties
+            if (el.data('data-type') === 'e2pdf-tpl') {
+                if (actions) {
+                    if (actions) {
+                        obj['actions'] = {
+                            'name': e2pdf.lang.get('Actions'),
+                            'fields': e2pdf.actions.renderFields(el),
+                            'position': 'bottom'
+                        };
+                    }
+                } else {
+                    obj['value'] = {
+                        'name': '',
+                        'fields': [
+                            e2pdf.properties.getField('css', el),
+                        ],
+                        'position': 'bottom',
+                        'classes': [
+                            'e2pdf-w100 e2pdf-strong-label e2pdf-mt10',
+                        ]
+                    };
+                }
+            } else {
+                if (actions) {
+                    obj['actions'] = {
+                        'name': e2pdf.lang.get('Actions'),
+                        'fields': e2pdf.actions.renderFields(el),
+                        'position': 'bottom'
+                    };
+                }
             }
-
             return obj;
         },
-        /*
-         * e2pdf.properties.renderFields
-         */
-        renderFields: function (el) {
-
-            var actions = true;
+        // e2pdf.properties.renderFields
+        renderFields: function (el, actions = true) {
             var fields = jQuery('<div>', {'class': ' e2pdf-grid'}).append();
             var fields_top = jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100 e2pdf-top'});
             var fields_left = jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w50 e2pdf-pr5 e2pdf-left'});
@@ -6151,9 +6600,7 @@ var e2pdf = {
             var groups = e2pdf.properties.getFields(el, actions);
             if (groups) {
                 for (var group_key in groups) {
-
                     if (group_key === 'actions') {
-
                         var group = groups[group_key];
                         var block = jQuery('<div>');
                         if (group.name) {
@@ -6171,7 +6618,6 @@ var e2pdf = {
                         } else {
                             fields_bottom.append(block);
                         }
-
                     } else {
                         var group = groups[group_key];
                         var block = jQuery('<div>');
@@ -6188,7 +6634,6 @@ var e2pdf = {
                                     classes = group.classes[field_key];
                                 }
                             }
-
                             var field = '';
                             var label = '';
                             var wrap = '';
@@ -6225,7 +6670,6 @@ var e2pdf = {
                             } else if (group_field.type === 'link') {
                                 field = jQuery('<a>', {'href': group_field.value, 'class': group_field.classes}).append(group_field.name);
                             }
-
                             for (var att_key in group_field.atts) {
                                 var att = group_field.atts[att_key];
                                 switch (att) {
@@ -6261,13 +6705,11 @@ var e2pdf = {
                                         break;
                                 }
                             }
-
                             if (!wrap) {
                                 wrap = field;
                             } else {
                                 wrap.prepend(field);
                             }
-
                             if (group_field.type === 'checkbox') {
                                 wrap.append(" " + label);
                                 if (classes.includes('e2pdf-sublabel')) {
@@ -6280,7 +6722,6 @@ var e2pdf = {
                                 grid.append(jQuery('<div>', {'class': 'e2pdf-ib ' + classes}).append(label, wrap));
                             }
                         }
-
                         block.append(grid);
                         if (group.position === 'top') {
                             fields_top.append(block);
@@ -6294,13 +6735,10 @@ var e2pdf = {
                     }
                 }
             }
-
             fields.append(fields_top, fields_left, fields_right, fields_bottom);
             return fields;
         },
-        /*
-         * e2pdf.properties.apply
-         */
+        // e2pdf.properties.apply
         apply: function (el, data, onload) {
             if (onload !== true) {
                 var groups = e2pdf.properties.getFields(el);
@@ -6332,15 +6770,13 @@ var e2pdf = {
             }
             el.data('data-properties', JSON.stringify(data));
         },
-        /*
-         * e2pdf.properties.set
-         */
+        // e2pdf.properties.set
         set: function (el, key, value) {
             var properties = e2pdf.properties.get(el);
             properties[key] = value;
             e2pdf.properties.apply(el, properties);
         },
-        /* e2pdf.properties.getValue */
+        // e2pdf.properties.getValue
         getValue: function (el, key, type = '') {
             var properties = e2pdf.properties.get(el);
             if (type) {
@@ -6365,14 +6801,12 @@ var e2pdf = {
                 return '';
         }
         },
-        /*
-         * e2pdf.properties.get
-         */
+        // e2pdf.properties.get
         get: function (el) {
             var properties = [];
             if (typeof el.data('data-properties') !== 'undefined') {
                 properties = JSON.parse(el.data('data-properties'));
-                if (el.data('data-type') !== 'e2pdf-page') {
+                if (el.data('data-type') !== 'e2pdf-page' && el.data('data-type') !== 'e2pdf-tpl') {
                     properties['width'] = properties.hasOwnProperty('width') ? parseFloat(properties['width']) : parseFloat(el.css('width'));
                     properties['height'] = properties.hasOwnProperty('height') ? parseFloat(properties['height']) : parseFloat(el.css('height'));
                     properties['top'] = properties.hasOwnProperty('top') ? parseFloat(properties['top']) : parseFloat(el.css('top'));
@@ -6381,9 +6815,7 @@ var e2pdf = {
             }
             return properties;
         },
-        /*
-         * e2pdf.properties.render
-         */
+        // e2pdf.properties.render
         render: function (el) {
             var properties = e2pdf.properties.get(el);
             var children = e2pdf.element.children(el);
@@ -6400,33 +6832,35 @@ var e2pdf = {
                     }
                 }
             }
-
             switch (el.data('data-type')) {
                 case 'e2pdf-html':
-                    if (children.is('textarea') && e2pdf.helper.getCheckbox(properties['wysiwyg_disable']) != '1') {
+                    var wysiwyg_source = !jQuery('.e2pdf-wysiwyg-source').hasClass('e2pdf-inactive');
+                    if (children.is('textarea') && e2pdf.helper.getCheckbox(properties['wysiwyg_disable']) != '1' && !wysiwyg_source) {
                         children.replaceWith(jQuery('<div>', {'contenteditable': true, 'class': 'content e2pdf-html e2pdf-inner-element'}));
                         children = e2pdf.element.children(el);
-                    } else if (children.is('div') && e2pdf.helper.getCheckbox(properties['wysiwyg_disable']) == '1') {
+                    } else if (children.is('div') && (e2pdf.helper.getCheckbox(properties['wysiwyg_disable']) == '1' || wysiwyg_source)) {
                         children.replaceWith(jQuery('<textarea>', {'contenteditable': true, 'class': 'content e2pdf-html e2pdf-inner-element'}));
                         children = e2pdf.element.children(el);
                     }
-                    if (e2pdf.helper.getCheckbox(properties['wysiwyg_disable']) == '1') {
+                    if (e2pdf.helper.getCheckbox(properties['wysiwyg_disable']) == '1' || wysiwyg_source) {
+                        e2pdf.helper.css(e2pdf.helper.getInt(el.attr('data-element_id')), '');
                         children.val(e2pdf.helper.getString(properties['value']));
                     } else {
+                        e2pdf.helper.css(e2pdf.helper.getInt(el.attr('data-element_id')), e2pdf.helper.getString(properties['css']));
                         children.html(e2pdf.helper.getString(properties['value']));
                     }
                     break;
-
                 case 'e2pdf-page-number':
                     children.html(e2pdf.helper.getString(properties['value']).replace('[e2pdf-page-number]', '1').replace('[e2pdf-page-total]', '2'));
                     break;
-
+                case 'e2pdf-link':
+                    children.text(e2pdf.helper.getString(properties['link_label']));
+                    break;
                 case 'e2pdf-input':
                 case 'e2pdf-textarea':
                 case 'e2pdf-select':
                     children.val(e2pdf.helper.getString(properties['value']));
                     break;
-
                 case 'e2pdf-checkbox':
                     if (e2pdf.helper.getString(properties['value']) == e2pdf.helper.getString(properties['option'])) {
                         children.prop('checked', true);
@@ -6435,7 +6869,7 @@ var e2pdf = {
                     }
                     break;
                 case 'e2pdf-radio':
-                    jQuery('#e2pdf-tpl').find('.e2pdf-radio').each(function () {
+                    jQuery('.e2pdf-tpl').find('.e2pdf-radio').each(function () {
                         var radio = jQuery(this).parent();
                         var radio_properties = e2pdf.properties.get(radio);
                         if (e2pdf.helper.getString(radio_properties['group']) === e2pdf.helper.getString(properties['group'])) {
@@ -6468,7 +6902,6 @@ var e2pdf = {
             }
 
             el.css('z-index', e2pdf.helper.getInt(properties['z_index']));
-
             if (el.data('data-type') === 'e2pdf-select' ||
                     el.data('data-type') === 'e2pdf-input' ||
                     el.data('data-type') === 'e2pdf-textarea' ||
@@ -6505,7 +6938,6 @@ var e2pdf = {
             el.css('padding-left', e2pdf.helper.getInt(properties['padding_left']) + 'px');
             el.css('padding-right', e2pdf.helper.getInt(properties['padding_right']) + 'px');
             el.css('padding-bottom', e2pdf.helper.getInt(properties['padding_bottom']) + 'px');
-
             if (el.data('data-type') === 'e2pdf-html' || el.data('data-type') === 'e2pdf-page-number') {
                 el.css('color', e2pdf.helper.getString(properties['text_color']));
             } else if (el.data('data-type') === 'e2pdf-input' ||
@@ -6517,9 +6949,8 @@ var e2pdf = {
                 children.css('color', e2pdf.helper.getString(properties['text_color']));
             }
 
-
             if (e2pdf.helper.getString(properties['text_font'])) {
-                var path = jQuery('#e2pdf-wysiwyg-font').find("[value='" + e2pdf.helper.getString(properties['text_font']) + "']").attr('path');
+                var path = jQuery('.e2pdf-wysiwyg-font').find("[value='" + e2pdf.helper.getString(properties['text_font']) + "']").attr('path');
                 if (typeof path === 'undefined') {
                     el.css('font-family', '');
                 } else {
@@ -6531,22 +6962,18 @@ var e2pdf = {
                 el.css('font-family', '');
             }
 
-
             el.css('font-size', e2pdf.helper.getString(properties['text_font_size'], '', 'px'));
             el.css('letter-spacing', e2pdf.helper.getString(properties['text_letter_spacing']), '', 'px');
             children.css('text-align', e2pdf.helper.getString(properties['text_align']) ? e2pdf.helper.getString(properties['text_align']) : jQuery('#e2pdf-text-align').val());
-
             if (el.data('data-type') === 'e2pdf-textarea') {
                 children.css('line-height', e2pdf.helper.getString(properties['text_line_height']) && e2pdf.helper.getString(properties['text_line_height']) != '0' ? e2pdf.helper.getString(properties['text_line_height']) + 'px' : '');
             } else {
                 el.css('line-height', e2pdf.helper.getString(properties['text_line_height']) && e2pdf.helper.getString(properties['text_line_height']) != '0' ? e2pdf.helper.getString(properties['text_line_height']) + 'px' : '');
             }
 
-
             if (el.closest('.e2pdf-page').length > 0) {
                 var page_w = e2pdf.helper.getFloat(el.closest('.e2pdf-page').css('width'));
                 var page_h = e2pdf.helper.getFloat(el.closest('.e2pdf-page').css('height'));
-
                 var height = e2pdf.helper.getFloat(properties['top']) + e2pdf.helper.getFloat(el.css('height'));
                 if (height > page_h) {
                     var top = page_h - e2pdf.helper.getFloat(el.css('height'));
@@ -6594,18 +7021,14 @@ var e2pdf = {
         }
 
     },
-    /*
-     * e2pdf.welcomeScreen
-     */
+    // e2pdf.welcomeScreen
     welcomeScreen: function () {
         if (jQuery('.e2pdf-page').length === 0) {
             var el = jQuery('<div>', {'data-modal': 'welcome-screen'});
             e2pdf.dialog.create(el);
         }
     },
-    /*
-     * e2pdf.createPdf
-     */
+    // e2pdf.createPdf
     createPdf: function (el) {
         var item = false;
         var item1 = false;
@@ -6656,13 +7079,13 @@ var e2pdf = {
         if (action === 'apply') {
             var width = parseFloat(el.closest('form').find('input[name="width"]').val());
             var height = parseFloat(el.closest('form').find('input[name="height"]').val());
-            var option = el.closest('form').find('#e2pdf-item option:selected');
+            var option = el.closest('form').find('.e2pdf-item option:selected');
             if (option && typeof option.data('data-item') !== 'undefined') {
                 item = option.data('data-item');
             }
 
             if (item && item.id == '-1') {
-                if (!confirm(e2pdf_lang['All Field Values will be overwritten! Are you sure want to continue?'])) {
+                if (!confirm(e2pdf.lang.get('All Field Values will be overwritten! Continue?'))) {
                     return false;
                 }
                 el.attr('form-id', 'e2pdf-build-form');
@@ -6672,7 +7095,7 @@ var e2pdf = {
                 return;
             } else {
                 if (item && item.id == '-2') {
-                    var option1 = el.closest('form').find('#e2pdf-item1 option:selected');
+                    var option1 = el.closest('form').find('.e2pdf-item1 option:selected');
                     if (option1 && typeof option1.data('data-item') !== 'undefined') {
                         item1 = option1.data('data-item');
                         if (item1.id == '-1') {
@@ -6680,7 +7103,7 @@ var e2pdf = {
                         }
                     }
 
-                    var option2 = el.closest('form').find('#e2pdf-item2 option:selected');
+                    var option2 = el.closest('form').find('.e2pdf-item2 option:selected');
                     if (option2 && typeof option2.data('data-item') !== 'undefined') {
                         item2 = option2.data('data-item');
                         if (item2.id == '-1') {
@@ -6695,7 +7118,7 @@ var e2pdf = {
         } else if (action === 'empty') {
             var width = parseFloat(el.closest('form').find('input[name="width"]').val());
             var height = parseFloat(el.closest('form').find('input[name="height"]').val());
-            var option = el.closest('form').find('#e2pdf-item option:selected');
+            var option = el.closest('form').find('.e2pdf-item option:selected');
             if (option && typeof option.data('data-item') !== 'undefined') {
                 item = option.data('data-item');
                 if (item.id == '-1') {
@@ -6704,7 +7127,7 @@ var e2pdf = {
             }
 
             if (item && item.id == '-2') {
-                var option1 = el.closest('form').find('#e2pdf-item1 option:selected');
+                var option1 = el.closest('form').find('.e2pdf-item1 option:selected');
                 if (option1 && typeof option1.data('data-item') !== 'undefined') {
                     item1 = option1.data('data-item');
                     if (item1.id == '-1') {
@@ -6712,7 +7135,7 @@ var e2pdf = {
                     }
                 }
 
-                var option2 = el.closest('form').find('#e2pdf-item2 option:selected');
+                var option2 = el.closest('form').find('.e2pdf-item2 option:selected');
                 if (option2 && typeof option2.data('data-item') !== 'undefined') {
                     item2 = option2.data('data-item');
                     if (item2.id == '-1') {
@@ -6725,8 +7148,8 @@ var e2pdf = {
             e2pdf.pages.createPage();
             jQuery('.ui-dialog-content').dialog('close');
         } else if (action === 'auto') {
-            var extension = el.closest('form').find('#e2pdf-extension').val();
-            var option = el.closest('form').find('#e2pdf-item option:selected');
+            var extension = el.closest('form').find('.e2pdf-extension').val();
+            var option = el.closest('form').find('.e2pdf-item option:selected');
             if (option && typeof option.data('data-item') !== 'undefined') {
                 item = option.data('data-item');
                 if (item.id == '-1') {
@@ -6735,7 +7158,7 @@ var e2pdf = {
             }
 
             if (item && item.id == '-2') {
-                var option1 = el.closest('form').find('#e2pdf-item1 option:selected');
+                var option1 = el.closest('form').find('.e2pdf-item1 option:selected');
                 if (option1 && typeof option1.data('data-item') !== 'undefined') {
                     item1 = option1.data('data-item');
                     if (item1.id == '-1') {
@@ -6743,7 +7166,7 @@ var e2pdf = {
                     }
                 }
 
-                var option2 = el.closest('form').find('#e2pdf-item2 option:selected');
+                var option2 = el.closest('form').find('.e2pdf-item2 option:selected');
                 if (option2 && typeof option2.data('data-item') !== 'undefined') {
                     item2 = option2.data('data-item');
                     if (item2.id == '-1') {
@@ -6762,11 +7185,11 @@ var e2pdf = {
             e2pdf.request.submitRequest('e2pdf_auto', el, data);
         } else if (action === 'upload') {
             if (e2pdf.pdf.settings.get('ID')) {
-                if (!confirm(e2pdf_lang['Saved Template will be overwritten! Are you sure want to continue?'])) {
+                if (!confirm(e2pdf.lang.get('Saved Template will be overwritten! Continue?'))) {
                     return false;
                 }
             }
-            jQuery('#e2pdf-upload-pdf').click();
+            jQuery('.e2pdf-upload-pdf').click();
         }
 
         if (action === 'apply' || action === 'empty' || action === 'auto') {
@@ -6774,7 +7197,7 @@ var e2pdf = {
                 'href': 'javascript:void(0);',
                 'class': 'e2pdf-link e2pdf-modal',
                 'data-modal': 'tpl-options'
-            }).html(e2pdf_lang['None']);
+            }).html(e2pdf.lang.get('None'));
             if (item && item.id) {
                 if (item.id == '-2') {
                     if (item1 || item2) {
@@ -6810,21 +7233,17 @@ var e2pdf = {
             jQuery('#e2pdf-post-item').html(link);
         }
 
-        jQuery('#e2pdf-tpl').data('data-type', 'e2pdf-tpl');
+        jQuery('.e2pdf-tpl').data('data-type', 'e2pdf-tpl');
         e2pdf.font.load(jQuery('#e2pdf-font'));
-        e2pdf.font.apply(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-font'));
-        e2pdf.font.size(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-font-size'));
-        e2pdf.font.line(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-line-height'));
-        e2pdf.font.fontcolor(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-font-color'));
+        e2pdf.font.apply(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-font'));
+        e2pdf.font.size(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-font-size'));
+        e2pdf.font.line(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-line-height'));
+        e2pdf.font.fontcolor(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-font-color'));
         e2pdf.event.fire('after.createPdf');
     },
-    /*
-     * e2pdf.pages
-     */
+    // e2pdf.pages
     pages: {
-        /*
-         * e2pdf.pages.rebuildPages
-         */
+        // e2pdf.pages.rebuildPages
         rebuildPages: function () {
             jQuery('.e2pdf-page').each(function (index) {
                 if (!e2pdf.pdf.settings.get('pdf')) {
@@ -6844,9 +7263,7 @@ var e2pdf = {
             });
             e2pdf.welcomeScreen();
         },
-        /*
-         * e2pdf.pages.createPage
-         */
+        // e2pdf.pages.createPage
         createPage: function (page, properties, actions, onload) {
             e2pdf.pages.rebuildPages();
             var newpage = true;
@@ -7011,9 +7428,7 @@ var e2pdf = {
                 return false;
             }
         },
-        /*
-         * e2pdf.pages.movePage
-         */
+        // e2pdf.pages.movePage
         movePage: function (el, direction) {
 
             if (e2pdf.pdf.settings.get('pdf')) {
@@ -7027,17 +7442,13 @@ var e2pdf = {
             e2pdf.event.fire('after.pages.movePage');
             e2pdf.pages.rebuildPages();
         },
-        /*
-         * e2pdf.pages.deletePage
-         */
+        // e2pdf.pages.deletePage
         deletePage: function (el) {
             el.closest('.e2pdf-page').remove();
             e2pdf.event.fire('after.pages.deletePage');
             e2pdf.pages.rebuildPages();
         },
-        /*
-         * e2pdf.pages.changeTplSize
-         */
+        // e2pdf.pages.changeTplSize
         changeTplSize: function (width, height) {
             jQuery('.e2pdf-tpl').attr('data-width', width).attr('data-height', height);
         },
@@ -7063,27 +7474,23 @@ var e2pdf = {
             el.attr('data-height', height);
         }
     },
-    /*
-     * e2pdf.contextMenu
-     */
+    // e2pdf.contextMenu
     contextMenu: function (e, el) {
         e2pdf.delete('.e2pdf-context');
         jQuery('.e2pdf-page').css('z-index', '');
         var menu = jQuery('<div>', {'class': 'e2pdf-context'});
-        var context_menu_width = 120;
-        var sub_context_menu_width = 0;
         if (el.hasClass('e2pdf-page')) {
             var parent = el;
             menu.append(jQuery('<ul>', {'class': 'e2pdf-context-menu'}));
             menu.find('ul.e2pdf-context-menu').append(
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste e2pdf-link', 'type': 'elements', 'disabled': e2pdf.storage.get('elements') !== null ? false : 'disabled'}).html(e2pdf_lang['Paste'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste e2pdf-link', 'type': 'elements', 'disabled': e2pdf.storage.get('elements') !== null ? false : 'disabled'}).html(e2pdf.lang.get('Paste'))
                     ),
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste e2pdf-link', 'type': 'elements-in-place', 'disabled': e2pdf.storage.get('elements') !== null ? false : 'disabled'}).html(e2pdf_lang['Paste in Place'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste e2pdf-link', 'type': 'elements-in-place', 'disabled': e2pdf.storage.get('elements') !== null ? false : 'disabled'}).html(e2pdf.lang.get('Paste in Place'))
                     ),
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-page-options e2pdf-modal', 'data-modal': 'page-options'}).html(e2pdf_lang['Properties'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-page-options e2pdf-modal', 'data-modal': 'page-options'}).html(e2pdf.lang.get('Properties'))
                     )
                     );
         } else {
@@ -7093,77 +7500,75 @@ var e2pdf = {
             }
 
             var parent = el.closest('.e2pdf-page');
-            sub_context_menu_width = 120;
             menu.append(jQuery('<ul>', {'class': 'e2pdf-context-menu'}));
             if (Object.keys(e2pdf.element.selected).length == 1 && el.data('data-type') !== 'e2pdf-rectangle' && el.data('data-type') !== 'e2pdf-page-number') {
                 if (el.hasClass('e2pdf-focused') && (el.data('data-type') === 'e2pdf-input' || el.data('data-type') === 'e2pdf-textarea' || el.data('data-type') === 'e2pdf-html')) {
                     menu.find('ul.e2pdf-context-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-visual'}).html(e2pdf_lang['Insert Mapped'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-visual'}).html(e2pdf.lang.get('Insert Mapped'))
                             ));
                 } else {
                     menu.find('ul.e2pdf-context-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-visual'}).html(e2pdf_lang['Map Field'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-visual'}).html(e2pdf.lang.get('Map Field'))
                             ));
                 }
             }
 
-            if (Object.keys(e2pdf.element.selected).length == 1 && (el.data('data-type') === 'e2pdf-image' || (el.data('data-type') === 'e2pdf-signature' && !e2pdf.properties.getValue(el, 'esig', 'checkbox')))) {
+            if (Object.keys(e2pdf.element.selected).length == 1 && (el.data('data-type') === 'e2pdf-image' || el.data('data-type') === 'e2pdf-link' || (el.data('data-type') === 'e2pdf-signature' && !e2pdf.properties.getValue(el, 'esig', 'checkbox')))) {
                 menu.find('ul.e2pdf-context-menu').append(
                         jQuery('<li>').append(
-                        jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-upload'}).html(e2pdf_lang['Choose Image'])
+                        jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-upload'}).html(e2pdf.lang.get('Media Library'))
                         ));
             }
 
             menu.find('ul.e2pdf-context-menu').append(
                     jQuery('<li>', {'class': 'e2pdf-inner-context-menu'}).append(
-                    jQuery('<a>', {'href': 'javascript:void(0);'}).append(jQuery('<span>').html(e2pdf_lang['Lock & Hide']), jQuery('<span>', {'class': 'e2pdf-inner-context-arrow'}))
+                    jQuery('<a>', {'href': 'javascript:void(0);'}).append(jQuery('<span>').html(e2pdf.lang.get('Lock / Hide')), jQuery('<span>', {'class': 'e2pdf-inner-context-arrow'}))
                     ,
                     jQuery('<ul>', {'class': 'e2pdf-sub-context-menu'}).append(
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': el.hasClass('e2pdf-locked') ? 'e2pdf-unlock' : 'e2pdf-lock'}).html(el.hasClass('e2pdf-locked') ? e2pdf_lang['Unlock'] : e2pdf_lang['Lock'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': el.hasClass('e2pdf-locked') ? 'e2pdf-unlock' : 'e2pdf-lock'}).html(el.hasClass('e2pdf-locked') ? e2pdf.lang.get('Unlock') : e2pdf.lang.get('Lock'))
                     ),
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': el.hasClass('e2pdf-hide') ? 'e2pdf-unhidden' : 'e2pdf-hidden'}).html(el.hasClass('e2pdf-hide') ? e2pdf_lang['Unhide'] : e2pdf_lang['Hide'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': el.hasClass('e2pdf-hide') ? 'e2pdf-unhidden' : 'e2pdf-hidden'}).html(el.hasClass('e2pdf-hide') ? e2pdf.lang.get('Unhide') : e2pdf.lang.get('Hide'))
                     ))
                     ));
             menu.find('ul.e2pdf-context-menu').append(
                     jQuery('<li>', {'class': 'e2pdf-inner-context-menu'}).append(
-                    jQuery('<a>', {'href': 'javascript:void(0);'}).append(jQuery('<span>').html(e2pdf_lang['Copy']), jQuery('<span>', {'class': 'e2pdf-inner-context-arrow'}))
+                    jQuery('<a>', {'href': 'javascript:void(0);'}).append(jQuery('<span>').html(e2pdf.lang.get('Copy')), jQuery('<span>', {'class': 'e2pdf-inner-context-arrow'}))
                     ,
                     jQuery('<ul>', {'class': 'e2pdf-sub-context-menu e2pdf-copy-menu'}).append(
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'elements'}).html(Object.keys(e2pdf.element.selected).length > 1 ? e2pdf_lang['Elements'] : e2pdf_lang['Element'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'elements'}).html(Object.keys(e2pdf.element.selected).length > 1 ? e2pdf.lang.get('Elements') : e2pdf.lang.get('Element'))
                     ))
                     ),
                     jQuery('<li>', {'class': 'e2pdf-inner-context-menu e2pdf-paste-menu e2pdf-hide'}).append(
-                    jQuery('<a>', {'href': 'javascript:void(0);'}).append(jQuery('<span>').html(e2pdf_lang['Paste']), jQuery('<span>', {'class': 'e2pdf-inner-context-arrow'}))
+                    jQuery('<a>', {'href': 'javascript:void(0);'}).append(jQuery('<span>').html(e2pdf.lang.get('Paste')), jQuery('<span>', {'class': 'e2pdf-inner-context-arrow'}))
                     ,
                     jQuery('<ul>', {'class': 'e2pdf-sub-context-menu e2pdf-paste-menu'})
                     ),
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-resize'}).html(e2pdf_lang['Resize'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-resize'}).html(e2pdf.lang.get('Resize'))
                     ),
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-cut'}).html(e2pdf_lang['Cut'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-cut'}).html(e2pdf.lang.get('Cut'))
                     ),
                     jQuery('<li>').append(
-                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-delete'}).html(e2pdf_lang['Delete'])
+                    jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-delete'}).html(e2pdf.lang.get('Delete'))
                     ));
-
             if (Object.keys(e2pdf.element.selected).length == 1 || e2pdf.storage.get('style') !== null) {
                 if (Object.keys(e2pdf.element.selected).length == 1) {
                     menu.find('ul.e2pdf-copy-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'style'}).html(e2pdf_lang['Style'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'style'}).html(e2pdf.lang.get('Style'))
                             ));
                 }
                 if (e2pdf.storage.get('style') !== null) {
                     menu.find('li.e2pdf-paste-menu').removeClass('e2pdf-hide');
                     menu.find('ul.e2pdf-paste-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste', 'type': 'style'}).html(e2pdf_lang['Style'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste', 'type': 'style'}).html(e2pdf.lang.get('Style'))
                             ));
                 }
             }
@@ -7172,14 +7577,14 @@ var e2pdf = {
                 if (Object.keys(e2pdf.element.selected).length == 1) {
                     menu.find('ul.e2pdf-copy-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'width'}).html(e2pdf_lang['Width'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'width'}).html(e2pdf.lang.get('Width'))
                             ));
                 }
                 if (e2pdf.storage.get('width') != null) {
                     menu.find('li.e2pdf-paste-menu').removeClass('e2pdf-hide');
                     menu.find('ul.e2pdf-paste-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste', 'type': 'width'}).html(e2pdf_lang['Width'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste', 'type': 'width'}).html(e2pdf.lang.get('Width'))
                             ));
                 }
             }
@@ -7189,7 +7594,7 @@ var e2pdf = {
                 if (Object.keys(e2pdf.element.selected).length == 1) {
                     menu.find('ul.e2pdf-copy-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'height'}).html(e2pdf_lang['Height'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'height'}).html(e2pdf.lang.get('Height'))
                             ));
                 }
 
@@ -7197,7 +7602,7 @@ var e2pdf = {
                     menu.find('li.e2pdf-paste-menu').removeClass('e2pdf-hide');
                     menu.find('ul.e2pdf-paste-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste', 'type': 'height'}).html(e2pdf_lang['Height'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste', 'type': 'height'}).html(e2pdf.lang.get('Height'))
                             ));
                 }
             }
@@ -7207,7 +7612,7 @@ var e2pdf = {
                 if (Object.keys(e2pdf.element.selected).length == 1) {
                     menu.find('ul.e2pdf-copy-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'actions'}).html(e2pdf_lang['Actions'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-copy', 'type': 'actions'}).html(e2pdf.lang.get('Actions'))
                             ));
                 }
 
@@ -7215,7 +7620,7 @@ var e2pdf = {
                     menu.find('li.e2pdf-paste-menu').removeClass('e2pdf-hide');
                     menu.find('ul.e2pdf-paste-menu').append(
                             jQuery('<li>').append(
-                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste', 'type': 'actions'}).html(e2pdf_lang['Actions'])
+                            jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-paste', 'type': 'actions'}).html(e2pdf.lang.get('Actions'))
                             ));
                 }
             }
@@ -7223,38 +7628,34 @@ var e2pdf = {
             if (Object.keys(e2pdf.element.selected).length == 1) {
                 menu.find('ul.e2pdf-context-menu').append(
                         jQuery('<li>').append(
-                        jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-properties e2pdf-modal', 'data-modal': 'properties'}).html(e2pdf_lang['Properties'])
+                        jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-properties e2pdf-modal', 'data-modal': 'properties'}).html(e2pdf.lang.get('Properties'))
                         ));
             }
         }
-
         parent.css('z-index', '1');
+        menu.hide().appendTo(parent);
         var pos_x = (e.pageX - parent.offset().left) / e2pdf.zoom.zoom;
-        if ((parent.closest('.e2pdf-tpl').width() - 20 < e.pageX - parent.closest('.e2pdf-tpl').offset().left + (context_menu_width * e2pdf.zoom.zoom) + (sub_context_menu_width * e2pdf.zoom.zoom)) && (e.pageX - parent.closest('.e2pdf-tpl').offset().left > (context_menu_width * e2pdf.zoom.zoom) + (sub_context_menu_width * e2pdf.zoom.zoom))) {
-            pos_x = pos_x - context_menu_width;
-            menu.find('ul.e2pdf-context-menu').addClass('e2pdf-contenxt-menu-right');
+        if ((parent.closest('.e2pdf-tpl').width() - 20 < e.pageX - parent.closest('.e2pdf-tpl').offset().left + (menu.width() * e2pdf.zoom.zoom * 2)) && (e.pageX - parent.closest('.e2pdf-tpl').offset().left > (menu.width() * e2pdf.zoom.zoom * 2))) {
+            pos_x = pos_x - menu.width();
+            menu.find('ul.e2pdf-context-menu').addClass('e2pdf-context-right');
         }
         var pos_y = (e.pageY - parent.offset().top) / e2pdf.zoom.zoom;
+        if ((parent.closest('.e2pdf-tpl').height() - 20 < e.pageY - parent.closest('.e2pdf-tpl').offset().top + (menu.height() * e2pdf.zoom.zoom * 2)) && (e.pageY - parent.closest('.e2pdf-tpl').offset().top > (menu.height() * e2pdf.zoom.zoom * 2))) {
+            pos_y = pos_y - menu.height();
+            menu.addClass('e2pdf-context-bottom');
+        }
         menu.css({top: pos_y + "px", left: pos_x + "px"});
-        menu.appendTo(parent);
+        menu.show();
     },
-    /*
-     * e2pdf.delete
-     */
+    // e2pdf.delete
     delete: function (el) {
         jQuery(el).remove();
     },
-    /*
-     * e2pdf.element
-     */
+    // e2pdf.element
     element: {
-        /*
-         * e2pdf.element.selected
-         */
+        // e2pdf.element.selected
         selected: [],
-        /*
-         * e2pdf.element.init
-         */
+        // e2pdf.element.init
         init: function (el) {
             if (el.data('data-type') === 'e2pdf-html') {
                 if (e2pdf.properties.getValue(el, 'wysiwyg_disable', 'checkbox') == '1') {
@@ -7270,9 +7671,7 @@ var e2pdf = {
             e2pdf.properties.set(el, 'width', parseFloat(el.css('width')));
             e2pdf.properties.set(el, 'height', parseFloat(el.css('height')));
         },
-        /*
-         * e2pdf.element.create
-         */
+        // e2pdf.element.create
         create: function (type, page, properties, actions, default_properties, onload, element_id) {
             var size = parseFloat(jQuery('#e2pdf-line-height').val()) + 4;
             var min_height = 2;
@@ -7284,7 +7683,6 @@ var e2pdf = {
             if (!actions) {
                 actions = {};
             }
-
             switch (type) {
                 case 'e2pdf-input':
                     if (default_properties) {
@@ -7462,7 +7860,6 @@ var e2pdf = {
                                 );
                     }
                     break;
-
                 case 'e2pdf-image':
                     if (default_properties) {
                         if (!properties.hasOwnProperty('dimension')) {
@@ -7478,7 +7875,7 @@ var e2pdf = {
                             properties['vertical'] = 'bottom';
                         }
                     } else {
-                        /* Backward Compatibility */
+                        // Backward Compatibility
                         if (!properties.hasOwnProperty('block_dimension') && properties.hasOwnProperty('scale') && (properties['scale'] == '1' || properties['scale'] == '2')) {
                             properties['block_dimension'] = '1';
                         }
@@ -7579,7 +7976,7 @@ var e2pdf = {
                             properties['margin_bottom'] = '10';
                         }
                     } else {
-                        /* Backward Compatibility */
+                        // Backward Compatibility
                         if (!properties.hasOwnProperty('scale')) {
                             properties['scale'] = '1';
                         }
@@ -7632,26 +8029,22 @@ var e2pdf = {
                     break;
                 case 'e2pdf-graph':
                     if (default_properties) {
-                        /* Graph */
+                        // Graph
                         properties['g_palette'] = '#1e73be';
                         properties['g_stroke_colour'] = '#000000';
                         properties['g_stroke_width'] = '1';
                         properties['g_sort'] = '1';
-
-                        /* Titles */
+                        // Titles
                         properties['g_graph_title_colour'] = '#000000';
                         properties['g_graph_title_space'] = '10';
-
-                        /* Labels */
+                        // Labels
                         properties['g_label_colour'] = '#000000';
                         properties['g_label_font_size'] = '10';
                         properties['g_label_space'] = '10';
-
-                        /* Markers */
+                        // Markers
                         properties['g_marker_colour'] = '#000000';
                         properties['g_marker_size'] = '3';
-
-                        /* Legend */
+                        // Legend
                         properties['g_legend_back_colour'] = '#ffffff';
                         properties['g_legend_stroke_colour'] = '#000000';
                         properties['g_legend_stroke_width'] = '1';
@@ -7661,15 +8054,13 @@ var e2pdf = {
                         properties['g_legend_colour'] = '#000000';
                         properties['g_legend_font_size'] = '10';
                         properties['g_show_legend'] = '1';
-
-                        /* Grid */
+                        // Grid
                         properties['g_grid_colour'] = '#eeeeee';
                         properties['g_grid_subdivision_colour'] = '#eeeeee';
                         properties['g_minimum_grid_spacing'] = '20';
                         properties['g_show_grid'] = '1';
                         properties['g_show_grid_subdivisions'] = '1';
-
-                        /* Axis */
+                        // Axis
                         properties['g_axis_colour'] = '#000000';
                         properties['g_axis_font_size'] = '12';
                         properties['g_show_axis_v'] = '1';
@@ -7680,22 +8071,17 @@ var e2pdf = {
                         properties['g_axis_overlap'] = '5';
                         properties['g_axis_stroke_width_v'] = '2';
                         properties['g_axis_stroke_width_h'] = '2';
-
-                        /* Bar Label */
+                        // Bar Label
                         properties['g_bar_label_colour'] = '#000000';
                         properties['g_bar_label_font_size'] = '10';
                         properties['g_bar_label_space'] = '3';
                         properties['g_show_bar_labels'] = '1';
-
                         properties['g_project_angle'] = '45';
-
                         properties['margin_top'] = '10';
                         properties['margin_left'] = '10';
                         properties['margin_right'] = '10';
                         properties['margin_bottom'] = '10';
-
                         properties['g_multiline'] = '2';
-
                     }
                     var element = jQuery('<div>', {'class': 'e2pdf-el-wrapper e2pdf-loader e2pdf-resizable', 'width': '250px', height: '150px'}).append(
                             jQuery('<img>', {'class': 'e2pdf-graph e2pdf-inner-element'}),
@@ -7713,7 +8099,7 @@ var e2pdf = {
                 });
                 if (!element_id) {
                     var last_id = 0;
-                    jQuery('#e2pdf-tpl .e2pdf-element').each(function () {
+                    jQuery('.e2pdf-tpl .e2pdf-element').each(function () {
                         var num_id = parseInt(jQuery(this).attr("data-element_id"));
                         if (num_id > last_id) {
                             last_id = num_id;
@@ -8002,16 +8388,12 @@ var e2pdf = {
                 return false;
             }
         },
-        /*
-         * e2pdf.element.children
-         */
+        // e2pdf.element.children
         children: function (el) {
             var children = el.find('.' + el.data('data-type'));
             return children;
         },
-        /*
-         * e2pdf.element.select
-         */
+        // e2pdf.element.select
         select: function (el) {
             var selected = false;
             for (var key in e2pdf.element.selected) {
@@ -8023,11 +8405,8 @@ var e2pdf = {
                 el.addClass('e2pdf-selected');
                 e2pdf.element.selected.push(el);
             }
-        }
-        ,
-        /*
-         * e2pdf.element.unselect
-         */
+        },
+        // e2pdf.element.unselect
         unselect: function (el) {
             if (!el) {
                 jQuery('.e2pdf-selected').removeClass('e2pdf-selected');
@@ -8040,11 +8419,8 @@ var e2pdf = {
                     }
                 }
             }
-        }
-        ,
-        /*
-         * e2pdf.element.unfocus
-         */
+        },
+        // e2pdf.element.unfocus
         unfocus: function (el) {
             e2pdf.wysiwyg.helper.dropSelection();
             if (!el) {
@@ -8057,37 +8433,27 @@ var e2pdf = {
                 el.removeClass('e2pdf-focused');
             }
         },
-        /*
-         * e2pdf.element.focus
-         */
+        // e2pdf.element.focus
         focus: function (el) {
             var el_inner = el.find('.e2pdf-inner-element');
             el_inner.focus();
             el.addClass('e2pdf-focused');
         },
-        /*
-         * e2pdf.element.hide
-         */
+        // e2pdf.element.hide
         hide: function (el) {
             el.addClass('e2pdf-hide');
         },
-        /*
-         * e2pdf.element.show
-         */
+        // e2pdf.element.show
         show: function (el) {
             el.removeClass('e2pdf-hide');
         },
-        /*
-         * e2pdf.element.delete
-         */
+        // e2pdf.element.delete
         delete: function (el) {
             el.remove();
             e2pdf.event.fire('after.element.delete');
         }
     },
-    /*
-     * e2pdf.storage
-     */
+    // e2pdf.storage
     storage: {
         get: function (key) {
             return localStorage.getItem('e2pdf_' + key) !== null ? JSON.parse(localStorage.getItem('e2pdf_' + key)) : null;
@@ -8099,9 +8465,7 @@ var e2pdf = {
             localStorage.removeItem('e2pdf_' + key);
         }
     },
-    /*
-     * e2pdf.copy
-     */
+    // e2pdf.copy
     copy: function (key, el) {
         e2pdf.element.init(el);
         switch (key) {
@@ -8150,9 +8514,7 @@ var e2pdf = {
                 break;
         }
     },
-    /*
-     * e2pdf.paste
-     */
+    // e2pdf.paste
     paste: function (key, el) {
         if (e2pdf.storage.get(key) !== null || (key == 'elements-in-place' && e2pdf.storage.get('elements') !== null)) {
             switch (key) {
@@ -8260,6 +8622,9 @@ var e2pdf = {
                             var buffered = e2pdf.storage.get('elements')[element];
                             var properties = buffered.properties;
                             var top = parseFloat(e2pdf.helper.getFloat(context.css('top')) + (parseFloat(properties['top'] - min_top)));
+                            if (context.hasClass('e2pdf-context-bottom')) {
+                                top += context.height();
+                            }
                             var left = parseFloat(e2pdf.helper.getFloat(context.css('left')) + (parseFloat(properties['left']) - min_left));
                             if ((left + parseFloat(properties['width'])) > parseFloat(page.css('width'))) {
                                 var correction = left - (parseFloat(page.css('width')) - parseFloat(properties['width']));
@@ -8269,7 +8634,6 @@ var e2pdf = {
                                 var correction = top - (parseFloat(page.css('height')) - parseFloat(properties['height']));
                                 top_correction = Math.max(correction, top_correction);
                             }
-
                         }
                     }
                     for (var element in e2pdf.storage.get('elements')) {
@@ -8278,6 +8642,9 @@ var e2pdf = {
                         var actions = buffered.actions;
                         if (key !== 'elements-in-place') {
                             var top = parseFloat(e2pdf.helper.getFloat(context.css('top')) + (parseFloat(properties['top'] - min_top)) - top_correction);
+                            if (context.hasClass('e2pdf-context-bottom')) {
+                                top += context.height();
+                            }
                             var left = parseFloat(e2pdf.helper.getFloat(context.css('left')) + (parseFloat(properties['left']) - min_left) - left_correction);
                             properties['top'] = top;
                             properties['left'] = left;
@@ -8303,13 +8670,9 @@ var e2pdf = {
             }
         }
     },
-    /*
-     * e2pdf.wysiwyg
-     */
+    // e2pdf.wysiwyg
     wysiwyg: {
-        /*
-         * e2pdf.wysiwyg.apply
-         */
+        // e2pdf.wysiwyg.apply
         apply: function (el) {
             var command = el.attr('data-command');
             var node = jQuery(e2pdf.wysiwyg.helper.getSelectedNode());
@@ -8321,15 +8684,14 @@ var e2pdf = {
                 }
                 if (html_node && html_node.find('.e2pdf-html').length > 0) {
                     if (html_node.find('textarea.e2pdf-html').length > 0 || node.is('textarea')) {
-                        alert(e2pdf_lang['WYSIWYG Editor is disabled for this HTML Object']);
+                        alert(e2pdf.lang.get('The WYSIWYG editor is disabled for this HTML object'));
                         return;
                     }
                 } else {
-                    alert(e2pdf_lang['WYSIWYG can be applied only to HTML Object']);
+                    alert(e2pdf.lang.get('WYSIWYG can only be applied within HTML elements'));
                     return;
                 }
             }
-
             if (command === 'H1') {
                 if (node.is("h1") && document.getSelection().toString() === node.text()) {
                     e2pdf.wysiwyg.clear('h1');
@@ -8345,7 +8707,7 @@ var e2pdf = {
                     document.execCommand('insertHTML', false, html);
                 }
             } else if (command === 'createlink') {
-                url = prompt(e2pdf_lang['Enter link here'] + ': ', 'http:\/\/');
+                url = prompt(e2pdf.lang.get('Enter link here') + ': ', 'http:\/\/');
                 document.execCommand(command, false, url);
             } else if (command === 'font-size') {
                 var font_size = el.find('option:selected').html();
@@ -8360,9 +8722,9 @@ var e2pdf = {
                 e2pdf.font.load(el);
                 var font = el.find('option:selected').html();
                 if (node.is("span") && document.getSelection().toString() === node.text()) {
-                    var html = node.css('font-family', '"' + font + '"').prop('outerHTML');
+                    var html = node.css('font-family', font).prop('outerHTML');
                 } else {
-                    var html = jQuery('<span>').html(e2pdf.wysiwyg.helper.getSelectionHtml()).css('font-family', '"' + font + '"').prop('outerHTML');
+                    var html = jQuery('<span>').html(e2pdf.wysiwyg.helper.getSelectionHtml()).css('font-family', font).prop('outerHTML');
                 }
                 document.execCommand('insertHTML', false, html);
                 el.val('');
@@ -8377,12 +8739,9 @@ var e2pdf = {
             } else {
                 document.execCommand(command, false, null);
             }
-
             e2pdf.event.fire('after.wysiwyg.apply');
         },
-        /*
-         * e2pdf.wysiwyg.clear
-         */
+        // e2pdf.wysiwyg.clear
         clear: function (tags) {
             if (!tags) {
                 var tags = "h1,h2";
@@ -8395,13 +8754,9 @@ var e2pdf = {
                 }
             });
         },
-        /*
-         * e2pdf.wysiwyg.helper
-         */
+        // e2pdf.wysiwyg.helper
         helper: {
-            /*
-             * e2pdf.wysiwyg.helper.getSelectedNodes
-             */
+            // e2pdf.wysiwyg.helper.getSelectedNodes
             getSelectedNodes: function () {
                 var nodes = [];
                 if (window.getSelection) {
@@ -8412,9 +8767,7 @@ var e2pdf = {
                 }
                 return nodes;
             },
-            /*
-             * e2pdf.wysiwyg.helper.replaceWithOwnChildren
-             */
+            // e2pdf.wysiwyg.helper.replaceWithOwnChildren
             replaceWithOwnChildren: function (el) {
                 var parent = el.parentNode;
                 while (el.hasChildNodes()) {
@@ -8422,9 +8775,7 @@ var e2pdf = {
                 }
                 parent.removeChild(el);
             },
-            /*
-             * e2pdf.wysiwyg.helper.getRangeSelectedNodes
-             */
+            // e2pdf.wysiwyg.helper.getRangeSelectedNodes
             getRangeSelectedNodes: function (range, includePartiallySelectedContainers) {
                 var node = range.startContainer;
                 var endNode = range.endContainer;
@@ -8452,9 +8803,7 @@ var e2pdf = {
 
                 return rangeNodes;
             },
-            /*
-             * e2pdf.wysiwyg.helper.getSelectedNode
-             */
+            // e2pdf.wysiwyg.helper.getSelectedNode
             getSelectedNode: function () {
                 var node, selection;
                 if (window.getSelection) {
@@ -8471,9 +8820,7 @@ var e2pdf = {
                     return (node.nodeName === "#text" ? node.parentNode : node);
                 }
             },
-            /*
-             * e2pdf.wysiwyg.helper.nextNode
-             */
+            // e2pdf.wysiwyg.helper.nextNode
             nextNode: function (node) {
                 if (node.hasChildNodes()) {
                     return node.firstChild;
@@ -8487,9 +8834,7 @@ var e2pdf = {
                     return node.nextSibling;
                 }
             },
-            /*
-             * e2pdf.wysiwyg.helper.getSelectionHtml
-             */
+            // e2pdf.wysiwyg.helper.getSelectionHtml
             getSelectionHtml: function () {
                 var html = "";
                 if (typeof window.getSelection != 'undefined') {
@@ -8508,9 +8853,7 @@ var e2pdf = {
                 }
                 return html;
             },
-            /*
-             * e2pdf.wysiwyg.helper.saveSelection
-             */
+            // e2pdf.wysiwyg.helper.saveSelection
             saveSelection: function () {
                 if (window.getSelection) {
                     sel = window.getSelection();
@@ -8522,9 +8865,7 @@ var e2pdf = {
                 }
                 return null;
             },
-            /*
-             * e2pdf.wysiwyg.helper.restoreSelection
-             */
+            // e2pdf.wysiwyg.helper.restoreSelection
             restoreSelection: function (range) {
                 if (range) {
                     if (window.getSelection) {
@@ -8536,9 +8877,7 @@ var e2pdf = {
                     }
                 }
             },
-            /*
-             * e2pdf.wysiwyg.helper.dropSelection()
-             */
+            // e2pdf.wysiwyg.helper.dropSelection
             dropSelection: function () {
                 if (window.getSelection) {
                     sel = window.getSelection();
@@ -8547,21 +8886,15 @@ var e2pdf = {
             }
         }
     },
-    /*
-     * e2pdf.visual
-     */
+    // e2pdf.visual
     visual: {
-        /*
-         * e2pdf.visual.mapper
-         */
+        // e2pdf.visual.mapper
         mapper: {
             cursorPosStart: null,
             cursorPosEnd: null,
             cursorRange: null,
             selected: null,
-            /*
-             * e2pdf.visual.mapper.init
-             */
+            // e2pdf.visual.mapper.init
             init: function (el) {
                 if (el.hasClass('e2pdf-focused') && (el.data('data-type') === 'e2pdf-input' || el.data('data-type') === 'e2pdf-textarea' || el.data('data-type') === 'e2pdf-html')) {
                     if (el.find('.e2pdf-inner-element').is('div')) {
@@ -8590,18 +8923,14 @@ var e2pdf = {
                 var modal = jQuery('<div>', {'data-modal': 'visual-mapper'});
                 e2pdf.dialog.create(modal);
             },
-            /*
-             * e2pdf.visual.mapper.markup
-             */
+            // e2pdf.visual.mapper.markup
             markup: function () {
                 e2pdf.dialog.rebuild();
             },
-            /*
-             * e2pdf.visual.mapper.rebuild
-             */
+            // e2pdf.visual.mapper.rebuild
             rebuild: function () {
-                if (jQuery('#e2pdf-vm-content').length > 0) {
-                    var vc_content = jQuery('#e2pdf-vm-content');
+                if (jQuery('.e2pdf-vm-content').length > 0) {
+                    var vc_content = jQuery('.e2pdf-vm-content');
                     if (jQuery('.e2pdf-vm-wrapper').length > 0) {
                         jQuery('.e2pdf-vm-wrapper').remove();
                     }
@@ -8622,7 +8951,7 @@ var e2pdf = {
                     }
 
                     var vc_wrapper = jQuery('<div>', {'class': 'e2pdf-vm-wrapper'});
-                    vc_content.find('input[type="text"], input[type="radio"], input[type="checkbox"], input[type="password"], input[type="url"], input[type="number"], input[type="tel"], input[type="phone"], input[type="credit_card_cvc"], input[type="email"], input[type="color_picker"], input[type="range"], input[type="file"], input[type="date"], input[type="time"], button[type="upload"], textarea, select').each(function () {
+                    vc_content.find('input[type="text"], input[type="radio"], input[type="checkbox"], input[type="password"], input[type="url"], input[type="number"], input[type="tel"], input[type="phone"], input[type="credit_card_cvc"], input[type="email"], input[type="color_picker"], input[type="range"], input[type="file"], input[type="date"], input[type="datetime-local"], input[type="time"], button[type="upload"], textarea, select').each(function () {
                         vc_wrapper.append(e2pdf.visual.mapper.load(jQuery(this)));
                     });
                     vc_content.append(vc_wrapper);
@@ -8631,25 +8960,21 @@ var e2pdf = {
                     }
                 }
             },
-            /*
-             * e2pdf.visual.mapper.clear
-             */
+            // e2pdf.visual.mapper.clear
             clear: function () {
                 if (jQuery('.e2pdf-vm-wrapper').length > 0) {
                     jQuery('.e2pdf-vm-wrapper').remove();
                 }
             },
-            /*
-             * e2pdf.visual.mapper.load
-             */
+            // e2pdf.visual.mapper.load
             load: function (el) {
                 var loaded = false;
                 jQuery('.e2pdf-vm-field').removeClass('e2pdf-hide');
                 if (el.is(":visible") && !el.hasClass('e2pdf-no-vm')) {
                     var width = el.css('width');
                     var height = el.css('height');
-                    var top = el.offset().top - el.closest('#e2pdf-vm-content').offset().top;
-                    var left = el.offset().left - el.closest('#e2pdf-vm-content').offset().left;
+                    var top = el.offset().top - el.closest('.e2pdf-vm-content').offset().top;
+                    var left = el.offset().left - el.closest('.e2pdf-vm-content').offset().left;
                     loaded = jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-vm-element'}).css({
                         'width': width, 'height': height, 'top': top, 'left': left
                     });
@@ -8674,9 +8999,7 @@ var e2pdf = {
                 }
                 return loaded;
             },
-            /*
-             * e2pdf.visual.mapper.apply
-             */
+            // e2pdf.visual.mapper.apply
             apply: function (el) {
                 if (e2pdf.visual.mapper.selected) {
                     var name = el.data('name');
@@ -8734,7 +9057,6 @@ var e2pdf = {
                         e2pdf.properties.render(e2pdf.visual.mapper.selected);
                     }
                 }
-
                 if (e2pdf.static.vm.close) {
                     e2pdf.dialog.close();
                 }
@@ -8748,15 +9070,15 @@ var e2pdf = {
             y: 0
         },
         apply: function (el) {
-            jQuery('#e2pdf-tpl').removeClass(function (index, className) {
+            jQuery('.e2pdf-tpl').removeClass(function (index, className) {
                 return (className.match(/(^|\s)e2pdf-z\S+/g) || []).join(' ');
             });
             if (el.val() !== '100') {
-                jQuery('#e2pdf-tpl').addClass("e2pdf-z" + el.val());
+                jQuery('.e2pdf-tpl').addClass("e2pdf-z" + el.val());
             }
 
             e2pdf.zoom.zoom = el.val() / 100;
-            jQuery('#e2pdf-tpl').scrollLeft(((jQuery('.e2pdf-tpl-inner').width() * e2pdf.zoom.zoom) - jQuery('#e2pdf-tpl').width()) / 2);
+            jQuery('.e2pdf-tpl').scrollLeft(((jQuery('.e2pdf-tpl-inner').width() * e2pdf.zoom.zoom) - jQuery('.e2pdf-tpl').width()) / 2);
         }
     }
 };
@@ -8772,6 +9094,10 @@ jQuery(window).resize(function () {
     this.e2pdfResizeTO = setTimeout(function () {
         jQuery(this).trigger('e2pdfResizeEnd');
     }, 500);
+});
+jQuery(document).on('click', '.notice-dismiss', function (e) {
+    jQuery(this).parent().addClass('e2pdf-hide');
+    jQuery(this).trigger('e2pdfResizeEnd');
 });
 jQuery(window).bind('e2pdfResizeEnd', function () {
     e2pdf.dialog.rebuild();
@@ -8829,7 +9155,7 @@ jQuery(document).ready(function () {
         var actions = jQuery(this).closest('.e2pdf-actions-wrapper').find('.e2pdf-actions');
         var form = jQuery(this).closest('form');
         if (form.attr('id') === 'e2pdf-tpl-actions') {
-            var element = jQuery('#e2pdf-tpl');
+            var element = jQuery('.e2pdf-tpl');
         } else if (form.attr('id') === 'e2pdf-page-options') {
             var element = jQuery('.e2pdf-page[data-page_id="' + form.find('input[name="page_id"]').val() + '"]').first();
         } else {
@@ -8841,7 +9167,7 @@ jQuery(document).ready(function () {
         var action_conditions = jQuery(this).closest('.e2pdf-action');
         var form = jQuery(this).closest('form');
         if (form.attr('id') === 'e2pdf-tpl-actions') {
-            var element = jQuery('#e2pdf-tpl');
+            var element = jQuery('.e2pdf-tpl');
         } else if (form.attr('id') === 'e2pdf-page-options') {
             var element = jQuery('.e2pdf-page[data-page_id="' + form.find('input[name="page_id"]').val() + '"]');
         } else {
@@ -8851,7 +9177,7 @@ jQuery(document).ready(function () {
         e2pdf.actions.conditions.add(element, action_conditions);
     });
     jQuery(document).on('click', '.e2pdf-action-delete', function (e) {
-        if (!confirm(e2pdf_lang['Action will be removed! Are you sure want to continue?'])) {
+        if (!confirm(e2pdf.lang.get('Action will be removed! Continue?'))) {
             return false;
         }
         var action = jQuery(this).closest('.e2pdf-action');
@@ -8864,10 +9190,10 @@ jQuery(document).ready(function () {
     jQuery(document).on('click', '.e2pdf-action-condition-delete', function (e) {
         var action = jQuery(this).closest('.e2pdf-action');
         if (action.find('.e2pdf-condition').length === 1) {
-            alert(e2pdf_lang["Last condition can't be removed"]);
+            alert(e2pdf.lang.get('Last condition can\'t be removed'));
             return false;
         }
-        if (!confirm(e2pdf_lang['Condition will be removed! Are you sure want to continue?'])) {
+        if (!confirm(e2pdf.lang.get('Condition will be removed! Continue?'))) {
             return false;
         }
         var condition = jQuery(this).closest('.e2pdf-condition');
@@ -8877,10 +9203,10 @@ jQuery(document).ready(function () {
         jQuery(this).closest('.e2pdf-grid').find('input[name^="positions"]').val('0');
     });
     jQuery(document).on('click', '.e2pdf-delete-pdf', function (e) {
-        if (!confirm(e2pdf_lang['Pre-uploaded PDF will be removed from E2Pdf Template! Are you sure want to continue?'])) {
+        if (!confirm(e2pdf.lang.get('Pre-uploaded PDF will be removed from E2Pdf Template! Continue?'))) {
             return false;
         }
-        jQuery('#e2pdf-tpl .e2pdf-page').each(function () {
+        jQuery('.e2pdf-tpl .e2pdf-page').each(function () {
             var el = jQuery(this);
             el.css('background', '');
         });
@@ -8889,25 +9215,25 @@ jQuery(document).ready(function () {
     jQuery(document).on('change', '#e2pdf-zoom', function (e) {
         e2pdf.zoom.apply(jQuery(this));
     });
-    jQuery(document).on('change', '#e2pdf-extension', function (e) {
+    jQuery(document).on('change', '.e2pdf-extension', function (e) {
         e2pdf.request.submitRequest('e2pdf_extension', jQuery(this));
     });
-    jQuery(document).on('change', '#e2pdf-item', function (e) {
+    jQuery(document).on('change', '.e2pdf-item', function (e) {
         if (jQuery(this).val() == '-1') {
-            jQuery(this).closest('form').find('#e2pdf-w-apply,#e2pdf-w-empty,#e2pdf-w-auto').attr('disabled', 'disabled');
+            jQuery(this).closest('form').find('.e2pdf-w-apply, .e2pdf-w-empty, .e2pdf-w-auto').attr('disabled', 'disabled');
             jQuery(this).closest('form').find('#e2pdf-item-options').removeClass('e2pdf-hide');
-            jQuery(this).closest('form').find('#e2pdf-item-merged').addClass('e2pdf-hide');
+            jQuery(this).closest('form').find('.e2pdf-item-merged').addClass('e2pdf-hide');
             jQuery('#e2pdf-merged-item-dataset-title').addClass('e2pdf-hide');
             jQuery('#e2pdf-item-dataset-title').removeClass('e2pdf-hide');
         } else if (jQuery(this).val() == '-2') {
-            jQuery(this).closest('form').find('#e2pdf-w-apply,#e2pdf-w-empty,#e2pdf-w-auto').attr('disabled', false);
+            jQuery(this).closest('form').find('.e2pdf-w-apply, .e2pdf-w-empty, .e2pdf-w-auto').attr('disabled', false);
             jQuery(this).closest('form').find('#e2pdf-item-options').addClass('e2pdf-hide');
-            jQuery(this).closest('form').find('#e2pdf-item-merged').removeClass('e2pdf-hide');
+            jQuery(this).closest('form').find('.e2pdf-item-merged').removeClass('e2pdf-hide');
             jQuery('#e2pdf-merged-item-dataset-title').removeClass('e2pdf-hide');
             jQuery('#e2pdf-item-dataset-title').addClass('e2pdf-hide');
         } else {
-            jQuery(this).closest('form').find('#e2pdf-w-apply,#e2pdf-w-empty,#e2pdf-w-auto').attr('disabled', false);
-            jQuery(this).closest('form').find('#e2pdf-item-options,#e2pdf-item-merged').addClass('e2pdf-hide');
+            jQuery(this).closest('form').find('.e2pdf-w-apply, .e2pdf-w-empty, .e2pdf-w-auto').attr('disabled', false);
+            jQuery(this).closest('form').find('#e2pdf-item-options, .e2pdf-item-merged').addClass('e2pdf-hide');
             jQuery('#e2pdf-merged-item-dataset-title').addClass('e2pdf-hide');
             jQuery('#e2pdf-item-dataset-title').removeClass('e2pdf-hide');
         }
@@ -8938,12 +9264,12 @@ jQuery(document).ready(function () {
         e.preventDefault();
         var el = jQuery(this);
         if (el.attr('form-id') == 'e2pdf-build-form' && el.hasClass('restore')) {
-            if (!confirm(e2pdf_lang['Saved Template will be overwritten! Are you sure want to continue?'])) {
+            if (!confirm(e2pdf.lang.get('Saved Template will be overwritten! Continue?'))) {
                 return false;
             }
         }
         if (el.attr('form-id') == 'license_key') {
-            if (el.closest('form').find('input[name="license_key"]').val().trim() == '' && !confirm(e2pdf_lang['Website will be forced to use "FREE" License Key! Are you sure want to continue?'])) {
+            if (el.closest('form').find('input[name="license_key"]').val().trim() == '' && !confirm(e2pdf.lang.get('Website will be forced to use "FREE" License Key! Continue?'))) {
                 return false;
             }
         }
@@ -8958,7 +9284,7 @@ jQuery(document).ready(function () {
         }
     });
     jQuery(document).on('click', '.e2pdf-delete', function (e) {
-        var message = Object.keys(e2pdf.element.selected).length > 1 ? e2pdf_lang['Elements will be removed! Are you sure want to continue?'] : e2pdf_lang['Element will be removed! Are you sure want to continue?'];
+        var message = Object.keys(e2pdf.element.selected).length > 1 ? e2pdf.lang.get('Elements will be removed! Continue?') : e2pdf.lang.get('Element will be removed! Continue?');
         if (!confirm(message)) {
             e2pdf.delete('.e2pdf-context');
             return false;
@@ -9065,18 +9391,104 @@ jQuery(document).ready(function () {
             jQuery(this).addClass('e2pdf-inactive');
         }
     });
+    jQuery(document).on('click', '.e2pdf-wysiwyg-source', function (e) {
+        if (jQuery(this).hasClass('e2pdf-inactive')) {
+            jQuery(this).removeClass('e2pdf-inactive');
+        } else {
+            jQuery(this).addClass('e2pdf-inactive');
+        }
+        jQuery('.e2pdf-html').each(function () {
+            var el = jQuery(this).parent();
+            var children = jQuery(this);
+            if (children.is('textarea')) {
+                e2pdf.properties.set(el, 'value', children.val());
+            } else {
+                e2pdf.properties.set(el, 'value', children.html());
+            }
+            e2pdf.properties.render(el);
+        });
+    });
     jQuery(document).on('click', '.e2pdf-add-page', function (e) {
         if (e2pdf.pdf.settings.get('pdf')) {
-            alert(e2pdf_lang['Adding new pages not available in "Uploaded PDF"']);
+            alert(e2pdf.lang.get('Adding new pages not available in "Uploaded PDF"'));
         } else if (e2pdf_params['license_type'] == 'FREE') {
-            alert(e2pdf_lang['Only 1 page allowed with "FREE" license type']);
+            alert(e2pdf.lang.get('Only single-page PDFs are allowed with the "FREE" license type'));
         } else {
             e2pdf.pages.createPage();
         }
     });
+    jQuery(document).on('click', '.e2pdf-wysiwyg-table', function (e) {
+        e.preventDefault();
+        var gridContainer = jQuery('.e2pdf-wysiwyg-table-grid');
+        if (gridContainer.hasClass('e2pdf-hide')) {
+            var node = jQuery(e2pdf.wysiwyg.helper.getSelectedNode());
+            if (node.hasClass('e2pdf-element')) {
+                var html_node = node;
+            } else {
+                var html_node = node.closest('.e2pdf-element');
+            }
+            if (html_node && html_node.find('.e2pdf-html').length > 0) {
+                if (html_node.find('textarea.e2pdf-html').length > 0 || node.is('textarea')) {
+                    alert(e2pdf.lang.get('The WYSIWYG editor is disabled for this HTML object'));
+                    return;
+                }
+            } else {
+                alert(e2pdf.lang.get('WYSIWYG can only be applied within HTML elements'));
+                return;
+            }
+            e2pdf.static.selectionRange = e2pdf.wysiwyg.helper.saveSelection();
+            gridContainer.removeClass('e2pdf-hide').empty();
+            for (let i = 0; i < 100; i++) {
+                let gridItem = jQuery('<div>');
+                gridItem.on('mouseover', function () {
+                    let rowCol = calculateRowCol(i);
+                    highlightGrid(gridContainer, rowCol.rows, rowCol.cols);
+                });
+                gridItem.on('mouseout', function () {
+                    highlightGrid(gridContainer, 0, 0);
+                });
+                gridItem.on('click', function () {
+                    e2pdf.wysiwyg.helper.restoreSelection(e2pdf.static.selectionRange);
+                    let rowCol = calculateRowCol(i);
+                    let html = '<table>\n';
+                    for (let r = 0; r < rowCol.rows; r++) {
+                        html += '<tr>\n';
+                        for (let c = 0; c < rowCol.cols; c++) {
+                            html += '<td class="r' + r + ' c' + c + '">r' + r + ' c' + c + '</td>\n';
+                        }
+                        html += '</tr>\n';
+                    }
+                    html += '</table>\n';
+                    document.execCommand('insertHTML', false, html);
+                    gridContainer.addClass('e2pdf-hide');
+                    e2pdf.static.selectionRange = e2pdf.wysiwyg.helper.saveSelection();
+                });
+                gridContainer.append(gridItem);
+            }
+            gridContainer.append(jQuery('<span>').text('0x0'));
+        } else {
+            gridContainer.addClass('e2pdf-hide');
+        }
+        function calculateRowCol(index) {
+            let rows = Math.floor(index / 10) + 1;
+            let cols = (index % 10) + 1;
+            return {rows, cols};
+        }
+        function highlightGrid(gridContainer, rows, cols) {
+            gridContainer.find('div').each(function (idx) {
+                let itemRowCol = calculateRowCol(idx);
+                gridContainer.find('span').text(rows + 'x' + cols);
+                if (itemRowCol.rows <= rows && itemRowCol.cols <= cols) {
+                    jQuery(this).addClass('e2pdf-highlight');
+                } else {
+                    jQuery(this).removeClass('e2pdf-highlight');
+                }
+            });
+        }
+    });
     jQuery(document).on('click', '.e2pdf-create-pdf', function (e) {
         if (e2pdf.url.get('revision_id')) {
-            alert(e2pdf_lang['Not Available in Revision Edit Mode']);
+            alert(e2pdf.lang.get('Not Available in Revision Edit Mode'));
             return false;
         }
         e2pdf.createPdf(jQuery(this));
@@ -9089,15 +9501,15 @@ jQuery(document).ready(function () {
     });
     jQuery(document).on('click', '.e2pdf-delete-page', function (e) {
         if (e2pdf.pdf.settings.get('pdf')) {
-            if (!confirm(e2pdf_lang['All pages will be removed! Are you sure want to continue?'])) {
+            if (!confirm(e2pdf.lang.get('All pages will be removed! Continue?'))) {
                 return false;
             }
-            jQuery('#e2pdf-tpl .e2pdf-page').each(function () {
+            jQuery('.e2pdf-tpl .e2pdf-page').each(function () {
                 var el = jQuery(this);
                 e2pdf.pages.deletePage(el);
             });
         } else {
-            if (!confirm(e2pdf_lang['Are you sure want to remove page?'])) {
+            if (!confirm(e2pdf.lang.get('Page will be removed! Continue?'))) {
                 return false;
             }
             var el = jQuery(jQuery(this));
@@ -9105,16 +9517,16 @@ jQuery(document).ready(function () {
         }
     });
     jQuery(document).on('click', '.e2pdf-delete-all-pages', function (e) {
-        if (!confirm(e2pdf_lang['All pages will be removed! Are you sure want to continue?'])) {
+        if (!confirm(e2pdf.lang.get('All pages will be removed! Continue?'))) {
             return false;
         }
-        jQuery('#e2pdf-tpl .e2pdf-page').each(function () {
+        jQuery('.e2pdf-tpl .e2pdf-page').each(function () {
             var el = jQuery(this);
             e2pdf.pages.deletePage(el);
         });
     });
     jQuery(document).on('click', '.e2pdf-delete-font', function (e) {
-        if (!confirm(e2pdf_lang['Are you sure want to remove font?'])) {
+        if (!confirm(e2pdf.lang.get('Font will be removed! Continue?'))) {
             return false;
         }
         var el = jQuery(jQuery(this));
@@ -9139,6 +9551,13 @@ jQuery(document).ready(function () {
             });
             e2pdf.request.submitRequest('e2pdf_dataset', jQuery(this), data);
         }
+    });
+    jQuery(document).on('click', '.e2pdf-datasets-refresh', function (e) {
+        var data = {};
+        data['id'] = jQuery('.e2pdf-export-template').val();
+        data['dataset'] = jQuery(this).closest('.e2pdf-select2-wrapper').find('select').first().val();
+        data['name'] = jQuery(this).closest('.e2pdf-select2-wrapper').find('select').first().attr('name');
+        e2pdf.request.submitRequest('e2pdf_datasets_refresh', jQuery(this), data);
     });
     jQuery(document).on('change', 'fieldset.e2pdf-export-dataset input[type="checkbox"]', function (e) {
         if (jQuery(this).is(':checked')) {
@@ -9165,19 +9584,20 @@ jQuery(document).ready(function () {
     });
     jQuery(document).on('change', '#e2pdf-font', function (e) {
         e2pdf.font.load(jQuery(this));
-        e2pdf.font.apply(jQuery('#e2pdf-tpl'), jQuery(this));
+        e2pdf.font.apply(jQuery('.e2pdf-tpl'), jQuery(this));
     });
     jQuery(document).on('change', '#e2pdf-font-size', function (e) {
-        e2pdf.font.size(jQuery('#e2pdf-tpl'), jQuery(this));
+        e2pdf.font.size(jQuery('.e2pdf-tpl'), jQuery(this));
     });
     jQuery(document).on('change', '#e2pdf-text-align', function (e) {
         var text_align = jQuery(this).val();
-        jQuery('#e2pdf-tpl .e2pdf-element ').each(function () {
+        jQuery('.e2pdf-tpl .e2pdf-element ').each(function () {
             if (
                     jQuery(this).data('data-type') == 'e2pdf-input'
                     || jQuery(this).data('data-type') == 'e2pdf-textarea'
                     || jQuery(this).data('data-type') == 'e2pdf-html'
                     || jQuery(this).data('data-type') == 'e2pdf-page-number'
+                    || jQuery(this).data('data-type') == 'e2pdf-link'
                     ) {
                 if (e2pdf.properties.getValue(jQuery(this), 'text_align', 'string') == '') {
                     var children = e2pdf.element.children(jQuery(this));
@@ -9229,17 +9649,17 @@ jQuery(document).ready(function () {
         jQuery(this).val(prefix + value);
     });
     jQuery(document).on('change', '#e2pdf-font-color', function (e) {
-        e2pdf.font.fontcolor(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-font-color'));
+        e2pdf.font.fontcolor(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-font-color'));
     });
     jQuery(document).on('change', '#e2pdf-rtl', function (e) {
         if (jQuery(this).is(':checked')) {
-            jQuery('#e2pdf-tpl').attr('dir', 'rtl');
+            jQuery('.e2pdf-tpl').attr('dir', 'rtl');
         } else {
-            jQuery('#e2pdf-tpl').attr('dir', false);
+            jQuery('.e2pdf-tpl').attr('dir', false);
         }
     });
     jQuery(document).on('change', '#e2pdf-line-height', function (e) {
-        e2pdf.font.line(jQuery('#e2pdf-tpl'), jQuery(this));
+        e2pdf.font.line(jQuery('.e2pdf-tpl'), jQuery(this));
     });
     jQuery(document).on('click', '.e2pdf-upload', function (e) {
         e.preventDefault();
@@ -9274,39 +9694,39 @@ jQuery(document).ready(function () {
             }
         }
     });
-    jQuery(document).on('change', '#e2pdf-wysiwyg-font-color', function (e) {
+    jQuery(document).on('change', '.e2pdf-wysiwyg-font-color', function (e) {
         e2pdf.wysiwyg.apply(jQuery(this));
     });
-    jQuery(document).on('change', '#e2pdf-wysiwyg-fontsize', function (e) {
+    jQuery(document).on('change', '.e2pdf-wysiwyg-fontsize', function (e) {
         e2pdf.wysiwyg.apply(jQuery(this));
     });
-    jQuery(document).on('change', '#e2pdf-wysiwyg-font', function (e) {
+    jQuery(document).on('change', '.e2pdf-wysiwyg-font', function (e) {
         e2pdf.wysiwyg.apply(jQuery(this));
     });
-    jQuery(document).on('change', '#e2pdf-upload-pdf', function (e) {
-        e2pdf.request.upload('e2pdf_upload', jQuery('#e2pdf-w-upload'));
+    jQuery(document).on('change', '.e2pdf-upload-pdf', function (e) {
+        e2pdf.request.upload('e2pdf_upload', jQuery('.e2pdf-w-upload'));
     });
-    jQuery(document).on('click', '#e2pdf-w-reupload', function (e) {
+    jQuery(document).on('click', '.e2pdf-w-reupload', function (e) {
         if (e2pdf.url.get('revision_id')) {
-            alert(e2pdf_lang['Not Available in Revision Edit Mode']);
+            alert(e2pdf.lang.get('Not Available in Revision Edit Mode'));
             return false;
         }
 
         var message = "";
         if (e2pdf.static.unsaved) {
-            message += e2pdf_lang['WARNING: Template has changes after last save! Changes will be lost!'] + "\r\n";
+            message += e2pdf.lang.get('WARNING: Template has changes after last save! Changes will be lost! Continue?') + "\r\n";
         }
-        message += e2pdf_lang['Saved Template will be overwritten! Are you sure want to continue?'];
+        message += e2pdf.lang.get('Saved Template will be overwritten! Continue?');
         jQuery(this).attr('disabled', 'disabled');
         jQuery(this).closest('form').append(
                 jQuery('<div>', {'class': 'e2pdf-grid e2pdf-confirmation e2pdf-center e2pdf-mb20'}).append(
                 jQuery('<div>', {'class': 'e2pdf-w100 e2pdf-mb5'}).text(message),
                 jQuery('<div>', {'class': 'e2pdf-w100'}).append(
                 jQuery('<div>', {'class': 'e2pdf-ib e2pdf-pr5'}).append(
-                jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-confirmation-confirm e2pdf-link button'}).html(e2pdf_lang['Confirm'])
+                jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-confirmation-confirm e2pdf-link button'}).html(e2pdf.lang.get('Confirm'))
                 ),
                 jQuery('<div>', {'class': 'e2pdf-ib e2pdf-pl5'}).append(
-                jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-confirmation-cancel e2pdf-link button'}).html(e2pdf_lang['Cancel'])
+                jQuery('<a>', {'href': 'javascript:void(0);', 'class': 'e2pdf-confirmation-cancel e2pdf-link button'}).html(e2pdf.lang.get('Cancel'))
                 )
                 )
                 )
@@ -9314,7 +9734,7 @@ jQuery(document).ready(function () {
     });
     jQuery(document).on('change', '#e2pdf-revision', function (e) {
         if (e2pdf.static.unsaved) {
-            if (!confirm(e2pdf_lang['WARNING: Template has changes after last save! Changes will be lost!'])) {
+            if (!confirm(e2pdf.lang.get('WARNING: Template has changes after last save! Changes will be lost!'))) {
                 var revision_id = e2pdf.url.get('revision_id') ? e2pdf.url.get('revision_id') : '0';
                 jQuery(this).val(revision_id);
                 return false;
@@ -9331,44 +9751,44 @@ jQuery(document).ready(function () {
         location.href = url;
     });
     jQuery(document).on('click', '#e2pdf-unlink-license-key', function (e) {
-        if (!confirm(e2pdf_lang['Website will be forced to use "FREE" License Key! Are you sure want to continue?'])) {
+        if (!confirm(e2pdf.lang.get('Website will be forced to use "FREE" License Key! Continue?'))) {
             return false;
         }
-        jQuery(this).next('.spinner').css('visibility', 'visible').fadeIn();
+        jQuery('html').addClass('e2pdf-loading');
         var data = {};
         e2pdf.request.submitRequest('e2pdf_license_key', jQuery(this), data);
     });
     jQuery(document).on('click', '#e2pdf-deactivate-all-templates', function (e) {
-        if (!confirm(e2pdf_lang['All Templates for this Website will be deactivated! Are you sure want to continue?'])) {
+        if (!confirm(e2pdf.lang.get('All Templates for this Website will be deactivated! Continue?'))) {
             return false;
         }
-        jQuery(this).next('.spinner').css('visibility', 'visible').fadeIn();
+        jQuery('html').addClass('e2pdf-loading');
         var data = {};
         e2pdf.request.submitRequest('e2pdf_deactivate_all_templates', jQuery(this), data);
     });
     jQuery(document).on('click', '#e2pdf-restore-license-key', function (e) {
         var data = {};
-        jQuery(this).closest('.e2pdf-notice').html(e2pdf_lang['In Progress...']);
+        jQuery(this).html(e2pdf.lang.get('In Progress...'));
         e2pdf.request.submitRequest('e2pdf_restore_license_key', jQuery(this), data);
     });
     jQuery(document).on('click', '.e2pdf-confirmation-confirm', function (e) {
         jQuery(this).closest('.e2pdf-confirmation').remove();
-        jQuery('#e2pdf-w-reupload').attr('disabled', false);
-        jQuery('#e2pdf-reupload-pdf').click();
+        jQuery('.e2pdf-w-reupload').attr('disabled', false);
+        jQuery('.e2pdf-reupload-pdf').click();
     });
     jQuery(document).on('click', '.e2pdf-confirmation-cancel', function (e) {
         jQuery(this).closest('.e2pdf-confirmation').remove();
-        jQuery('#e2pdf-w-reupload').attr('disabled', false);
+        jQuery('.e2pdf-w-reupload').attr('disabled', false);
     });
-    jQuery(document).on('change', '#e2pdf-reupload-pdf', function (e) {
-        e2pdf.request.upload('e2pdf_reupload', jQuery('#e2pdf-w-reupload'));
+    jQuery(document).on('change', '.e2pdf-reupload-pdf', function (e) {
+        e2pdf.request.upload('e2pdf_reupload', jQuery('.e2pdf-w-reupload'));
     });
     jQuery(document).on('click', '.e2pdf-el-properties input[name="group"]', function (e) {
         jQuery(this).autocomplete("search", "");
     });
     jQuery(document).on('click', '.e2pdf-el-properties input[name="wysiwyg_disable"]', function (e) {
         if (!jQuery(this).is(':checked')) {
-            if (!confirm(e2pdf_lang['Enabling WYSIWYG can affect "HTML" Source'])) {
+            if (!confirm(e2pdf.lang.get('Enabling WYSIWYG can affect "HTML" Source'))) {
                 return false;
             }
         }
@@ -9401,14 +9821,12 @@ jQuery(document).ready(function () {
                 }
             }
         });
-        if (e2pdf.url.get('action') == 'bulk') {
-            dataset_field.find('input[type="checkbox"][value=""]').prop('checked', true).trigger('change');
-            if (dataset_field.find('input[type="checkbox"]').length > 1) {
-                jQuery('.e2pdf-export-form-submit').attr('disabled', false);
-            } else {
-                dataset_field.find('input[type="checkbox"]').attr('disabled', true);
-                jQuery('.e2pdf-export-form-submit').attr('disabled', true);
-            }
+        dataset_field.find('input[type="checkbox"][value=""]').prop('checked', true).trigger('change');
+        if (dataset_field.find('input[type="checkbox"]').length > 1) {
+            jQuery('.e2pdf-export-form-submit').attr('disabled', false);
+        } else {
+            dataset_field.find('input[type="checkbox"]').attr('disabled', true);
+            jQuery('.e2pdf-export-form-submit').attr('disabled', true);
         }
         if (this.datasetLoad) {
             clearTimeout(this.datasetLoad);
@@ -9417,7 +9835,6 @@ jQuery(document).ready(function () {
             dataset_field.trigger('change');
         }, 1000);
     });
-
     jQuery(document).on('change', 'select[name="preset"]', function (e) {
         if (jQuery(this).val() !== '') {
             var form = jQuery(this).closest('form');
@@ -9474,7 +9891,7 @@ jQuery(document).ready(function () {
     });
     jQuery(document).on('click', '.e2pdf-delete-item', function (e) {
         e.preventDefault();
-        if (!confirm(e2pdf_lang['Dataset will be removed! Are you sure want to continue?'])) {
+        if (!confirm(e2pdf.lang.get('Dataset will be removed! Continue?'))) {
             return false;
         }
         var data = {};
@@ -9484,7 +9901,7 @@ jQuery(document).ready(function () {
     });
     jQuery(document).on('click', '.e2pdf-delete-items', function (e) {
         e.preventDefault();
-        if (!confirm(e2pdf_lang['All datasets will be removed! Are you sure to continue?'])) {
+        if (!confirm(e2pdf.lang.get('All datasets will be removed! Continue?'))) {
             return false;
         }
         var data = {};
@@ -9495,17 +9912,17 @@ jQuery(document).ready(function () {
         e.preventDefault();
         switch (jQuery(this).attr('action')) {
             case 'start':
-                if (!confirm(e2pdf_lang['The bulk export task will be started! Are you sure to continue?'])) {
+                if (!confirm(e2pdf.lang.get('The bulk export task will be started! Continue?'))) {
                     return false;
                 }
                 break;
             case 'stop':
-                if (!confirm(e2pdf_lang['The bulk export task will be stopped! Are you sure to continue?'])) {
+                if (!confirm(e2pdf.lang.get('The bulk export task will be stopped! Continue?'))) {
                     return false;
                 }
                 break;
             case 'delete':
-                if (!confirm(e2pdf_lang['The bulk export task will be removed! Are you sure to continue?'])) {
+                if (!confirm(e2pdf.lang.get('The bulk export task will be removed! Continue?'))) {
                     return false;
                 }
                 break;
@@ -9562,7 +9979,6 @@ jQuery(document).ready(function () {
             e2pdf.static.vm.close = false;
         }
     });
-
     jQuery(document).on('paste', '.e2pdf-inner-element[contenteditable="true"]', function (e) {
         if (typeof e.clipboardData != 'undefined') {
             var clipboardData = e.clipboardData;
@@ -9574,12 +9990,20 @@ jQuery(document).ready(function () {
         if (typeof clipboardData.getData('text/plain') != 'undefined') {
             e.preventDefault();
             let data = clipboardData.getData('text/html') || clipboardData.getData('text/plain');
-            let regex = /\s*style=(["'])(.*?)\1/gmi;
-            data = data.replace(regex, '');
+            data = e2pdf.helper.stripHTML(
+                    data,
+                    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                    'div', 'p', 'summary', 'details', 'figure', 'figure', 'figcaption', 'blockquote', 'main',
+                    'span', 'a', 'br',
+                    'b', 's', 'i', 'u', 'em', 'strong', 'small',
+                    'sub', 'sup',
+                    'table', 'th', 'thead', 'tbody', 'tr', 'td',
+                    'ul', 'ol', 'li',
+                    'a'
+                    );
             return document.execCommand('insertHtml', false, data);
         }
     });
-
     if (jQuery('.e2pdf-form-builder > input[name="sub_action"]').length > 0) {
         e2pdf.pdf.settings.set('sub_action', jQuery('.e2pdf-form-builder > input[name="sub_action"]').val());
     }
@@ -9624,15 +10048,16 @@ jQuery(document).ready(function () {
         e2pdf.pdf.settings.set('activated', jQuery('.e2pdf-form-builder > input[name="activated"]').val());
     }
 
+    if (jQuery('.e2pdf-form-builder > input[name="hooks"]').length > 0) {
+        e2pdf.pdf.settings.set('hooks', jQuery('.e2pdf-form-builder > input[name="hooks"]').val());
+    }
+
     jQuery('#e2pdf-zoom').trigger('change');
+
     if (jQuery('body').hasClass('toplevel_page_e2pdf')) {
         if (e2pdf.url.get('id')) {
-            if (jQuery(".e2pdf-export-template option[value=" + e2pdf.url.get('id') + "]").length == 0) {
-                jQuery('.e2pdf-export-template').attr('disabled', false).removeClass('e2pdf-onload').val('0').change();
-            } else {
-                e2pdf.static.autoloadExport = true;
-                jQuery('.e2pdf-export-template').attr('disabled', false).removeClass('e2pdf-onload').val(e2pdf.url.get('id')).change();
-            }
+            e2pdf.select2.val(jQuery('.e2pdf-export-template'), e2pdf.url.get('id'));
+            e2pdf.static.autoloadExport = true;
         }
     }
 
@@ -9667,11 +10092,8 @@ jQuery(document).ready(function () {
 
         if (typeof (jQuery.ui) != 'undefined' && typeof (jQuery.ui.draggable) != 'undefined'
                 && typeof (jQuery.ui.droppable) != 'undefined'
-                && jQuery('#e2pdf-tpl').length > 0) {
-
-            /*
-             * jQuery UI scale bug fix
-             */
+                && jQuery('.e2pdf-tpl').length > 0) {
+            // jQuery UI scale bug fix
             jQuery.ui.ddmanager.prepareOffsets = function (t, event) {
                 var i, j,
                         m = jQuery.ui.ddmanager.droppables[ t.options.scope ] || [],
@@ -9698,40 +10120,36 @@ jQuery(document).ready(function () {
                     m[ i ].proportions({width: m[ i ].element[ 0 ].offsetWidth * e2pdf.zoom.zoom, height: m[ i ].element[ 0 ].offsetHeight * e2pdf.zoom.zoom});
                 }
             };
-            jQuery('#e2pdf-tpl').data('data-type', 'e2pdf-tpl');
-            var actions = JSON.parse(jQuery(".e2pdf-load-tpl").find('.e2pdf-data-actions').text());
-            e2pdf.actions.apply(jQuery('#e2pdf-tpl'), actions);
-            jQuery(".e2pdf-load-tpl").remove();
-            jQuery(".e2pdf-load-el").each(function () {
+            jQuery('.e2pdf-tpl').data('data-type', 'e2pdf-tpl');
+
+            var actions = JSON.parse(jQuery('.e2pdf-load-tpl').find('.e2pdf-data-actions').val());
+            e2pdf.actions.apply(jQuery('.e2pdf-tpl'), actions);
+
+            var properties = JSON.parse(jQuery('.e2pdf-load-tpl').find('.e2pdf-data-properties').val());
+            e2pdf.properties.apply(jQuery('.e2pdf-tpl'), properties);
+            e2pdf.helper.cssGlobal(e2pdf.helper.getString(properties['css']));
+
+            jQuery('.e2pdf-load-tpl').remove();
+            jQuery('.e2pdf-load-el').each(function () {
                 var element = jQuery(this);
                 var type = element.attr('data-type');
                 var page = element.closest('.e2pdf-page');
-                var properties = JSON.parse(element.find('.e2pdf-data-properties').text());
-                var actions = JSON.parse(element.find('.e2pdf-data-actions').text());
+                var properties = JSON.parse(element.find('.e2pdf-data-properties').val());
+                var actions = JSON.parse(element.find('.e2pdf-data-actions').val());
                 properties['width'] = element.attr('data-width');
                 properties['height'] = element.attr('data-height');
                 properties['top'] = element.attr('data-top');
                 properties['left'] = element.attr('data-left');
-                if (type == 'e2pdf-html') {
-                    if (properties['wysiwyg_disable'] == '1') {
-                        properties['value'] = element.find('.e2pdf-data-value').text();
-                    } else {
-                        properties['value'] = element.find('.e2pdf-data-value').html();
-                    }
-                } else if (type == 'e2pdf-page-number') {
-                    properties['value'] = element.find('.e2pdf-data-value').html();
-                } else {
-                    properties['value'] = element.find('.e2pdf-data-value').text();
-                }
-                properties['name'] = element.find('.e2pdf-data-name').text();
+                properties['value'] = element.find('.e2pdf-data-value').val();
+                properties['name'] = element.find('.e2pdf-data-name').val();
                 var el = e2pdf.element.create(type, page, properties, actions, false, true, element.attr('data-element_id'));
                 jQuery(this).replaceWith(el);
                 e2pdf.properties.render(el);
             });
-            jQuery(".e2pdf-load-page").each(function () {
+            jQuery('.e2pdf-load-page').each(function () {
                 var page = jQuery(this);
-                var actions = JSON.parse(page.find('.e2pdf-data-actions').text());
-                var properties = JSON.parse(page.find('.e2pdf-data-properties').text());
+                var actions = JSON.parse(page.find('.e2pdf-data-actions').val());
+                var properties = JSON.parse(page.find('.e2pdf-data-properties').val());
                 page.find('.e2pdf-data-properties').remove();
                 page.find('.e2pdf-data-actions').remove();
                 page.removeClass('e2pdf-load-page');
@@ -9810,10 +10228,10 @@ jQuery(document).ready(function () {
             e2pdf.font.load(jQuery(this));
             jQuery(this).remove();
         });
-        e2pdf.font.apply(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-font'));
-        e2pdf.font.size(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-font-size'));
-        e2pdf.font.line(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-line-height'));
-        e2pdf.font.fontcolor(jQuery('#e2pdf-tpl'), jQuery('#e2pdf-font-color'));
+        e2pdf.font.apply(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-font'));
+        e2pdf.font.size(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-font-size'));
+        e2pdf.font.line(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-line-height'));
+        e2pdf.font.fontcolor(jQuery('.e2pdf-tpl'), jQuery('#e2pdf-font-color'));
     }
 
     jQuery(document).keydown(function (e) {
@@ -9826,9 +10244,7 @@ jQuery(document).ready(function () {
             e.preventDefault();
             switch (e.which) {
                 case 37:
-                    /*
-                     * left
-                     */
+                    // left
                     var diff = 1;
                     for (var key in e2pdf.element.selected) {
                         var selected = e2pdf.element.selected[key];
@@ -9850,9 +10266,7 @@ jQuery(document).ready(function () {
                     }
                     break;
                 case 38:
-                    /*
-                     * top
-                     */
+                    // top
                     var diff = 1;
                     for (var key in e2pdf.element.selected) {
                         var selected = e2pdf.element.selected[key];
@@ -9874,9 +10288,7 @@ jQuery(document).ready(function () {
                     }
                     break;
                 case 39:
-                    /* 
-                     * right
-                     */
+                    // right
                     var diff = 1;
                     for (var key in e2pdf.element.selected) {
                         var selected = e2pdf.element.selected[key];
@@ -9898,9 +10310,7 @@ jQuery(document).ready(function () {
                     }
                     break;
                 case 40:
-                    /*
-                     * down
-                     */
+                    // down
                     var diff = 1;
                     for (var key in e2pdf.element.selected) {
                         var selected = e2pdf.element.selected[key];
@@ -9921,11 +10331,10 @@ jQuery(document).ready(function () {
                         e2pdf.properties.set(selected, 'top', e2pdf.helper.getFloat(selected.css('top')));
                     }
                     break;
+
                 case 46:
-                    /*
-                     * delete
-                     */
-                    var message = Object.keys(e2pdf.element.selected).length > 1 ? e2pdf_lang['Elements will be removed! Are you sure want to continue?'] : e2pdf_lang['Element will be removed! Are you sure want to continue?'];
+                    // delete
+                    var message = Object.keys(e2pdf.element.selected).length > 1 ? e2pdf.lang.get('Elements will be removed! Continue?') : e2pdf.lang.get('Element will be removed! Continue?');
                     if (!confirm(message)) {
                         e2pdf.delete('.e2pdf-context');
                         return false;
@@ -9941,6 +10350,19 @@ jQuery(document).ready(function () {
             }
         }
     });
+
+    jQuery(document).on('click', '.e2pdf-select2', function (e) {
+        e2pdf.select2.init(jQuery(this));
+    });
+
+    jQuery(document).on('click', '.e2pdf-select2-dropdown > div', function (e) {
+        e2pdf.select2.click(jQuery(this));
+    });
+
+    jQuery(document).on('keyup', '.e2pdf-select2', function (e) {
+        e2pdf.select2.filter(jQuery(this));
+    });
+
     jQuery(document).on('mousedown', 'body', function (e) {
         if (!jQuery(e.target).hasClass('e2pdf-drag') &&
                 jQuery(e.target).closest('.e2pdf-context-menu').length == 0 &&
@@ -9956,6 +10378,14 @@ jQuery(document).ready(function () {
         if (jQuery(e.target).closest('.e2pdf-closed').length == 0) {
             jQuery('.e2pdf-closed').each(function () {
                 jQuery(this).removeClass('e2pdf-opened');
+            });
+        }
+        if (!jQuery(e.target).hasClass('e2pdf-wysiwyg-table-grid') && !jQuery(e.target).parent().hasClass('e2pdf-wysiwyg-table-grid')) {
+            jQuery('.e2pdf-wysiwyg-table-grid').addClass('e2pdf-hide');
+        }
+        if (jQuery(e.target).closest('.e2pdf-select2-dropdown').length == 0) {
+            jQuery('.e2pdf-select2-dropdown').each(function () {
+                e2pdf.select2.close(jQuery(this));
             });
         }
     });

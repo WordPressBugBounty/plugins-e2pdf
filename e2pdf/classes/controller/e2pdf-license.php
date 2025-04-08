@@ -59,7 +59,7 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
             if (isset($request['error'])) {
                 $this->add_notification('error', $request['error']);
             } else {
-                $this->add_notification('update', __('License Key updated successfully', 'e2pdf'));
+                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('License Key Updated', 'e2pdf')));
             }
             $response = array(
                 'redirect' => $this->helper->get_url(
@@ -108,9 +108,9 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
                 );
                 $request = $model_e2pdf_api->request();
                 if (isset($request['success'])) {
-                    $this->add_notification('update', __('License Key restored successfully', 'e2pdf'));
+                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('License Key Restored', 'e2pdf')));
                 } else {
-                    $this->add_notification('error', sprintf(__('Restore License Key failed. Please contact support at <a target="_blank" href="%s">%s</a>', 'e2pdf'), 'https://e2pdf.com/support/contact', 'https://e2pdf.com/support/contact'));
+                    $this->add_notification('error', sprintf(__('Failed to Restore License Key. Contact Support at <a target="_blank" href="%s">%s</a>', 'e2pdf'), 'https://e2pdf.com/support/contact', 'https://e2pdf.com/support/contact'));
                 }
                 if (file_exists($file)) {
                     unlink($file);
@@ -142,7 +142,7 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
             if (isset($request['error'])) {
                 $this->add_notification('error', $request['error']);
             } else {
-                $this->add_notification('update', __('Templates deactivated successfully', 'e2pdf'));
+                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Deactivated', 'e2pdf')));
             }
             $response = array(
                 'redirect' => $this->helper->get_url(

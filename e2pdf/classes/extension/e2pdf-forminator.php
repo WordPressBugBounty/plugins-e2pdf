@@ -239,11 +239,13 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
      * @param string $field - Field
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -256,6 +258,10 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
     public function render_shortcodes($value, $field = array()) {
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
         if ($this->verify() && function_exists('forminator_replace_form_data')) {
+            if ($this->get('cached_entry')) {
+                $cached_data = apply_filters('e2pdf_extension_render_forminator_data', $this->get('cached_data'), $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'));
+                $value = $this->replace_foreach($value, $this->get('cached_form'), $this->get('cached_entry'), $cached_data);
+            }
             if (false !== strpos($value, '[')) {
                 $value = $this->helper->load('field')->pre_shortcodes($value, $this, $field);
                 $value = $this->helper->load('field')->inner_shortcodes($value, $this, $field);
@@ -263,7 +269,6 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
             }
             $value = $this->helper->load('field')->do_shortcodes($value, $this, $field);
             if ($this->get('cached_entry')) {
-                $cached_data = apply_filters('e2pdf_extension_render_forminator_data', $this->get('cached_data'), $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'));
                 if (defined('FORMINATOR_VERSION') && version_compare(FORMINATOR_VERSION, '1.16.0', '>=')) {
                     $prepared_data = Forminator_CForm_Front_Action::$prepared_data;
                     Forminator_CForm_Front_Action::$prepared_data = $cached_data;
@@ -297,21 +302,14 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
         );
     }
 
-    /**
-     * Compatibility fix with Forminator 1.16
-     * @param type $content
-     * @param Forminator_Form_Model $custom_form
-     * @param type $data
-     * @return type
-     */
-    public function forminator_replace_form_data($content, $custom_form = null, $entry = null) {
-        $matches = array();
-        $data = Forminator_CForm_Front_Action::$prepared_data;
-        $field_types = Forminator_Core::get_field_types();
-        $suffix_time = array('hours', 'minutes', 'ampm');
-        $suffix_address = array('street_address', 'address_line', 'city', 'state', 'zip', 'country');
-        $suffix_name = array('prefix', 'first-name', 'middle-name', 'last-name');
-        if (preg_match_all('/\{foreach:(group-\d+)\}(.*?)\{\/foreach:(group-\d+)\}/s', $content, $matches)) {
+    public function replace_foreach($content, $custom_form = null, $entry = null, $data = array()) {
+
+        if (strpos($content, '{foreach:') !== false && preg_match_all('/\{foreach:(group-\d+)\}(.*?)\{\/foreach:(group-\d+)\}/s', $content, $matches)) {
+
+            $suffix_time = array('hours', 'minutes', 'ampm');
+            $suffix_address = array('street_address', 'address_line', 'city', 'state', 'zip', 'country');
+            $suffix_name = array('prefix', 'first-name', 'middle-name', 'last-name');
+
             if (isset($matches[0]) && is_array($matches[0])) {
                 foreach ($matches[0] as $key => $match) {
 
@@ -320,7 +318,6 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                     $outer = '';
 
                     if ($group_id) {
-
                         $group_fields = $custom_form->get_grouped_fields($group_id);
                         $original_keys = wp_list_pluck($group_fields, 'slug');
                         $repeater_keys = forminator_get_cloned_field_keys($entry, $original_keys);
@@ -391,7 +388,22 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                 }
             }
         }
+        return $content;
+    }
 
+    /**
+     * Compatibility fix with Forminator 1.16
+     * @param type $content
+     * @param Forminator_Form_Model $custom_form
+     * @param type $data
+     * @return type
+     */
+    public function forminator_replace_form_data($content, $custom_form = null, $entry = null) {
+        $matches = array();
+        $data = Forminator_CForm_Front_Action::$prepared_data;
+        $field_types = Forminator_Core::get_field_types();
+        $suffix_time = array('hours', 'minutes', 'ampm');
+        $suffix_address = array('street_address', 'address_line', 'city', 'state', 'zip', 'country');
         $randomed_field_pattern = 'field-\d+-\d+';
         $increment_field_pattern = sprintf('(%s)-\d+', implode('|', $field_types));
         if (preg_match_all('/\{((' . $randomed_field_pattern . ')|(' . $increment_field_pattern . '))(\-[A-Za-z-_]+)?(:\d+)?(:html)?\}/', $content, $matches)) {
@@ -438,6 +450,11 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                     if (stripos($element_id, 'currency') !== false || stripos($element_id, 'number') !== false) {
                         $field = $custom_form->get_field($element_id, true);
                         $value = Forminator_Field::forminator_number_formatting($field, $data[$element_id]);
+                    } elseif (
+                            false !== stripos($element_id, 'time') &&
+                            ( false !== stripos($element_id, '-hours') || false !== stripos($element_id, '-minutes') )
+                    ) {
+                        $value = str_pad($data[$element_id], 2, '0', STR_PAD_LEFT);
                     } elseif (!empty($entry->draft_id) &&
                             function_exists('forminator_replace_field_data') &&
                             (strpos($element_id, 'radio') === 0 || strpos($element_id, 'select') === 0 || strpos($element_id, 'checkbox') === 0)
@@ -476,11 +493,14 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                     $value = apply_filters('e2pdf_extension_forminator_replace_form_data_address', implode(', ', $address), $element_id, $address, $custom_form, $entry);
                     $content = str_replace($match, $value, $content);
                 } elseif (stripos($element_id, 'time') !== false && !$suffix) {
-
                     $time = array();
                     foreach ($suffix_time as $sub_suffix) {
-                        if (isset($data[$element_id . '-' . $sub_suffix]) && $data[$element_id . '-' . $sub_suffix]) {
-                            $time[$sub_suffix] = $data[$element_id . '-' . $sub_suffix];
+                        if (isset($data[$element_id . '-' . $sub_suffix])) {
+                            if ($sub_suffix == 'hours' || $sub_suffix == 'minutes') {
+                                $time[$sub_suffix] = str_pad($data[$element_id . '-' . $sub_suffix], 2, '0', STR_PAD_LEFT);
+                            } else {
+                                $time[$sub_suffix] = $data[$element_id . '-' . $sub_suffix];
+                            }
                         }
                     }
                     $value = apply_filters('e2pdf_extension_forminator_replace_form_data_time', implode(':', $time), $element_id, $time, $custom_form, $entry);
@@ -642,13 +662,13 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                         $label = '';
                         if ($element['type'] == 'e2pdf-input' || $element['type'] == 'e2pdf-signature') {
                             $type = 'text';
-                            $label = __('Text', 'e2pdf');
+                            $label = 'Text';
                         } elseif ($element['type'] == 'e2pdf-textarea') {
                             $type = 'textarea';
-                            $label = __('Textarea', 'e2pdf');
+                            $label = 'Textarea';
                         } elseif ($element['type'] == 'e2pdf-select') {
                             $type = 'select';
-                            $label = __('Select', 'e2pdf');
+                            $label = 'Select';
                             $options = array();
                             $field_options = array();
                             if (isset($element['properties']['options'])) {
@@ -670,7 +690,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                                 $pages[$page_key]['elements'][$element_key]['value'] = '{checkbox-' . $checkboxes[$field_key]['element_id'] . '}';
                             } else {
                                 $type = 'checkbox';
-                                $label = __('Checkbox', 'e2pdf');
+                                $label = 'Checkbox';
                                 $options = array(
                                     'label' => $element['properties']['option'],
                                     'value' => $element['properties']['option'],
@@ -691,7 +711,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                                 $pages[$page_key]['elements'][$element_key]['value'] = '{radio-' . $radios[$field_key]['element_id'] . '}';
                             } else {
                                 $type = 'radio';
-                                $label = __('Radio', 'e2pdf');
+                                $label = 'Radio';
                                 $options = array(
                                     'label' => $element['properties']['option'],
                                     'value' => '',
@@ -830,20 +850,17 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
         $source = '';
 
         if ($item && class_exists('Forminator_API') && class_exists('Forminator_CForm_Front')) {
-
             $custom_form = Forminator_API::get_form($item);
             if (is_wp_error($custom_form)) {
                 return __('Form could not be found', 'e2pdf');
             }
-
             $view = Forminator_CForm_Front::get_instance();
-
             if (class_exists('Forminator_Custom_Form_Model')) {
                 $view->model = Forminator_Custom_Form_Model::model()->load($item);
             } elseif (class_exists('Forminator_Form_Model')) {
                 $view->model = Forminator_Form_Model::model()->load($item);
             } else {
-                return __('Something went wrong', 'e2pdf');
+                return __('Something went wrong!', 'e2pdf');
             }
 
             $fields = $view->get_fields();
@@ -1194,10 +1211,10 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                     case 'email':
                     case 'phone':
                     case 'url':
-                    case 'upload':
                     case 'number':
                     case 'calculation':
                     case 'date':
+                    case 'currency':
                         /* Multiple name field */
                         if ($field['type'] == 'name' && isset($field['multiple_name']) && $field['multiple_name'] === 'true') {
 
@@ -2749,6 +2766,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                             );
                         }
                         break;
+                    case 'upload':
                     case 'textarea':
                         $elements[] = $this->auto_field(
                                 $field,

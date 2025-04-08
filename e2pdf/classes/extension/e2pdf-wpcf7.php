@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Contact Form 7 Extension
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.21.00
+ * File: /extension/wpcf7.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -20,11 +19,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         'title' => 'Contact Form 7',
     );
 
-    /**
-     * Get info about extension
-     * @param string $key - Key to get assigned extension info value
-     * @return array|string - Extension Key and Title or Assigned extension info value
-     */
+    // info
     public function info($key = false) {
         if ($key && isset($this->info[$key])) {
             return $this->info[$key];
@@ -35,10 +30,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Check if needed plugin active
-     * @return bool - Activated/Not Activated plugin
-     */
+    // active
     public function active() {
         if (defined('E2PDF_WPCF7_EXTENSION') || $this->helper->load('extension')->is_plugin_active('contact-form-7/wp-contact-form-7.php')) {
             return true;
@@ -46,12 +38,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Set option
-     * @param string $key - Key of option
-     * @param string $value - Value of option
-     * @return bool - Status of setting option
-     */
+    // set
     public function set($key, $value) {
         if (!isset($this->options)) {
             $this->options = new stdClass();
@@ -69,9 +56,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 break;
             case 'dataset':
                 global $wpdb;
-                $this->set('cached_entry', false);
                 $this->set('cached_submission', false);
-                $this->set('cached_post', array());
+                $this->set('cached_entry', array());
                 if ($this->get('cached_form') && $this->get('dataset') && $this->get_storing_engine() !== false) {
                     if ($this->get_storing_engine() == '1') {
                         $vxcf_form = new vxcf_form();
@@ -111,7 +97,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                 }
                             }
 
-                            $post = array(
+                            $cached_entry = array(
                                 'posted_data' => $posted_data,
                                 'uploaded_files' => array(),
                                 'meta' => array(
@@ -126,8 +112,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                     'do_not_store' => '',
                                 ),
                             );
-                            $this->set('cached_entry', $entry);
-                            $this->set('cached_post', $post);
+                            $this->set('cached_entry', $cached_entry);
                         }
                     } elseif ($this->get_storing_engine() == '2') {
                         $condition = array(
@@ -139,7 +124,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                         );
                         $where = $this->helper->load('db')->prepare_where($condition);
                         $cfdb = apply_filters('cfdb7_database', $wpdb);
-                        $entry = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . $cfdb->prefix . 'db7_forms' . $where['sql'] . '', $where['filter']));
+                        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                        $entry = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $cfdb->prefix . 'db7_forms`' . $where['sql'] . '', $where['filter']));
                         if ($entry) {
                             $form_value = $this->helper->load('convert')->unserialize($entry->form_value);
                             $posted_data = array();
@@ -161,7 +147,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                 }
                                 $posted_data[$field_key] = $field_value;
                             }
-                            $post = array(
+                            $cached_entry = array(
                                 'posted_data' => $posted_data,
                                 'uploaded_files' => array(),
                                 'meta' => array(
@@ -176,8 +162,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                     'do_not_store' => '',
                                 ),
                             );
-                            $this->set('cached_entry', $entry);
-                            $this->set('cached_post', $post);
+                            $this->set('cached_entry', $cached_entry);
                         }
                     } elseif ($this->get_storing_engine() == '3') {
                         $condition = array(
@@ -193,7 +178,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                             ),
                         );
                         $where = $this->helper->load('db')->prepare_where($condition);
-                        $entry = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . VSZ_CF7_DATA_ENTRY_TABLE_NAME . $where['sql'] . '', $where['filter']));
+                        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                        $entry = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . VSZ_CF7_DATA_ENTRY_TABLE_NAME . '`' . $where['sql'] . '', $where['filter']));
 
                         if (!empty($entry)) {
                             $posted_data = array();
@@ -209,7 +195,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                     $posted_data[$v->name] = stripslashes($v->value);
                                 }
                             }
-                            $post = array(
+                            $cached_entry = array(
                                 'posted_data' => $posted_data,
                                 'uploaded_files' => array(),
                                 'meta' => array(
@@ -224,40 +210,19 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                     'do_not_store' => '',
                                 ),
                             );
-                            $this->set('cached_entry', $entry);
-                            $this->set('cached_post', $post);
+                            $this->set('cached_entry', $cached_entry);
                         }
                     } else {
-                        $condition = array(
-                            'ID' => array(
-                                'condition' => '=',
-                                'value' => $this->get('dataset'),
-                                'type' => '%d',
-                            ),
-                            'extension' => array(
-                                'condition' => '=',
-                                'value' => 'wpcf7',
-                                'type' => '%s',
-                            ),
-                            'item' => array(
-                                'condition' => '=',
-                                'value' => $this->get('item'),
-                                'type' => '%s',
-                            ),
-                        );
-                        $where = $this->helper->load('db')->prepare_where($condition);
-                        $entry = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . $wpdb->prefix . 'e2pdf_datasets' . $where['sql'] . '', $where['filter']));
-                        if ($entry) {
-                            $this->set('cached_entry', $entry);
-                            $this->set('cached_post', $this->helper->load('convert')->unserialize($entry->entry));
+                        $entry = new Model_E2pdf_Dataset();
+                        if ($entry->load($this->get('dataset'), $this->get('item'), 'wpcf7')) {
+                            $this->set('cached_entry', $entry->get('entry'));
                         }
                     }
 
-                    if ($this->get('cached_post')) {
+                    if ($this->get('cached_entry')) {
                         if (WPCF7_Submission::get_instance() == null) {
-                            /*
-                             * Digital Signature For Contact Form 7 PHP Warning Fix
-                             */
+
+                            // Digital Signature For Contact Form 7 PHP Warning Fix
                             remove_filter('wpcf7_validate_signature', 'wpcf7_signature_validation_filter', 10, 2);
                             remove_filter('wpcf7_validate_signature*', 'wpcf7_signature_validation_filter', 10, 2);
 
@@ -272,27 +237,29 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                         if (class_exists('ReflectionProperty')) {
                             $reflection = new ReflectionProperty(get_class($submission), 'posted_data');
                             $reflection->setAccessible(true);
-                            $reflection->setValue($submission, isset($this->get('cached_post')['posted_data']) ? $this->get('cached_post')['posted_data'] : array());
+                            $reflection->setValue($submission, isset($this->get('cached_entry')['posted_data']) ? $this->get('cached_entry')['posted_data'] : array());
 
                             $reflection = new ReflectionProperty(get_class($submission), 'uploaded_files');
                             $reflection->setAccessible(true);
-                            $reflection->setValue($submission, isset($this->get('cached_post')['uploaded_files']) ? $this->get('cached_post')['uploaded_files'] : array());
+                            $reflection->setValue($submission, isset($this->get('cached_entry')['uploaded_files']) ? $this->get('cached_entry')['uploaded_files'] : array());
 
                             // Contact Form Warning fix on $submission->__destruct()
-                            if (defined('WPCF7_VERSION') && WPCF7_VERSION >= '5.8.6' && isset($this->get('cached_post')['uploaded_files'])) {
-                                foreach ((array) $this->get('cached_post')['uploaded_files'] as $file_path) {
+                            if (defined('WPCF7_VERSION') && WPCF7_VERSION >= '5.8.6' && isset($this->get('cached_entry')['uploaded_files'])) {
+                                foreach ((array) $this->get('cached_entry')['uploaded_files'] as $file_path) {
                                     $paths = (array) $file_path;
                                     foreach ($paths as $path) {
+                                        // phpcs:disable WordPress.PHP.NoSilencedErrors.Discouraged
                                         if (!@file_exists($path)) {
                                             @mkdir(dirname($path));
                                         }
+                                        // phpcs:enable
                                     }
                                 }
                             }
 
                             $reflection = new ReflectionProperty(get_class($submission), 'meta');
                             $reflection->setAccessible(true);
-                            $reflection->setValue($submission, isset($this->get('cached_post')['meta']) ? $this->get('cached_post')['meta'] : array());
+                            $reflection->setValue($submission, isset($this->get('cached_entry')['meta']) ? $this->get('cached_entry')['meta'] : array());
                             $this->set('cached_submission', $submission);
                         }
                     }
@@ -304,18 +271,14 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return true;
     }
 
-    /**
-     * Get option by key
-     * @param string $key - Key to get assigned option value
-     * @return mixed
-     */
+    // get
     public function get($key) {
         if (isset($this->options->$key)) {
             $value = $this->options->$key;
         } else {
             switch ($key) {
                 case 'args':
-                case 'cached_post':
+                case 'cached_entry':
                     $value = array();
                     break;
                 default:
@@ -326,9 +289,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Load actions for this extension
-     */
+    // load actions
     public function load_actions() {
         add_action('wpcf7_before_send_mail', array($this, 'action_wpcf7_before_send_mail'), 99, 2);
         add_action('wpcf7_mail_sent', array($this, 'action_wpcf7_mail_sent'));
@@ -336,23 +297,17 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         add_action('vsz_cf7_after_insert_db', array($this, 'action_vsz_cf7_after_insert_db'), 10, 3);
     }
 
+    // load filters
     public function load_filters() {
         add_filter('e2pdf_model_options_get_options_options', array($this, 'filter_e2pdf_model_options_get_options_options'));
         add_filter('vxcf_after_saving_addons', array($this, 'filter_vxcf_after_saving_addons'), 10, 4);
     }
 
-    /**
-     * Get items to work with
-     * @return array() - List of available items
-     */
+    // items
     public function items() {
         $items = array();
         if (class_exists('WPCF7_ContactForm')) {
-            $forms = WPCF7_ContactForm::find(
-                    array(
-                        'posts_per_page' => 99999,
-                    )
-            );
+            $forms = WPCF7_ContactForm::find();
             if ($forms) {
                 foreach ($forms as $key => $form) {
                     $items[] = $this->item($form->id);
@@ -362,11 +317,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $items;
     }
 
-    /**
-     * Get item
-     * @param int $item_id - Item ID
-     * @return object - Item
-     */
+    // item
     public function item($item_id = false) {
         $item_id = (int) $item_id;
         if (!$item_id && $this->get('item')) {
@@ -395,12 +346,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $item;
     }
 
-    /**
-     * Get entries for export
-     * @param string $item_id - Item ID
-     * @param string $name - Entries names
-     * @return array() - Entries list
-     */
+    // datasets
     public function datasets($item_id = false, $name = false) {
         global $wpdb;
         $datasets = array();
@@ -438,7 +384,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
 
                 $cfdb = apply_filters('cfdb7_database', $wpdb);
-                $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . $cfdb->prefix . 'db7_forms' . $where['sql'] . $orderby . '', $where['filter']));
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $cfdb->prefix . 'db7_forms`' . $where['sql'] . $orderby . '', $where['filter']));
 
                 if ($entries) {
                     $this->set('item', $item_id);
@@ -468,7 +415,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 );
                 $where = $this->helper->load('db')->prepare_where($condition);
                 $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-                $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . VSZ_CF7_DATA_ENTRY_TABLE_NAME . $where['sql'] . ' GROUP BY data_id' . $orderby . '', $where['filter']));
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . VSZ_CF7_DATA_ENTRY_TABLE_NAME . '`' . $where['sql'] . ' GROUP BY data_id' . $orderby . '', $where['filter']));
 
                 if ($entries) {
                     $this->set('item', $item_id);
@@ -503,7 +451,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 );
                 $where = $this->helper->load('db')->prepare_where($condition);
                 $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-                $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . $wpdb->prefix . 'e2pdf_datasets' . $where['sql'] . $orderby . '', $where['filter']));
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'e2pdf_datasets`' . $where['sql'] . $orderby . '', $where['filter']));
                 if ($entries) {
                     $this->set('item', $item_id);
                     foreach ($entries as $key => $entry) {
@@ -523,11 +472,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $datasets;
     }
 
-    /**
-     * Get Dataset Actions
-     * @param int $dataset_id - Dataset ID
-     * @return object
-     */
+    // dataset actions
     public function get_dataset_actions($dataset_id = false) {
         global $wpdb;
         $dataset_id = (int) $dataset_id;
@@ -554,7 +499,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             );
             $where = $this->helper->load('db')->prepare_where($condition);
             $cfdb = apply_filters('cfdb7_database', $wpdb);
-            $entry = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . $cfdb->prefix . 'db7_forms' . $where['sql'] . '', $where['filter']));
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+            $entry = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $cfdb->prefix . 'db7_forms`' . $where['sql'] . '', $where['filter']));
             $data->view = $this->helper->get_url(
                     array(
                         'page' => 'cfdb7-list.php',
@@ -573,11 +519,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $data;
     }
 
-    /**
-     * Get Template Actions
-     * @param int $template - Template ID
-     * @return object
-     */
+    // template actions
     public function get_template_actions($template = false) {
         $template = (int) $template;
         if (!$template) {
@@ -592,28 +534,18 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $actions;
     }
 
-    /**
-     * Render value according to content
-     * @param string $value - Content
-     * @param string $type - Type of rendering value
-     * @param array $field - Field details
-     * @return string - Fully rendered value
-     */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    // render
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
-    /**
-     * Render shortcodes which available in this extension
-     * @param string $value - Content
-     * @param string $type - Type of rendering value
-     * @param array $field - Field details
-     * @return string - Value with rendered shortcodes
-     */
+    // render shortcodes
     public function render_shortcodes($value, $field = array()) {
 
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
@@ -637,7 +569,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             add_filter('wpcf7_mail_tag_replaced_uacf7_signature*', array($this, 'filter_wpcf7_file_mail_tag'), 99, 4);
 
             if ($this->get('cached_submission')) {
-                $value = htmlentities($value);
+                $value = htmlentities($value, ENT_NOQUOTES);
                 $value = $this->get('cached_submission')->get_contact_form()->filter_message($value);
                 $value = html_entity_decode($value);
             }
@@ -658,12 +590,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         );
     }
 
-    /**
-     * Convert "shortcodes" inside value string
-     * @param string $value - Value string
-     * @param bool $to - Convert From/To
-     * @return string - Converted value
-     */
+    // convert shortcodes
     public function convert_shortcodes($value, $to = false, $html = false) {
         if ($value) {
             if ($to) {
@@ -678,20 +605,13 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Strip unused shortcodes
-     * @param string $value - Content
-     * @return string - Value with removed unused shortcodes
-     */
+    // strip shortcodes
     public function strip_shortcodes($value) {
         $value = preg_replace('~(?:\[/?)[^/\]]+/?\]~s', '', $value);
         return $value;
     }
 
-    /**
-     * Verify if item and dataset exists
-     * @return bool - item and dataset exists
-     */
+    // verify
     public function verify() {
         if ($this->get('cached_entry')) {
             return true;
@@ -699,10 +619,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Init Visual Mapper data
-     * @return bool|string - HTML data source for Visual Mapper
-     */
+    // visual mapper
     public function visual_mapper() {
 
         $html = '';
@@ -716,9 +633,17 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                     libxml_use_internal_errors(true);
                     $dom = new DOMDocument();
                     if (function_exists('mb_convert_encoding')) {
-                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                        if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                            $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                        } else {
+                            $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                        }
                     } else {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                        if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                            $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                        } else {
+                            $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                        }
                     }
                     libxml_clear_errors();
                 }
@@ -784,16 +709,17 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 foreach ($submit_buttons as $element) {
                     $element->parentNode->removeChild($element);
                 }
-                return $dom->saveHTML();
+                if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                    return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
+                } else {
+                    return $dom->saveHTML();
+                }
             }
         }
         return false;
     }
 
-    /**
-     * Auto Generate of Template for this extension
-     * @return array - List of elements
-     */
+    // auto
     public function auto() {
 
         $response = array();
@@ -821,8 +747,6 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                     case 'tel':
                     case 'number':
                     case 'date':
-                    case 'file':
-                    case 'mfile':
                         $elements[] = $this->auto_field(
                                 $field,
                                 array(
@@ -882,6 +806,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                 )
                         );
                         break;
+                    case 'file':
+                    case 'mfile':
                     case 'textarea':
                         $elements[] = $this->auto_field(
                                 $field,
@@ -1081,12 +1007,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * Element generation for Auto PDF
-     * @param array $field - Field options
-     * @param array $element - Element options
-     * @return array - Element with modified options
-     */
+    // auto field
     public function auto_field($field = false, $element = array()) {
         if (!$field) {
             return false;
@@ -1100,10 +1021,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $element;
     }
 
-    /**
-     * Get styles for generating Map Field function
-     * @return array - List of css files to load
-     */
+    // styles
     public function styles($item_id = false) {
         $styles = array(
             plugins_url('css/extension/wpcf7.css?v=' . time(), $this->helper->get('plugin_file_path')),
@@ -1111,12 +1029,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $styles;
     }
 
-    /**
-     * Delete dataset for template
-     * @param int $template_id - Template ID
-     * @param int $dataset - Dataset ID
-     * @return bool - Result of removing items
-     */
+    // delete item
     public function delete_item($template_id = false, $dataset_id = false) {
         global $wpdb;
         $template = new Model_E2pdf_Template();
@@ -1142,14 +1055,9 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Delete all datasets for Template
-     * @param int $template_id - Template ID
-     * @return bool - Result of removing items
-     */
+    // delete items
     public function delete_items($template_id = false) {
         global $wpdb;
-
         $template = new Model_E2pdf_Template();
         if ($template_id && $template->load($template_id)) {
             if ($template->get('extension') === 'wpcf7' && $template->get('item')) {
@@ -1170,7 +1078,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                     ),
                 );
                 $where = $this->helper->load('db')->prepare_where($condition);
-                $datasets = $wpdb->get_results($wpdb->prepare('SELECT ID FROM ' . $wpdb->prefix . 'e2pdf_datasets' . $where['sql'] . '', $where['filter']));
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                $datasets = $wpdb->get_results($wpdb->prepare('SELECT ID FROM `' . $wpdb->prefix . 'e2pdf_datasets`' . $where['sql'] . '', $where['filter']));
                 foreach ($datasets as $dataset) {
                     $this->delete_item($template_id, $dataset->ID);
                 }
@@ -1180,9 +1089,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return false;
     }
 
+    // save item
     public function save_item() {
-        global $wpdb;
-
         if ($this->get_storing_engine() == '1') {
             if ($this->get('vxcf_entry_id')) {
                 $this->set('dataset', $this->get('vxcf_entry_id'));
@@ -1210,17 +1118,14 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 'do_not_store' => $this->get('submission')->get_meta('do_not_store'),
             );
 
-            $entry = array(
-                'extension' => 'wpcf7',
-                'item' => $this->get('submission')->get_contact_form()->id(),
-                'entry' => serialize(array()),
-            );
-            $wpdb->insert($wpdb->prefix . 'e2pdf_datasets', $entry);
-            $this->set('dataset', $wpdb->insert_id);
+            $entry = new Model_E2pdf_Dataset();
+            $entry->set('extension', 'wpcf7');
+            $entry->set('item', $this->get('submission')->get_contact_form()->id());
+            $dataset = $entry->save();
 
-            if ($this->get('dataset')) {
+            if ($dataset) {
                 if (!empty($uploaded_files)) {
-                    $upload_dir = $this->helper->get('wpcf7_dir') . $this->get('dataset') . '/';
+                    $upload_dir = $this->helper->get('wpcf7_dir') . $dataset . '/';
                     if ($this->helper->create_dir($upload_dir)) {
                         global $wp_filesystem;
                         if (!$wp_filesystem) {
@@ -1231,8 +1136,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                         }
                         foreach ($uploaded_files as $key => $field) {
                             $uploaded_files[$key] = array_map(
-                                    function ($uploaded_file) {
-                                        $upload_dir = $this->helper->get('wpcf7_dir') . $this->get('dataset') . '/';
+                                    function ($uploaded_file) use ($dataset) {
+                                        $upload_dir = $this->helper->get('wpcf7_dir') . $dataset . '/';
                                         $dir = dirname($uploaded_file) . '/';
                                         $new_dir = $upload_dir . basename($dir) . '/';
                                         if (!is_dir($new_dir)) {
@@ -1246,19 +1151,15 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                         }
                     }
                 }
-
                 $data = array(
                     'posted_data' => $posted_data,
                     'uploaded_files' => $uploaded_files,
                     'meta' => $meta,
                 );
-                $entry = array(
-                    'entry' => serialize($data),
-                );
-                $where = array(
-                    'ID' => $this->get('dataset'),
-                );
-                $wpdb->update($wpdb->prefix . 'e2pdf_datasets', $entry, $where);
+                $entry->set('entry', $data);
+                $entry->save();
+
+                $this->set('dataset', $dataset);
             }
         }
     }
@@ -1290,8 +1191,12 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
 
     public function action_wpcf7_before_send_mail($form, &$abort) {
 
+        if ($abort) {
+            return;
+        }
+
         $submission = WPCF7_Submission::get_instance();
-        if (!$submission || $abort) {
+        if (!$submission) {
             return;
         }
 
@@ -1457,7 +1362,6 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                         if (!isset($atts['dataset']) && isset($atts['id'])) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-
                             if ($template->get('extension') === 'wpcf7') {
                                 if (!$this->get('dataset')) {
                                     $this->save_item();
@@ -1505,11 +1409,6 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $replaced;
     }
 
-    /**
-     * Add options for Contact Form 7 extension
-     * @param array $options - List of options
-     * @return array - Updated options list
-     */
     public function filter_e2pdf_model_options_get_options_options($options = array()) {
         $engines = array(
             '0' => 'E2Pdf',
@@ -1540,7 +1439,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         }
 
         $options['wpcf7_group'] = array(
-            'name' => __('Contact Form 7', 'e2pdf'),
+            'name' => 'Contact Form 7',
             'action' => 'extension',
             'group' => 'wpcf7_group',
             'options' => array(
@@ -1558,16 +1457,13 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
     }
 
     /**
-     * Get Active Storing Engine
      * 0 - E2Pdf (default)
      * 1 - Contact Form Entries – Contact Form 7, WPforms and more
      * https://wordpress.org/plugins/contact-form-entries/
      * 2 - Contact Form 7 Database Addon - CFDB7
      * https://wordpress.org/plugins/contact-form-cfdb7/
      * 3 - Advanced Contact form 7 DB
-     * https://wordpress.org/plugins/advanced-cf7-db/
-     * @param array $options - List of options
-     * @return array - Updated options list
+     * https://wordpress.org/plugins/advanced-cf7-db/)
      */
     public function get_storing_engine() {
         if ($this->get('storing_engine') !== false) {

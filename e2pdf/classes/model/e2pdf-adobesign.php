@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf AdobeSign Model
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.02.00
+ * File: /model/e2pdf-adobesign.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -51,7 +50,8 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
                         ),
                     )
             );
-            if ($access_token = $this->request('access_token')) {
+            $access_token = $this->request('access_token');
+            if ($access_token) {
                 set_transient('e2pdf_adobesign_access_token', $access_token, 1800);
                 set_transient('e2pdf_adobesign_refresh_token', $this->provider['refresh_token'], 2592000);
                 $this->provider['access_token'] = $access_token;
@@ -60,10 +60,7 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Request code for refresh_token request
-     * @return array
-     */
+    // get code
     public function get_code() {
         $response = array();
         if ($this->provider['client_id'] && $this->provider['client_secret']) {
@@ -79,13 +76,14 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
             $data = array(
                 'response_type' => 'code',
                 'client_id' => $this->provider['client_id'],
+                // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
                 'redirect_uri' => urlencode(
-                        $this->helper->get_url(
+                        get_option('e2pdf_adobe_api_version') == '1' ? site_url('/e2pdf-rpc/v1/adobe/auth?api_key=' . get_option('e2pdf_adobe_api_key')) : $this->helper->get_url(
                                 array(
                                     'page' => 'e2pdf-settings',
                                     'action' => 'adobesign',
                                 )
-                        )
+                        ),
                 ),
                 'scope' => implode('+', $scopes),
             );
@@ -94,10 +92,7 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * Request refresh_token request
-     * @return array
-     */
+    // get token
     public function get_token() {
         $response = array();
         $this->set(
@@ -105,12 +100,12 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
                     'action' => 'oauth/v2/token',
                     'data' => array(
                         'grant_type' => 'authorization_code',
-                        'redirect_uri' => $this->helper->get_url(
-                                array(
-                                    'page' => 'e2pdf-settings',
-                                    'action' => 'adobesign',
-                                )
-                        ),
+                        'redirect_uri' => get_option('e2pdf_adobe_api_version') == '1' ? site_url('/e2pdf-rpc/v1/adobe/auth?api_key=' . get_option('e2pdf_adobe_api_key')) : $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf-settings',
+                                            'action' => 'adobesign',
+                                        )
+                                ),
                         'client_id' => $this->provider['client_id'],
                         'client_secret' => $this->provider['client_secret'],
                         'code' => $this->provider['code'],
@@ -129,15 +124,12 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
         } elseif (isset($request['error'])) {
             $response['error'] = $request['error'];
         } else {
-            $response['error'] = __('Something went wrong', 'e2pdf');
+            $response['error'] = __('Something went wrong!', 'e2pdf');
         }
         return $response;
     }
 
-    /**
-     * Request to Adobe Sign API
-     * @return array
-     */
+    // request
     public function request($key = false) {
 
         if ($this->api && isset($this->api->action) && ($this->provider['api_access_point'] || $this->api->action == 'oauth/v2/token')) {
@@ -169,6 +161,7 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
             } elseif ($this->api->action == 'api/rest/v5/transientDocuments') {
                 $headers[] = 'Content-Type: multipart/form-data';
             } else {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
                 $json_data = json_encode($data);
                 $headers[] = 'Content-Type: application/json';
                 $headers[] = 'Content-Length: ' . strlen($json_data);
@@ -177,6 +170,7 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
             $request_url = $this->provider['api_access_point'] . $this->api->action;
             $timeout = get_option('e2pdf_connection_timeout', '300');
 
+            // phpcs:disable WordPress.WP.AlternativeFunctions
             $ch = curl_init($request_url);
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
@@ -203,6 +197,7 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
             $curl_errno = curl_errno($ch);
             $curl_error = curl_error($ch);
             curl_close($ch);
+            // phpcs:enable
 
             if ($curl_errno > 0) {
                 $response['error'] = "[{$curl_errno}] {$curl_error}";
@@ -210,7 +205,7 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
                 $result = json_decode($json, true);
                 $response = $result;
                 if (empty($response)) {
-                    $response['error'] = __('Something went wrong', 'e2pdf');
+                    $response['error'] = __('Something went wrong!', 'e2pdf');
                 }
             }
 
@@ -228,18 +223,12 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Remove API Request options
-     */
+    // flush
     public function flush() {
         $this->api = null;
     }
 
-    /**
-     * Set options for API Request
-     * @param string $key - Key
-     * @param mixed $value - Value
-     */
+    // set
     public function set($key, $value = false) {
         if (!$this->api) {
             $this->api = new stdClass();
@@ -252,5 +241,4 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
             $this->api->$key = $value;
         }
     }
-
 }

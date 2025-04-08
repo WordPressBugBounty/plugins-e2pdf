@@ -119,15 +119,16 @@ class Helper_E2pdf_Image {
     }
 
     public function get_optimized_image($file, $field = array()) {
-        if (isset($field['optimization']) && $field['optimization'] != '-1' && isset($field['width']) && isset($field['height'])) {
+        if (!empty($field['properties']['quality']) && $field['properties']['quality'] != '-1' && isset($field['width']) && isset($field['height'])) {
+            $quality = (int) $field['properties']['quality'];
             $editor = wp_get_image_editor($file);
             if (is_wp_error($editor) || !$editor->get_size() || !class_exists('ReflectionProperty')) {
                 return '';
             }
             $image_size = $editor->get_size();
-            if (($image_size['width'] > ($field['width'] * $field['optimization'] )) || ($image_size['height'] > ($field['height'] * $field['optimization'] ))) {
-                $width = (int) $field['width'] * $field['optimization'];
-                $height = (int) $field['height'] * $field['optimization'];
+            if (($image_size['width'] > ((int) $field['width'] * $quality)) || ($image_size['height'] > ((int) $field['height'] * $quality))) {
+                $width = (int) $field['width'] * $quality;
+                $height = (int) $field['height'] * $quality;
             } else {
                 return '';
             }
@@ -171,6 +172,16 @@ class Helper_E2pdf_Image {
             }
         }
         return '';
+    }
+
+    public function get_base64_image($url) {
+        if ($ext = $this->get_extension($url)) {
+            $type = array_search($ext, $this->get_allowed_extensions());
+            if ($type !== false && $body = $this->get_by_url($url)) {
+                return 'data:' . $type . ';base64,' . base64_encode($body);
+            }
+        }
+        return $url;
     }
 
     /**

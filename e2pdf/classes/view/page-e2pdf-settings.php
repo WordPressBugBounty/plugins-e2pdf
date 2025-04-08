@@ -29,8 +29,8 @@ if (!defined('ABSPATH')) {
                             <div class="e2pdf-name"><?php _e('Font', 'e2pdf'); ?>:
                             </div><div class="e2pdf-value">
                                 <input name="font" type="file">
-                                <div class="e2pdf-note"><?php _e('Allowed filetypes', 'e2pdf'); ?>: <strong><?php echo implode(', ', $this->view->allowed_extensions); ?></strong></div>
-                                <div class="e2pdf-note"><?php _e('Max upload filesize', 'e2pdf'); ?>: <strong><?php echo $this->view->upload_max_filesize; ?></strong></div>
+                                <div class="e2pdf-note"><?php _e('Allowed File Types', 'e2pdf'); ?>: <strong><?php echo implode(', ', $this->view->allowed_extensions); ?></strong></div>
+                                <div class="e2pdf-note"><?php _e('Max Upload File Size', 'e2pdf'); ?>: <strong><?php echo $this->view->upload_max_filesize; ?></strong></div>
                             </div>
                         </li>
                         <li>
@@ -42,7 +42,6 @@ if (!defined('ABSPATH')) {
                 </form>
                 <div class="e2pdf-rel">
                     <form>
-                        <div class="e2pdf-form-loader"><span class="spinner"></span></div>
                         <ul class="e2pdf-fonts-list">
                             <li></li>
                             <?php foreach ($this->view->fonts as $key => $value) { ?>
@@ -101,7 +100,7 @@ if (!defined('ABSPATH')) {
                     <li><h2><?php _e('Maintenance', 'e2pdf') ?></h2></li>
                     <li>
                         <div class="e2pdf-name">
-                            <?php _e('Optimize Database', 'e2pdf'); ?>:
+                            <?php _e('Optimize DB', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
                             <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance')); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
@@ -180,92 +179,11 @@ if (!defined('ABSPATH')) {
                             <?php } ?>
                             <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
                             <ul class="e2pdf-options-list">
-                                <?php foreach ($this->view->options as $group_key => $group) { ?>
-                                    <?php foreach ($group['options'] as $option_key => $option_value) { ?>
-                                        <?php if (isset($option_value['header'])) { ?>
-                                            <li><h4><?php echo $option_value['header']; ?></h4></li>
-                                        <?php } ?>
-                                        <?php if ($option_value['type'] != 'hidden') { ?>
-                                            <li>
-                                                <div class="e2pdf-name">
-                                                    <?php
-                                                    if ($option_value['name']) {
-                                                        echo $option_value['name'] . ":";
-                                                    }
-                                                    ?>
-                                                </div><div class="e2pdf-value <?php echo $option_value['type'] == 'checkbox_list' ? 'checkbox_list' : '' ?>">
-                                                    <?php
-                                                    if ($option_value['type'] == 'checkbox') {
-                                                        $this->render('field', 'checkbox', array(
-                                                            'field' => array(
-                                                                'name' => $option_value['key'],
-                                                                'placeholder' => isset($option_value['placeholder']) ? $option_value['placeholder'] : ''
-                                                            ),
-                                                            'value' => isset($option_value['value']) ? $option_value['value'] : '',
-                                                            'checkbox_value' => isset($option_value['checkbox_value']) ? $option_value['checkbox_value'] : '',
-                                                            'default_value' => isset($option_value['default_value']) ? $option_value['default_value'] : '',
-                                                        ));
-                                                    } elseif ($option_value['type'] == 'text') {
-                                                        $this->render('field', 'text', array(
-                                                            'field' => array(
-                                                                'name' => isset($option_value['key']) ? $option_value['key'] : '',
-                                                                'placeholder' => isset($option_value['placeholder']) ? $option_value['placeholder'] : '',
-                                                                'class' => isset($option_value['class']) ? 'e2pdf-w100 ' . $option_value['class'] : 'e2pdf-w100',
-                                                                'readonly' => isset($option_value['readonly']) ? $option_value['readonly'] : false,
-                                                            ),
-                                                            'value' => $option_value['value'],
-                                                            'prefield' => isset($option_value['prefield']) ? $option_value['prefield'] : '',
-                                                        ));
-                                                    } elseif ($option_value['type'] == 'textarea') {
-                                                        $this->render('field', 'textarea', array(
-                                                            'field' => array(
-                                                                'name' => isset($option_value['key']) ? $option_value['key'] : '',
-                                                                'style' => 'height: 100px;',
-                                                                'class' => 'e2pdf-w100',
-                                                                'placeholder' => isset($option_value['placeholder']) ? $option_value['placeholder'] : '',
-                                                            ),
-                                                            'value' => isset($option_value['value']) ? $option_value['value'] : '',
-                                                        ));
-                                                    } elseif ($option_value['type'] == 'select') {
-                                                        $this->render('field', 'select', array(
-                                                            'field' => array(
-                                                                'name' => isset($option_value['key']) ? $option_value['key'] : '',
-                                                                'class' => 'e2pdf-w100'
-                                                            ),
-                                                            'value' => isset($option_value['value']) ? $option_value['value'] : '',
-                                                            'options' => isset($option_value['options']) ? $option_value['options'] : ''
-                                                        ));
-                                                    } elseif ($option_value['type'] == 'checkbox_list') {
-                                                        $this->render('field', 'hidden', array(
-                                                            'field' => array(
-                                                                'name' => $option_value['key'],
-                                                            ),
-                                                            'value' => '',
-                                                        ));
-
-                                                        foreach ($option_value['options'] as $sub_option_key => $sub_option_value) {
-                                                            if ($sub_option_value['type'] == 'checkbox') {
-                                                                $this->render('field', 'checkbox', array(
-                                                                    'field' => array(
-                                                                        'name' => $sub_option_value['key'],
-                                                                        'placeholder' => isset($sub_option_value['placeholder']) ? $sub_option_value['placeholder'] : ''
-                                                                    ),
-                                                                    'value' => isset($sub_option_value['value']) ? $sub_option_value['value'] : '',
-                                                                    'checkbox_value' => isset($sub_option_value['checkbox_value']) ? $sub_option_value['checkbox_value'] : '',
-                                                                    'default_value' => isset($sub_option_value['default_value']) ? $sub_option_value['default_value'] : '',
-                                                                ));
-                                                            }
-                                                        }
-                                                    }
-                                                    ?>
-                                                    <?php if (isset($option_value['description'])) { ?>
-                                                        <div class="e2pdf-small">* <?php echo $option_value['description']; ?></div>
-                                                    <?php } ?>
-                                                </div>
-                                            </li>
-                                        <?php } ?>
-                                    <?php } ?>
-                                <?php } ?>
+                                <?php
+                                $this->render('field', 'group', array(
+                                    'groups' => $this->view->options
+                                ));
+                                ?>
                             </ul>
                             <?php submit_button(); ?>
                         </form>

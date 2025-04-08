@@ -225,7 +225,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         $item = new stdClass();
         if ($item_id == '-3') {
             $item->id = $item_id;
-            $item->name = __('Users', 'e2pdf');
+            $item->name = __('Users');
             $item->url = $this->helper->get_url(array(), 'users.php');
         } else {
             $form = get_post_type_object($item_id);
@@ -315,6 +315,17 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
          * https://theme.co/cornerstone/
          */
         add_filter('cs_element_pre_render', array($this, 'filter_cs_element_pre_render'));
+
+        /**
+         * Divi Theme Builder
+         * https://www.elegantthemes.com/
+         */
+        add_filter('et_pb_module_content', array($this, 'filter_et_pb_module_content'), 30, 6);
+
+        /* Hooks */
+        add_filter('post_row_actions', array($this, 'hook_wordpress_row_actions'), 10, 2);
+        add_filter('page_row_actions', array($this, 'hook_wordpress_row_actions'), 10, 2);
+        add_filter('user_row_actions', array($this, 'hook_wordpress_row_actions'), 10, 2);
     }
 
     public function load_actions() {
@@ -343,6 +354,9 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
          * https://memberpress.com/
          */
         add_action('mepr_email_sent', array($this, 'action_mepr_email_sent'), 10, 3);
+
+        /* Hooks */
+        add_action('add_meta_boxes', array($this, 'hook_wordpress_page_edit'));
     }
 
     /**
@@ -352,13 +366,13 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
-
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
-
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -574,7 +588,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('ID', 'e2pdf') . ': [e2pdf-user key="ID"]',
+                    'value' => 'ID: [e2pdf-user key="ID"]',
                 ),
             );
 
@@ -587,7 +601,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('First Name', 'e2pdf') . ': [e2pdf-user key="user_firstname"]',
+                    'value' => 'First Name: [e2pdf-user key="user_firstname"]',
                 ),
             );
 
@@ -600,7 +614,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('Last Name', 'e2pdf') . ': [e2pdf-user key="user_lastname"]',
+                    'value' => 'Last Name: [e2pdf-user key="user_lastname"]',
                 ),
             );
 
@@ -613,7 +627,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('Email', 'e2pdf') . ': [e2pdf-user key="user_email"]',
+                    'value' => 'Email: [e2pdf-user key="user_email"]',
                 ),
             );
 
@@ -626,7 +640,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('Registered', 'e2pdf') . ': [e2pdf-user key="user_registered"]',
+                    'value' => 'Registered: [e2pdf-user key="user_registered"]',
                 ),
             );
         } else {
@@ -652,7 +666,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('Post name', 'e2pdf') . ': [e2pdf-wp key="post_name"]',
+                    'value' => 'Post name: [e2pdf-wp key="post_name"]',
                 ),
             );
 
@@ -665,7 +679,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('Post type', 'e2pdf') . ': [e2pdf-wp key="post_type"]',
+                    'value' => 'Post type: [e2pdf-wp key="post_type"]',
                 ),
             );
 
@@ -691,7 +705,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('Author', 'e2pdf') . ': [e2pdf-wp key="post_author"]',
+                    'value' => 'Author: [e2pdf-wp key="post_author"]',
                 ),
             );
 
@@ -717,7 +731,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('Created', 'e2pdf') . ': [e2pdf-wp key="post_date"]',
+                    'value' => 'Created: [e2pdf-wp key="post_date"]',
                 ),
             );
 
@@ -730,7 +744,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
-                    'value' => __('Modified', 'e2pdf') . ': [e2pdf-wp key="post_modified"]',
+                    'value' => 'Modified: [e2pdf-wp key="post_modified"]',
                 ),
             );
         }
@@ -836,7 +850,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     if (isset($atts['id'])) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'woocommerce') {
+                        if ($template->get('extension') === 'woocommerce' || $template->get('extension') === 'jetformbuilder') {
                             continue;
                         } elseif ($template->get('extension') === 'wordpress') { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
                             if (!isset($atts['dataset'])) {
@@ -1025,6 +1039,51 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         return $atts;
     }
 
+    public function filter_et_pb_module_content($content, $props, $attrs, $render_slug, $_address, $global_content) {
+        if (($render_slug == 'et_pb_code' || $render_slug == 'et_pb_text') &&
+                false !== strpos($content, '[') &&
+                function_exists('et_core_is_builder_used_on_current_request') &&
+                !et_core_is_builder_used_on_current_request()
+        ) {
+            global $post;
+            $shortcode_tags = array(
+                'e2pdf-download',
+                'e2pdf-save',
+                'e2pdf-view',
+                'e2pdf-adobesign',
+                'e2pdf-zapier',
+            );
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $content, $shortcodes);
+                foreach ($shortcodes[0] as $key => $shortcode_value) {
+                    wp_reset_postdata();
+                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                    $atts = shortcode_parse_atts($shortcode[3]);
+                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                    } else {
+                        if (!isset($atts['dataset']) && isset($atts['id']) && (isset($post->ID))) {
+                            $dataset = $post->ID;
+                            $atts['dataset'] = $dataset;
+                            $shortcode[3] .= ' dataset="' . $dataset . '"';
+                        }
+                    }
+                    if (!isset($atts['apply'])) {
+                        $shortcode[3] .= ' apply="true"';
+                    }
+
+                    if (!isset($atts['filter'])) {
+                        $shortcode[3] .= ' filter="true"';
+                    }
+                    $new_shortcode = '[' . $shortcode[2] . $shortcode[3] . ']';
+                    $content = str_replace($shortcode_value, $new_shortcode, $content);
+                }
+            }
+        }
+        return $content;
+    }
+
     /**
      * Verify if item and dataset exists
      * @return bool - item and dataset exists
@@ -1045,42 +1104,42 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         $vc = '';
 
         if ($this->get('item') != '-3') {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Common', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Common</h3>';
             $vc .= '<div class="e2pdf-grid">';
             $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('ID', 'e2pdf-wp key="id"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Author', 'e2pdf'), 'e2pdf-wp key="post_author"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Author ID', 'e2pdf'), 'e2pdf-wp key="post_author_id"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date', 'e2pdf'), 'e2pdf-wp key="post_date"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date (GMT)', 'e2pdf'), 'e2pdf-wp key="post_date_gmt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Content', 'e2pdf'), 'e2pdf-wp key="post_content"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Title', 'e2pdf'), 'e2pdf-wp key="post_title"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Excerpt', 'e2pdf'), 'e2pdf-wp key="post_excerpt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Status', 'e2pdf'), 'e2pdf-wp key="post_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Comment Status', 'e2pdf'), 'e2pdf-wp key="comment_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Ping Status', 'e2pdf'), 'e2pdf-wp key="ping_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Password', 'e2pdf'), 'e2pdf-wp key="post_password"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Name', 'e2pdf'), 'e2pdf-wp key="post_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('To Ping', 'e2pdf'), 'e2pdf-wp key="to_ping"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Ping', 'e2pdf'), 'e2pdf-wp key="pinged"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Modified Date', 'e2pdf'), 'e2pdf-wp key="post_modified"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Modified Date (GMT)', 'e2pdf'), 'e2pdf-wp key="post_modified_gmt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Filtered Content', 'e2pdf'), 'e2pdf-wp key="post_content_filtered"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Parent ID', 'e2pdf'), 'e2pdf-wp key="post_parent"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Author', 'e2pdf-wp key="post_author"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Author ID', 'e2pdf-wp key="post_author_id"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date', 'e2pdf-wp key="post_date"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date (GMT)', 'e2pdf-wp key="post_date_gmt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Content', 'e2pdf-wp key="post_content"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Title', 'e2pdf-wp key="post_title"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Excerpt', 'e2pdf-wp key="post_excerpt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Status', 'e2pdf-wp key="post_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Comment Status', 'e2pdf-wp key="comment_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Ping Status', 'e2pdf-wp key="ping_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Password', 'e2pdf-wp key="post_password"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Name', 'e2pdf-wp key="post_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('To Ping', 'e2pdf-wp key="to_ping"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Ping', 'e2pdf-wp key="pinged"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Modified Date', 'e2pdf-wp key="post_modified"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Modified Date (GMT)', 'e2pdf-wp key="post_modified_gmt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Filtered Content', 'e2pdf-wp key="post_content_filtered"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Parent ID', 'e2pdf-wp key="post_parent"') . '</div>';
             $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('GUID', 'e2pdf-wp key="guid"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Menu Order', 'e2pdf'), 'e2pdf-wp key="menu_order"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Type', 'e2pdf'), 'e2pdf-wp key="post_type"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Mime Type', 'e2pdf'), 'e2pdf-wp key="post_mime_type"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Comments Count', 'e2pdf'), 'e2pdf-wp key="comment_count"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Filter', 'e2pdf'), 'e2pdf-wp key="filter"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Thumbnail', 'e2pdf'), 'e2pdf-wp key="get_the_post_thumbnail"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Thumbnail URL', 'e2pdf'), 'e2pdf-wp key="get_the_post_thumbnail_url"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Permalink', 'e2pdf'), 'e2pdf-wp key="get_permalink"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Permalink', 'e2pdf'), 'e2pdf-wp key="get_post_permalink"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Menu Order', 'e2pdf-wp key="menu_order"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Type', 'e2pdf-wp key="post_type"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Mime Type', 'e2pdf-wp key="post_mime_type"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Comments Count', 'e2pdf-wp key="comment_count"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Filter', 'e2pdf-wp key="filter"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Thumbnail', 'e2pdf-wp key="get_the_post_thumbnail"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Thumbnail URL', 'e2pdf-wp key="get_the_post_thumbnail_url"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Permalink', 'e2pdf-wp key="get_permalink"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Permalink', 'e2pdf-wp key="get_post_permalink"') . '</div>';
             $vc .= '</div>';
 
             $meta_keys = $this->get_post_meta_keys();
             if (!empty($meta_keys)) {
-                $vc .= '<h3 class="e2pdf-plr5">' . __('Meta Keys', 'e2pdf') . '</h3>';
+                $vc .= '<h3 class="e2pdf-plr5">Meta Keys</h3>';
                 $vc .= "<div class='e2pdf-grid'>";
                 foreach ($meta_keys as $meta_key) {
                     $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wp key="' . $meta_key . '" meta="true"') . '</div>';
@@ -1090,43 +1149,43 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
 
             $meta_keys = $this->get_post_taxonomy_keys();
             if (!empty($meta_keys)) {
-                $vc .= '<h3 class="e2pdf-plr5">' . __('Taxonomy', 'e2pdf') . '</h3>';
+                $vc .= '<h3 class="e2pdf-plr5">Taxonomy</h3>';
                 $vc .= "<div class='e2pdf-grid'>";
                 foreach ($meta_keys as $meta_key) {
-                    $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wp key="' . $meta_key . '" terms="true"') . '</div>';
+                    $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wp key="' . $meta_key . '" terms="true" names="true"') . '</div>';
                 }
                 $vc .= '</div>';
             }
         }
 
-        $vc .= '<h3 class="e2pdf-plr5">' . __('User', 'e2pdf') . '</h3>';
+        $vc .= '<h3 class="e2pdf-plr5">User</h3>';
         $vc .= "<div class='e2pdf-grid'>";
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('ID', 'e2pdf-user key="ID"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Description', 'e2pdf'), 'e2pdf-user key="user_description"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('First Name', 'e2pdf'), 'e2pdf-user key="user_firstname"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Last Name', 'e2pdf'), 'e2pdf-user key="user_lastname"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Login', 'e2pdf'), 'e2pdf-user key="user_login"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Nicename', 'e2pdf'), 'e2pdf-user key="user_nicename"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('E-mail', 'e2pdf'), 'e2pdf-user key="user_email"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Url', 'e2pdf'), 'e2pdf-user key="user_url"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Registered', 'e2pdf'), 'e2pdf-user key="user_registered"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('User Status', 'e2pdf'), 'e2pdf-user key="user_status"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('User Level', 'e2pdf'), 'e2pdf-user key="user_level"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Display Name', 'e2pdf'), 'e2pdf-user key="display_name"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Spam', 'e2pdf'), 'e2pdf-user key="spam"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Deleted', 'e2pdf'), 'e2pdf-user key="deleted"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Locale', 'e2pdf'), 'e2pdf-user key="locale"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Rich Editing', 'e2pdf'), 'e2pdf-user key="rich_editing"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Syntax Highlighting', 'e2pdf'), 'e2pdf-user key="syntax_highlighting"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Use SSL', 'e2pdf'), 'e2pdf-user key="use_ssl"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Roles', 'e2pdf'), 'e2pdf-user key="roles"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Avatar', 'e2pdf'), 'e2pdf-user key="get_avatar"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Avatar Url', 'e2pdf'), 'e2pdf-user key="get_avatar_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Description', 'e2pdf-user key="user_description"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('First Name', 'e2pdf-user key="user_firstname"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Last Name', 'e2pdf-user key="user_lastname"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Login', 'e2pdf-user key="user_login"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Nicename', 'e2pdf-user key="user_nicename"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('E-mail', 'e2pdf-user key="user_email"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Url', 'e2pdf-user key="user_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Registered', 'e2pdf-user key="user_registered"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('User Status', 'e2pdf-user key="user_status"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('User Level', 'e2pdf-user key="user_level"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Display Name', 'e2pdf-user key="display_name"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Spam', 'e2pdf-user key="spam"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Deleted', 'e2pdf-user key="deleted"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Locale', 'e2pdf-user key="locale"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Rich Editing', 'e2pdf-user key="rich_editing"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Syntax Highlighting', 'e2pdf-user key="syntax_highlighting"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Use SSL', 'e2pdf-user key="use_ssl"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Roles', 'e2pdf-user key="roles"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Avatar', 'e2pdf-user key="get_avatar"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Avatar Url', 'e2pdf-user key="get_avatar_url"') . '</div>';
         $vc .= '</div>';
 
         $meta_keys = $this->get_user_meta_keys();
         if (!empty($meta_keys)) {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('User Meta Keys', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">User Meta Keys</h3>';
             $vc .= "<div class='e2pdf-grid'>";
             foreach ($meta_keys as $meta_key) {
                 $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-user key="' . $meta_key . '" meta="true"') . '</div>';
@@ -1135,31 +1194,42 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         }
 
         if (class_exists('ACF') && function_exists('acf_get_field_groups')) {
+            $user_groups = acf_get_field_groups(
+                    array(
+                        'user_id' => 'new',
+                        'user_form' => 'all',
+                    )
+            );
+            if (!empty($user_groups)) {
+                $user_groups = array_column($user_groups, 'key');
+            }
             if ($this->get('item') == '-3') {
-                $groups = acf_get_field_groups(array('user_id' => 'new', 'user_form' => 'all'));
+                $groups = acf_get_field_groups(
+                        array(
+                            'user_id' => 'new',
+                            'user_form' => 'all',
+                        )
+                );
             } else {
                 $groups = acf_get_field_groups(array('post_type' => $this->get('item')));
             }
             if (!empty($groups)) {
                 $vc .= "<h3 class='e2pdf-plr5'>ACF</h3>";
                 foreach ($groups as $group_key => $group) {
+                    $post_id = '';
+                    if (!empty($user_groups)) {
+                        if (in_array($group['key'], $user_groups)) {
+                            if ($this->get('item') == '-3') {
+                                $post_id = ' post_id="user_[e2pdf-dataset]"';
+                            } else {
+                                $post_id = ' post_id="user_[e2pdf-userid]"';
+                            }
+                        }
+                    }
                     $vc .= '<h3 class="e2pdf-plr5">' . $group['title'] . '</h3>';
                     $vc .= "<div class='e2pdf-grid'>";
                     foreach (acf_get_fields($group['key']) as $field_key => $field) {
-                        if ($field['type'] == 'repeater' && !empty($field['sub_fields'])) {
-                            $sub_fields = array();
-                            foreach ($field['sub_fields'] as $sub_field_key => $sub_field) {
-                                $sub_fields[] = '[acf field="' . $sub_field['name'] . '"]';
-                                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'] . ' ' . $sub_field['label'], 'acf field="' . $field['name'] . '_0_' . $sub_field['name'] . '"') . '</div>';
-                            }
-                            if (!empty($sub_fields)) {
-                                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'] . ' Iteration', 'e2pdf-acf-repeater field="' . $field['name'] . '"]' . implode(' ', $sub_fields) . "\r\n" . '[/e2pdf-acf-repeater') . '</div>';
-                            }
-                        } else {
-                            if ($field['name']) {
-                                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'], 'acf field="' . $field['name'] . '"') . '</div>';
-                            }
-                        }
+                        $vc = $this->get_acf_field($vc, $field, $post_id);
                     }
                     $vc .= '</div>';
                 }
@@ -1168,7 +1238,34 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         return $vc;
     }
 
-    private function get_post_meta_keys() {
+    public function get_acf_field($vc, $field, $post_id) {
+        if ($field['type'] == 'repeater' && !empty($field['sub_fields'])) {
+            $sub_fields = array();
+            foreach ($field['sub_fields'] as $sub_field_key => $sub_field) {
+                $sub_fields[] = '[acf field="' . $sub_field['name'] . '"' . $post_id . ']';
+                $sub_field['label'] = $field['label'] . ' ' . $sub_field['label'];
+                $sub_field['name'] = $field['name'] . '_0_' . $sub_field['name'];
+                $vc = $this->get_acf_field($vc, $sub_field, $post_id);
+            }
+            if (!empty($sub_fields)) {
+                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'] . ' Iteration', 'e2pdf-acf-repeater field="' . $field['name'] . '"' . $post_id . ']' . implode(' ', $sub_fields) . "\r\n" . '[/e2pdf-acf-repeater') . '</div>';
+            }
+        } elseif ($field['type'] == 'group' && !empty($field['sub_fields'])) {
+            $sub_fields = array();
+            foreach ($field['sub_fields'] as $sub_field_key => $sub_field) {
+                $sub_field['label'] = $field['label'] . ' ' . $sub_field['label'];
+                $sub_field['name'] = $field['name'] . '_' . $sub_field['name'];
+                $vc = $this->get_acf_field($vc, $sub_field, $post_id);
+            }
+        } else {
+            if ($field['name']) {
+                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'], 'acf field="' . $field['name'] . '"' . $post_id) . '</div>';
+            }
+        }
+        return $vc;
+    }
+
+    public function get_post_meta_keys() {
         global $wpdb;
         $meta_keys = array();
         if ($this->get('item')) {
@@ -1185,12 +1282,12 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             );
             $where = $this->helper->load('db')->prepare_where($condition);
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM ' . $wpdb->postmeta . ' `pm` LEFT JOIN ' . $wpdb->posts . ' `p` ON (`p`.`ID` = `pm`.`post_ID`) ' . $where['sql'] . $orderby . '', $where['filter']));
+            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->postmeta . '` `pm` LEFT JOIN ' . $wpdb->posts . ' `p` ON (`p`.`ID` = `pm`.`post_ID`) ' . $where['sql'] . $orderby . '', $where['filter']));
         }
         return $meta_keys;
     }
 
-    private function get_user_meta_keys() {
+    public function get_user_meta_keys() {
         global $wpdb;
         $meta_keys = array();
         if ($this->get('item')) {
@@ -1199,12 +1296,12 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 'order' => 'desc',
             );
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM ' . $wpdb->usermeta . ' ' . $orderby . ''));
+            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->usermeta . '` ' . $orderby . ''));
         }
         return $meta_keys;
     }
 
-    private function get_post_taxonomy_keys() {
+    public function get_post_taxonomy_keys() {
         global $wpdb;
         $meta_keys = array();
         if ($this->get('item')) {
@@ -1213,16 +1310,114 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 'order' => 'desc',
             );
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `taxonomy` FROM ' . $wpdb->term_taxonomy . ' `t` ' . $orderby . ''));
+            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `taxonomy` FROM `' . $wpdb->term_taxonomy . '` `t` ' . $orderby . ''));
         }
         return $meta_keys;
     }
 
-    private function get_vm_element($name, $id) {
+    public function get_vm_element($name, $id) {
         $element = '<div>';
         $element .= '<label>' . $name . ':</label>';
         $element .= '<input type="text" name=\'[' . $id . ']\' value=\'[' . $id . ']\' class="e2pdf-w100">';
         $element .= '</div>';
         return $element;
+    }
+
+    public function hook_wordpress_page_edit() {
+        $items = $this->helper->load('hooks')->get_items('wordpress', 'hook_wordpress_page_edit');
+        if (!empty($items)) {
+            add_meta_box(
+                    'e2pdf',
+                    apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_wordpress_page_edit'),
+                    array($this, 'hook_wordpress_page_edit_callback'),
+                    $items,
+                    'side',
+                    'default'
+            );
+        }
+    }
+
+    public function hook_wordpress_page_edit_callback($post) {
+        if (!empty($post->post_type)) {
+            $hooks = $this->helper->load('hooks')->get('wordpress', 'hook_wordpress_page_edit', $post->post_type);
+            if (!empty($hooks)) {
+                foreach ($hooks as $hook) {
+                    $action = apply_filters('e2pdf_hook_action_button',
+                            array(
+                                'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $post->ID,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook
+                            ), 'hook_wordpress_page_edit', $hook, $post->ID
+                    );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    public function hook_wordpress_row_actions($actions, $post) {
+        if ($post && is_a($post, 'WP_User')) {
+            if (!empty($post->ID)) {
+                $hooks = $this->helper->load('hooks')->get('wordpress', 'hook_wordpress_row_actions', '-3');
+                foreach ($hooks as $hook) {
+                    $action = apply_filters('e2pdf_hook_action_button',
+                            array(
+                                'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $post->ID,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook
+                            ), 'hook_wordpress_row_actions', $hook, $post->ID
+                    );
+                    if (!empty($action)) {
+                        $actions['e2pdf_' . $hook] = sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
+                }
+            }
+        } else {
+            if (!empty($post->post_type) && !empty($post->ID)) {
+                $hooks = $this->helper->load('hooks')->get('wordpress', 'hook_wordpress_row_actions', $post->post_type);
+                foreach ($hooks as $hook) {
+                    $action = apply_filters('e2pdf_hook_action_button',
+                            array(
+                                'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $post->ID,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook
+                            ), 'hook_wordpress_row_actions', $hook, $post->ID
+                    );
+                    if (!empty($action)) {
+                        $actions['e2pdf_' . $hook] = sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
+                }
+            }
+        }
+        return $actions;
     }
 }

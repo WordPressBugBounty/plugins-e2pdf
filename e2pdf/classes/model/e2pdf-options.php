@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Options Helper
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-options.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -15,15 +13,7 @@ if (!defined('ABSPATH')) {
 
 class Model_E2pdf_Options extends Model_E2pdf_Model {
 
-    /**
-     * Get Options list
-     * 
-     * @param bool $all - Get all options
-     * @param array $only_group - Array list of groups only to include
-     * @param array $exclude - Array list of groups to exclude
-     * 
-     * @return array() - List of options
-     */
+    // get options
     public static function get_options($all = true, $only_group = array(), $exclude = false) {
         $helper = Helper_E2pdf_Helper::instance();
         $extensions_options = array();
@@ -66,6 +56,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                     case 'woocommerce':
                         $extension_title = 'WooCommerce';
                         break;
+                    // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
                     case 'wordpress':
                         $extension_title = 'WordPress';
                         break;
@@ -84,7 +75,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                 $extensions_options[] = array(
                     'name' => $extension_title,
                     'key' => 'e2pdf_disabled_extensions[]',
-                    'value' => is_array($disabled_extensions) && in_array($extension, $disabled_extensions) ? $extension : '',
+                    'value' => is_array($disabled_extensions) && in_array($extension, $disabled_extensions, true) ? $extension : '',
                     'default_value' => '',
                     'type' => 'select',
                     'options' => array(
@@ -95,7 +86,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         array(
                             'key' => $extension,
                             'value' => __('Disabled', 'e2pdf'),
-                        )
+                        ),
                     ),
                 );
             }
@@ -104,13 +95,24 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
             }
         }
 
+        $processors = array(
+            '0' => 'Default (Stable Version)',
+        );
+        if (get_option('e2pdf_debug', '0')) {
+            $processors = array(
+                '0' => 'Default (Stable Version)',
+                '2' => 'Backport (1.16.19 Version)',
+                '1' => 'Release Candidate (Debug Mode)',
+            );
+        }
+
         $options = array(
             'static_group' => array(
-                'name' => __('Static', 'e2pdf'),
+                'name' => '',
                 'options' => array(
                     array(
                         'key' => 'e2pdf_version',
-                        'value' => $helper->get('version')
+                        'value' => $helper->get('version'),
                     ),
                     array(
                         'key' => 'e2pdf_license',
@@ -132,18 +134,18 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'key' => 'e2pdf_nonce_key',
                         'value' => get_option('e2pdf_nonce_key', wp_generate_password('64')),
                     ),
-                )
+                ),
             ),
             'common_group' => array(
                 'name' => __('Common', 'e2pdf'),
                 'options' => array(
                     array(
-                        'name' => __('E2Pdf Connected Account', 'e2pdf'),
+                        'name' => __('E2Pdf.com Account E-mail Address', 'e2pdf'),
                         'key' => 'e2pdf_user_email',
                         'default_value' => '',
                         'value' => get_option('e2pdf_user_email', ''),
                         'type' => 'text',
-                        'placeholder' => __('E2Pdf Account E-mail', 'e2pdf')
+                        'placeholder' => __('E2Pdf.com Account E-mail Address', 'e2pdf'),
                     ),
                     array(
                         'name' => __('API Server', 'e2pdf'),
@@ -163,17 +165,17 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             'api.e2pdf.com' => 'api.e2pdf.com (US, Cloudflare)',
                             'api2.e2pdf.com' => 'api2.e2pdf.com (US)',
                             'api3.e2pdf.com' => 'api3.e2pdf.com (EU, Cloudflare)',
-                            'api4.e2pdf.com' => 'api4.e2pdf.com (EU)'
-                        )
+                            'api4.e2pdf.com' => 'api4.e2pdf.com (EU)',
+                        ),
                     ),
                     array(
-                        'name' => __('API Connection Timout', 'e2pdf'),
+                        'name' => __('API Connection Timout (sec)', 'e2pdf'),
                         'key' => 'e2pdf_connection_timeout',
                         'value' => get_option('e2pdf_connection_timeout', '300'),
                         'default_value' => '300',
                         'type' => 'text',
                         'class' => 'e2pdf-numbers',
-                        'placeholder' => '0'
+                        'placeholder' => '0',
                     ),
                     array(
                         'name' => __('PDF Processor', 'e2pdf'),
@@ -181,13 +183,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'value' => get_option('e2pdf_processor', '0'),
                         'default_value' => '0',
                         'type' => 'select',
-                        'options' => get_option('e2pdf_debug', '0') ? array(
-                    '0' => __('Default (Stable Version)', 'e2pdf'),
-                    '2' => __('Backport (1.16.19 Version)', 'e2pdf'),
-                    '1' => __('Release Candidate (Debug Mode)', 'e2pdf'),
-                        ) : array(
-                    '0' => __('Default (Stable Version)', 'e2pdf')
-                        ),
+                        'options' => $processors,
                     ),
                     array(
                         'name' => __('Font Processor', 'e2pdf'),
@@ -196,9 +192,9 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'default_value' => '0',
                         'type' => 'hidden',
                         'options' => array(
-                            __('Default (Stable Version)', 'e2pdf'),
-                            __('Complex Fonts (Experimental)', 'e2pdf')
-                        )
+                            'Plain Fonts',
+                            'Complex Fonts',
+                        ),
                     ),
                     array(
                         'name' => __('Release Candidate Builds', 'e2pdf'),
@@ -210,24 +206,24 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'placeholder' => __('Update from E2Pdf.com', 'e2pdf'),
                     ),
                     array(
-                        'name' => __('Url Format', 'e2pdf'),
+                        'name' => __('URL Format', 'e2pdf'),
                         'key' => 'e2pdf_url_format',
                         'value' => get_option('e2pdf_url_format', 'siteurl'),
                         'default_value' => 'siteurl',
                         'type' => 'select',
                         'options' => array(
                             'siteurl' => 'WordPress Address (URL)',
-                            'home' => 'Site Address (URL)'
-                        )
+                            'home' => 'Site Address (URL)',
+                        ),
                     ),
                     array(
-                        'name' => __('Url Rewrite', 'e2pdf'),
+                        'name' => __('URL Rewrite', 'e2pdf'),
                         'key' => 'e2pdf_mod_rewrite',
                         'value' => get_option('e2pdf_mod_rewrite', '0'),
                         'default_value' => '0',
                         'type' => 'checkbox',
                         'checkbox_value' => '1',
-                        'placeholder' => __('Url Rewrite', 'e2pdf'),
+                        'placeholder' => __('URL Rewrite', 'e2pdf'),
                     ),
                     array(
                         'name' => '',
@@ -264,7 +260,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'default_value' => '0',
                         'type' => 'checkbox',
                         'checkbox_value' => '1',
-                        'placeholder' => __('PDFs Cache (BETA)', 'e2pdf'),
+                        'placeholder' => __('PDFs Cache', 'e2pdf'),
                     ),
                     array(
                         'name' => '',
@@ -274,6 +270,46 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'type' => 'text',
                         'placeholder' => '10',
                         'prefield' => __('TTL (sec)', 'e2pdf') . ':',
+                    ),
+                    array(
+                        'name' => __('Download PDF Ajax Loader', 'e2pdf'),
+                        'key' => 'e2pdf_download_loader',
+                        'value' => get_option('e2pdf_download_loader', '0'),
+                        'default_value' => '0',
+                        'type' => 'select',
+                        'options' => array(
+                            '0' => __('Disabled', 'e2pdf'),
+                            '1' => __('Enabled', 'e2pdf'),
+                        ),
+                    ),
+                    array(
+                        'name' => __('Fallback PDF Viewer', 'e2pdf'),
+                        'key' => 'e2pdf_download_inline_fallback_viewer',
+                        'value' => get_option('e2pdf_download_inline_fallback_viewer', '0'),
+                        'default_value' => '0',
+                        'type' => 'select',
+                        'options' => array(
+                            '0' => __('Disabled', 'e2pdf'),
+                            '1' => 'PDF.js',
+                        ),
+                    ),
+                    array(
+                        'name' => '',
+                        'key' => 'e2pdf_download_inline_chrome_ios_fix',
+                        'value' => get_option('e2pdf_download_inline_chrome_ios_fix', '0'),
+                        'default_value' => '0',
+                        'type' => 'checkbox',
+                        'checkbox_value' => '1',
+                        'placeholder' => __('Fix Chrome iOS Download Name (might be not compatible with certain setups)', 'e2pdf'),
+                    ),
+                    array(
+                        'name' => __('New Edit Layout', 'e2pdf'),
+                        'key' => 'e2pdf_new_edit_layout',
+                        'value' => get_option('e2pdf_new_edit_layout', '1'),
+                        'default_value' => '0',
+                        'type' => 'checkbox',
+                        'checkbox_value' => '1',
+                        'placeholder' => __('New Edit Layout', 'e2pdf'),
                     ),
                     array(
                         'name' => __('Hide Warnings', 'e2pdf'),
@@ -294,13 +330,22 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'placeholder' => __('Load via Remote Request', 'e2pdf'),
                     ),
                     array(
-                        'name' => __('Images Timout', 'e2pdf'),
+                        'name' => __('Images Timout (sec)', 'e2pdf'),
                         'key' => 'e2pdf_images_timeout',
                         'value' => get_option('e2pdf_images_timeout', '30'),
                         'default_value' => '30',
                         'type' => 'text',
                         'class' => 'e2pdf-numbers',
-                        'placeholder' => '0'
+                        'placeholder' => '0',
+                    ),
+                    array(
+                        'name' => __('Bulk Export Interval (sec)', 'e2pdf'),
+                        'key' => 'e2pdf_bulk_export_interval',
+                        'value' => max(10, (int) get_option('e2pdf_bulk_export_interval', '10')),
+                        'default_value' => '10',
+                        'type' => 'text',
+                        'class' => 'e2pdf-numbers',
+                        'placeholder' => '10',
                     ),
                     array(
                         'name' => __('Revisions Limit', 'e2pdf'),
@@ -309,16 +354,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'default_value' => '3',
                         'type' => 'text',
                         'class' => 'e2pdf-numbers',
-                        'placeholder' => '0'
-                    ),
-                    array(
-                        'name' => __('Bulk Export Interval', 'e2pdf'),
-                        'key' => 'e2pdf_bulk_export_interval',
-                        'value' => max(20, (int) get_option('e2pdf_bulk_export_interval', '20')),
-                        'default_value' => '20',
-                        'type' => 'text',
-                        'class' => 'e2pdf-numbers',
-                        'placeholder' => '20'
+                        'placeholder' => '0',
                     ),
                     array(
                         'name' => __('Debug Mode', 'e2pdf'),
@@ -327,7 +363,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'default_value' => '0',
                         'type' => 'checkbox',
                         'checkbox_value' => '1',
-                        'placeholder' => __('Turn on Debug Mode', 'e2pdf'),
+                        'placeholder' => __('Enable Debug Mode', 'e2pdf'),
                     ),
                     array(
                         'name' => __('Recovery Mode E-mail', 'e2pdf'),
@@ -335,7 +371,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'value' => get_option('e2pdf_recovery_mode_email', ''),
                         'default_value' => '',
                         'type' => get_option('e2pdf_debug', '0') ? 'text' : 'hidden',
-                        'placeholder' => __('Recovery Mode E-mail', 'e2pdf')
+                        'placeholder' => __('Recovery Mode E-mail', 'e2pdf'),
                     ),
                     array(
                         'name' => __('Memory/Time Usage', 'e2pdf'),
@@ -346,27 +382,69 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'checkbox_value' => '1',
                         'placeholder' => __('Show Memory/Time Usage', 'e2pdf'),
                     ),
-                )
+                ),
             ),
             'maintenance_group' => array(
                 'name' => __('Maintenance', 'e2pdf'),
                 'action' => 'maintenance',
-                'options' => array()
+                'options' => array(),
             ),
             'fonts_group' => array(
                 'name' => __('Fonts', 'e2pdf'),
                 'action' => 'fonts',
-                'options' => array()
+                'options' => array(),
             ),
             'permissions_group' => array(
                 'name' => __('Permissions', 'e2pdf'),
                 'action' => 'permissions',
-                'options' => array()
+                'options' => array(),
+            ),
+            'zapier_group' => array(
+                'name' => 'Zapier',
+                'options' => array(
+                    array(
+                        'name' => 'Site URL',
+                        'value' => $helper->get_site_url(),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'readonly' => 'readonly',
+                        'class' => 'e2pdf-copy-field',
+                    ),
+                    array(
+                        'name' => 'API Key',
+                        'key' => 'e2pdf_zapier_api_key',
+                        'value' => get_option('e2pdf_zapier_api_key'),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'readonly' => 'readonly',
+                        'class' => 'e2pdf-copy-field',
+                    ),
+                ),
             ),
             'adobesign_group' => array(
                 'name' => 'Adobe Sign',
                 'action' => 'adobesign',
                 'options' => array(
+                    array(
+                        'name' => 'Redirect URI',
+                        'value' =>
+                        get_option('e2pdf_adobe_api_version') == '1' ? site_url('/e2pdf-rpc/v1/adobe/auth?api_key=' . get_option('e2pdf_adobe_api_key')) : $helper->get_url(
+                                array(
+                                    'page' => 'e2pdf-settings',
+                                    'action' => 'adobesign',
+                                )
+                        ),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'readonly' => 'readonly',
+                        'class' => 'e2pdf-copy-field',
+                    ),
+                    array(
+                        'name' => 'API Version',
+                        'value' => get_option('e2pdf_adobe_api_version'),
+                        'default_value' => '',
+                        'type' => 'hidden',
+                    ),
                     array(
                         'name' => 'Status',
                         'key' => 'e2pdf_adobesign_status',
@@ -376,12 +454,13 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'readonly' => 'readonly',
                     ),
                     array(
+                        'header' => 'Configuration',
                         'name' => 'Client ID',
                         'key' => 'e2pdf_adobesign_client_id',
                         'value' => get_option('e2pdf_adobesign_client_id') === false ? '' : get_option('e2pdf_adobesign_client_id'),
                         'default_value' => '',
                         'type' => 'text',
-                        'placeholder' => ''
+                        'placeholder' => '',
                     ),
                     array(
                         'name' => 'Client Secret',
@@ -389,7 +468,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'value' => get_option('e2pdf_adobesign_client_secret') === false ? '' : get_option('e2pdf_adobesign_client_secret'),
                         'default_value' => '',
                         'type' => 'text',
-                        'placeholder' => ''
+                        'placeholder' => '',
                     ),
                     array(
                         'name' => 'Region',
@@ -397,7 +476,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'value' => get_option('e2pdf_adobesign_region') === false ? '' : get_option('e2pdf_adobesign_region'),
                         'default_value' => '',
                         'type' => 'text',
-                        'placeholder' => 'na2'
+                        'placeholder' => 'na2',
                     ),
                     array(
                         'name' => 'Code',
@@ -456,8 +535,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'user_write',
@@ -469,8 +548,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'user_login',
@@ -482,8 +561,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'agreement_read',
@@ -495,8 +574,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'agreement_write',
@@ -508,8 +587,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'agreement_send',
@@ -521,8 +600,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'widget_read',
@@ -534,8 +613,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'widget_write',
@@ -547,8 +626,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'library_read',
@@ -560,8 +639,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'library_write',
@@ -573,8 +652,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'workflow_read',
@@ -586,8 +665,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'workflow_write',
@@ -599,8 +678,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'webhook_read',
@@ -612,8 +691,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'webhook_write',
@@ -625,8 +704,8 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
                     array(
                         'name' => 'webhook_retention',
@@ -638,15 +717,15 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             '' => 'disabled',
                             'self' => 'self',
                             'group' => 'group',
-                            'account' => 'account'
-                        )
+                            'account' => 'account',
+                        ),
                     ),
-                )
+                ),
             ),
             'extensions_group' => array(
                 'name' => __('Extensions', 'e2pdf'),
                 'action' => 'extensions',
-                'options' => $extensions_options
+                'options' => $extensions_options,
             ),
         );
 
@@ -664,10 +743,11 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'options' => array(
                             '0' => __('No Translation', 'e2pdf'),
                             '1' => __('Partial Translation', 'e2pdf'),
-                            '2' => __('Full Translation', 'e2pdf')
-                        )
+                            '2' => __('Full Translation', 'e2pdf'),
+                        ),
                     ),
-            ));
+                ),
+            );
         }
 
         $options = apply_filters('e2pdf_model_options_get_options_options', $options);
@@ -676,18 +756,20 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
             $opt = array();
             foreach ($options as $group_key => $group) {
                 foreach ($group['options'] as $option_key => $option) {
-                    $opt[$option['key']] = isset($option['value']) ? $option['value'] : '';
+                    if (isset($option['key'])) {
+                        $opt[$option['key']] = isset($option['value']) ? $option['value'] : '';
+                    }
                 }
             }
             return $opt;
         } else {
             foreach ($options as $group_key => $group) {
                 if ($exclude) {
-                    if (in_array($group_key, $only_group)) {
+                    if (in_array($group_key, $only_group, true)) {
                         unset($options[$group_key]);
                     }
                 } else {
-                    if (!in_array($group_key, $only_group)) {
+                    if (!in_array($group_key, $only_group, true)) {
                         unset($options[$group_key]);
                     }
                 }
@@ -697,21 +779,13 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Update Options list by group
-     * 
-     * @param string $group - Group data
-     * @param array $data - Array list of options to set
-     * 
-     * @return bool - true
-     */
+    // update options
     public static function update_options($group = '', $data = array()) {
         $options = self::get_options(false, array($group));
         foreach ($options as $group_key => $group) {
             foreach ($group['options'] as $option_key => $option_value) {
-                if (array_key_exists($option_value['key'], $data)) {
-                    if (isset($option_value['readonly']) && $option_value['readonly'] == 'readonly') {
-                        
+                if (isset($option_value['key']) && array_key_exists($option_value['key'], $data)) {
+                    if (isset($option_value['readonly']) && $option_value['readonly'] == 'readonly') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
                         if ($option_value['key'] == 'e2pdf_mod_rewrite_url') {
                             if (false === strpos($data[$option_value['key']], '%uid%')) {

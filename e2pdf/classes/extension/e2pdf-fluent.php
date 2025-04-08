@@ -70,7 +70,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                     $entry = fluentFormApi('submissions')->find($this->get('dataset'));
                     $data = false;
                     if ($entry && isset($entry->response)) {
-                        $data = @json_decode(json_encode($entry->response), true); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+                        $data = @json_decode(json_encode($entry->response), true); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode,WordPress.PHP.NoSilencedErrors.Discouraged
                     }
                     if (is_array($data)) {
                         // Fix for Address Country
@@ -263,11 +263,13 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -275,10 +277,10 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
      * Load actions for this extension
      */
     public function load_actions() {
-        add_action('fluentform/integration_notify_notifications', array($this, 'action_integration_notify_notifications'), 99, 4);
+        add_action('fluentform/integration_notify_notifications', array($this, 'action_integration_notify_notifications'), 99, 0);
     }
 
-    public function action_integration_notify_notifications($feed, $formData, $entry, $form) {
+    public function action_integration_notify_notifications() {
         $files = $this->helper->get('fluent_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
@@ -292,11 +294,12 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
      * Load filters for this extension
      */
     public function load_filters() {
-        add_filter('fluentform/submission_message_parse', array($this, 'filter_submission_message_parse'), 10, 4);
+        add_filter('fluentform/submission_message_parse', array($this, 'filter_submission_message_parse'), 10, 2);
         add_filter('fluentform/filter_email_attachments', array($this, 'filter_email_attachments'), 10, 4);
+        add_filter('fluentform/integration_data_trello', array($this, 'filter_integration_data_trello'), 10, 3);
     }
 
-    public function filter_submission_message_parse($message, $dataset, $form_data, $form) {
+    public function filter_submission_message_parse($message, $dataset) {
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-download',
@@ -353,6 +356,54 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
         }
 
         return $message;
+    }
+
+    public function filter_integration_data_trello($data, $feed, $entry) {
+        if (!empty($data['desc']) && false !== strpos($data['desc'], '[')) {
+
+            $dataset = isset($entry->id) ? $entry->id : 0;
+            $message = $data['desc'];
+
+            $shortcode_tags = array(
+                'e2pdf-download',
+                'e2pdf-save',
+                'e2pdf-attachment',
+                'e2pdf-view',
+                'e2pdf-adobesign',
+                'e2pdf-zapier',
+            );
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $message, $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $message, $shortcodes);
+                foreach ($shortcodes[0] as $key => $shortcode_value) {
+                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                    $atts = shortcode_parse_atts($shortcode[3]);
+                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        $template = new Model_E2pdf_Template();
+                        $template->load($atts['id']);
+                        if ($template->get('extension') === 'fluent') {
+                            $atts['dataset'] = $dataset;
+                            $shortcode[3] .= ' dataset="' . $dataset . '"';
+                        }
+                    }
+                    if (!isset($atts['apply'])) {
+                        $shortcode[3] .= ' apply="true"';
+                    }
+                    if (!isset($atts['filter'])) {
+                        $shortcode[3] .= ' filter="true"';
+                    }
+
+                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                        $message = str_replace($shortcode_value, '', $message);
+                    } else {
+                        $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
+                    }
+                }
+                $data['desc'] = $message;
+            }
+        }
+        return $data;
     }
 
     public function filter_email_attachments($emailAttachments, $notification, $form, $submittedDat) {
@@ -437,7 +488,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                             $data[] = $tds;
                         }
                     }
-                    return empty($data) ? '' : str_replace(array('{', '}'), array('&#123;', '&#125;'), serialize($data));
+                    return empty($data) ? '' : str_replace(array('{', '}'), array('&#123;', '&#125;'), serialize($data)); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
                 }
             }
         }
@@ -473,7 +524,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                                     $this->get('cached_form'),
                                     false,
                                     false
-                    );
+                            );
                 }
                 $this->unfilter_fields();
             }
@@ -1286,9 +1337,17 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                 libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
                 if (function_exists('mb_convert_encoding')) {
-                    $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    } else {
+                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    }
                 } else {
-                    $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    } else {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    }
                 }
                 libxml_clear_errors();
             }
@@ -1395,7 +1454,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                 }
                 $remove_classes = array(
                     'fluentform-step',
-                    'has-conditions'
+                    'has-conditions',
                 );
                 foreach ($remove_classes as $key => $class) {
                     $elements = $xpath->query("//*[contains(@class, '{$class}')]");
@@ -1403,7 +1462,11 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                         $xml->set_node_value($element, 'class', str_replace($class, '', $xml->get_node_value($element, 'class')));
                     }
                 }
-                return $dom->saveHTML();
+                if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                    return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
+                } else {
+                    return $dom->saveHTML();
+                }
             }
         }
 

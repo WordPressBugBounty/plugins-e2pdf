@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) {
 }
 ?>
 <div class="tablenav-pages e2pdf-tablenav-pages"><span class="displaying-num">
-        <?php echo $this->tpl_args->get('total') == '1' ? sprintf(__("%s item", 'e2pdf'), $this->tpl_args->get('total')) : sprintf(__("%s items", 'e2pdf'), $this->tpl_args->get('total')); ?></span>
+        <?php echo sprintf(__("Templates: %d", 'e2pdf'), $this->tpl_args->get('total')) ?></span>
     <span class="pagination-links">
         <?php if (($this->tpl_args->get('paged')) > 2) { ?>
             <a class="first-page button" href="<?php echo $this->helper->get_url($this->tpl_args->get('url')); ?>"><span class="screen-reader-text"><?php _e('First page', 'e2pdf') ?></span><span aria-hidden="true">«</span></a>

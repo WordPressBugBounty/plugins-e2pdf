@@ -260,11 +260,13 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -398,13 +400,13 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         $label = '';
                         if ($element['type'] == 'e2pdf-input' || $element['type'] == 'e2pdf-signature') {
                             $type = 'text';
-                            $label = __('Text', 'e2pdf');
+                            $label = 'Text';
                         } elseif ($element['type'] == 'e2pdf-textarea') {
                             $type = 'paragraph';
-                            $label = __('Textarea', 'e2pdf');
+                            $label = 'Textarea';
                         } elseif ($element['type'] == 'e2pdf-select') {
                             $type = 'dropdown';
-                            $label = __('Select', 'e2pdf');
+                            $label = 'Select';
                             $options = array();
                             $field_options = array();
                             if (isset($element['properties']['options'])) {
@@ -430,7 +432,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                                 $pages[$page_key]['elements'][$element_key]['value'] = '%element_' . $checkboxes[$field_key]['element_id'] . '%';
                             } else {
                                 $type = 'checkbox';
-                                $label = __('Checkbox', 'e2pdf');
+                                $label = 'Checkbox';
                             }
                         } elseif ($element['type'] == 'e2pdf-radio') {
                             if (isset($element['properties']['group']) && $element['properties']['group']) {
@@ -449,7 +451,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                                 $pages[$page_key]['elements'][$element_key]['value'] = '%element_' . $radios[$field_key]['element_id'] . '%';
                             } else {
                                 $type = 'radio';
-                                $label = __('Radio', 'e2pdf');
+                                $label = 'Radio';
                             }
                         }
                         if ($type) {
@@ -533,7 +535,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                 'ID' => $field_id,
                 'slug' => 'submit',
                 'type' => 'button',
-                'label' => __('Submit', 'e2pdf'),
+                'label' => 'Submit',
                 'class' => 'btn btn-default',
             );
 
@@ -591,9 +593,17 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                 libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
                 if (function_exists('mb_convert_encoding')) {
-                    $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    } else {
+                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    }
                 } else {
-                    $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    } else {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    }
                 }
                 libxml_clear_errors();
             }
@@ -740,7 +750,11 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                 foreach ($submit_buttons as $element) {
                     $element->parentNode->removeChild($element);
                 }
-                return $dom->saveHTML();
+                if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                    return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
+                } else {
+                    return $dom->saveHTML();
+                }
             }
         }
         return false;
@@ -803,8 +817,6 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                                         case 'range_slider':
                                         case 'star_rating':
                                         case 'utm':
-                                        case 'file':
-                                        case 'advanced_file':
                                             $elements[] = $this->auto_field(
                                                     $field,
                                                     array(
@@ -835,6 +847,9 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                                                     )
                                             );
                                             break;
+                                        case 'file':
+                                        case 'advanced_file':
+                                        case 'cf2_file':
                                         case 'paragraph':
                                             $elements[] = $this->auto_field(
                                                     $field,

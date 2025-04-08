@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Api Model
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-api.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -16,23 +15,24 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
 
     protected $api = null;
 
-    /**
-     * Submit API Request to Remote Server
-     * @param string $key - Return Value by Key
-     * @return mixed
-     */
+    // request
     public function request($key = false, $api_server = false) {
         if ($this->api->action) {
+
+            // fix for upgrade via dashboard -> updates
+            if ($this->api->action == 'update/info' && !method_exists($this->helper, 'get_site_url')) {
+                return array();
+            }
 
             $api_processor = get_option('e2pdf_debug', '0') && get_option('e2pdf_processor', '0') ? get_option('e2pdf_processor', '0') : '0';
             if ($api_processor == '2') {
                 $api_version = '1.16.19';
             } else {
-                $api_version = '1.24.21';
+                $api_version = '1.27.20';
             }
 
             $data = array(
-                'api_url' => $this->get_domain(),
+                'api_url' => $this->helper->get_site_url(),
                 'api_license_key' => $this->get_license(),
                 'api_processor' => apply_filters('e2pdf_api_processor', $api_processor),
                 'api_version' => apply_filters('e2pdf_api_version', $api_version),
@@ -43,8 +43,9 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             $request_url = 'https://' . $api_server . '/' . $this->api->action;
             $timeout = get_option('e2pdf_connection_timeout', '300');
 
+            // phpcs:disable WordPress.WP.AlternativeFunctions
             $ch = apply_filters('e2pdf_api_connection', curl_init($request_url));
-            curl_setopt($ch, CURLOPT_USERAGENT, $this->get_domain());
+            curl_setopt($ch, CURLOPT_USERAGENT, $this->helper->get_site_url());
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -78,6 +79,7 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             $curl_error = curl_error($ch);
             $curl_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
+            // phpcs:enable
 
             if ($curl_errno > 0) {
                 if ($this->get_api_server() === $this->get_api_server($api_server)) {
@@ -106,7 +108,7 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
                 }
                 if (empty($response)) {
                     if ($this->get_api_server() === $this->get_api_server($api_server)) {
-                        $response['error'] = __('Something went wrong', 'e2pdf');
+                        $response['error'] = __('Something went wrong!', 'e2pdf');
                     } else {
                         return $this->request($key, $this->get_api_server($api_server));
                     }
@@ -154,18 +156,12 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
         return $api_server;
     }
 
-    /**
-     * Remove API Request options
-     */
+    // flush
     public function flush() {
         $this->api = null;
     }
 
-    /**
-     * Set options for API Request
-     * @param string $key - Key
-     * @param mixed $value - Value
-     */
+    // set
     public function set($key, $value = false) {
         if (!$this->api) {
             $this->api = new stdClass();
@@ -179,30 +175,8 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Get License
-     * @return string - License Key
-     */
+    // get license
     public function get_license() {
         return get_option('e2pdf_license', false);
-    }
-
-    /**
-     * Get Domain
-     * @return string - Domain
-     */
-    public function get_domain() {
-        $site_url = false;
-        if (class_exists('SitePress')) {
-            $settings = get_option('icl_sitepress_settings');
-            if (isset($settings['language_negotiation_type']) && $settings['language_negotiation_type'] == '2') {
-                global $wpdb;
-                $site_url = $wpdb->get_var($wpdb->prepare('SELECT option_value FROM ' . $wpdb->options . ' WHERE option_name = %s LIMIT 1', 'siteurl'));
-            }
-        }
-        if (!$site_url) {
-            $site_url = site_url();
-        }
-        return $site_url;
     }
 }

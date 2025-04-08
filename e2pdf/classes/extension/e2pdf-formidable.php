@@ -88,7 +88,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             case 'dataset':
                 $this->set('cached_entry', false);
                 if ($this->get('cached_form') && $this->get('dataset') && class_exists('FrmEntry')) {
-                    if (substr($this->get('dataset'), 0, 4) === 'tmp-') {
+                    if (substr($this->get('dataset'), 0, 4) === 'tmp_') {
                         $this->set('cached_entry', get_transient('e2pdf_' . $this->get('dataset')));
                     } else {
                         $entry = FrmEntry::getOne($this->get('dataset'));
@@ -170,6 +170,9 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             $entries = FrmEntry::getAll($where, ' ORDER BY id DESC');
             if ($entries) {
                 $this->set('item', $item_id);
+                if (class_exists('FrmFieldsHelper')) {
+                    $this->set('cached_shortcodes', FrmFieldsHelper::get_shortcodes($name, $item_id));
+                }
                 foreach ($entries as $key => $entry) {
                     $this->set('dataset', $entry->id);
                     $entry_title = $this->render($name);
@@ -181,6 +184,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                         'value' => $entry_title,
                     );
                 }
+                $this->set('cached_shortcodes', false);
             }
         }
         return $datasets;
@@ -263,11 +267,13 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -279,6 +285,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         add_action('check_ajax_referer', array($this, 'action_check_ajax_referer'), 10, 2);
         add_action('frm_after_create_entry', array($this, 'action_frm_default_value'), 0, 2);
         add_action('frm_after_update_entry', array($this, 'action_frm_default_value'), 0, 2);
+
+        /* Hooks */
+        add_action('frm_show_entry_sidebar', array($this, 'hook_formidable_entry_view'));
+        add_action('frm_edit_entry_sidebar', array($this, 'hook_formidable_entry_edit'));
     }
 
     /**
@@ -310,6 +320,9 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         add_filter('e2pdf_controller_templates_import_pages', array($this, 'filter_e2pdf_controller_templates_import_pages'), 10, 5);
         add_filter('e2pdf_controller_templates_import_actions', array($this, 'filter_e2pdf_controller_templates_import_actions'), 10, 5);
         add_filter('e2pdf_controller_templates_import_replace_shortcodes', array($this, 'filter_e2pdf_controller_templates_import_replace_shortcodes'), 10, 5);
+
+        /* Hooks */
+        add_filter('frm_row_actions', array($this, 'hook_formidable_row_actions'), 10, 2);
     }
 
     /**
@@ -321,9 +334,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
      */
     public function render_shortcodes($value, $field = array()) {
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
-        $maybe_checkbox_separated = false;
-        $maybe_foreach_wrappers = false;
-        $maybe_signature = false;
+        $checkbox_separated = false;
+        $foreach_wrapper_shortcodes = false;
+        $foreach_inner_shortcodes = false;
+        $signature = false;
         if ($this->verify()) {
             if (false !== strpos($value, '[')) {
                 $value = $this->helper->load('field')->pre_shortcodes($value, $this, $field);
@@ -390,11 +404,29 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                                 $shortcode[2] = 'frm-field-value field_id=' . $field_id . ' entry=' . $child_entry;
                                 $new_shortcode = '[' . $shortcode[2] . $shortcode[3] . ']';
                             }
-                            $maybe_checkbox_separated = true;
+                            $checkbox_separated = true;
                             $value = str_replace($shortcode_value, $new_shortcode, $value);
                         }
                     }
                 }
+
+                // Foreach Inner Shortcodes
+                preg_match_all('/\[foreach[^\]]*?\]((?:(?!\[\/foreach).)+)(e2pdf-if|e2pdf-for)((?:(?!\[\/foreach).)+)\[\/foreach[^\]]*?\]/s', $value, $matches);
+                if (!empty($matches[0])) {
+                    foreach ($matches[0] as $match) {
+                        $new_match = preg_replace('/(\[)(\/?(e2pdf-if|e2pdf-for)[^\]]*?)(\])/', '{{$2}}', $match);
+                        $if_shortcodes = $this->helper->load('if')->get_shortcodes();
+                        $if_shortcodes_new = array_map(
+                                function ($str) {
+                                    return str_replace(array('[', ']'), array('{{', '}}'), $str);
+                                },
+                                $if_shortcodes
+                        );
+                        $value = str_replace($match, str_replace($if_shortcodes, $if_shortcodes_new, $new_match), $value);
+                    }
+                    $foreach_inner_shortcodes = true;
+                }
+
                 $value = $this->helper->load('field')->inner_shortcodes($value, $this, $field);
 
                 /* Default shortcodes support */
@@ -420,37 +452,37 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                             }
                         } elseif (($shortcode[2] === 'default-message' || $shortcode[2] === 'default_message') && $this->get('cached_entry') && class_exists('FrmEntriesHelper')) {
                             $default_message = FrmEntriesHelper::replace_default_message(
-                                            $shortcode_value,
-                                            array(
-                                                'id' => $this->get('cached_entry')->id,
-                                                'entry' => clone $this->get('cached_entry'),
-                                                'plain_text' => isset($atts['is_plain_text']) && $atts['is_plain_text'] == 'true' ? true : false,
-                                                'user_info' => isset($atts['user_info']) && $atts['user_info'] == 'true' ? true : false,
-                                            )
+                                    $shortcode_value,
+                                    array(
+                                        'id' => $this->get('cached_entry')->id,
+                                        'entry' => clone $this->get('cached_entry'),
+                                        'plain_text' => isset($atts['is_plain_text']) && $atts['is_plain_text'] == 'true' ? true : false,
+                                        'user_info' => isset($atts['user_info']) && $atts['user_info'] == 'true' ? true : false,
+                                    )
                             );
                             $value = str_replace($shortcode_value, $default_message, $value);
                         } elseif (($shortcode[2] === 'default-message2' || $shortcode[2] == 'default_message2') && $this->get('cached_entry2') && class_exists('FrmEntriesHelper')) {
                             $default_message = FrmEntriesHelper::replace_default_message(
-                                            str_replace(array('default-message2', 'default_message2'), array('default-message', 'default_message'), $shortcode_value),
-                                            array(
-                                                'id' => $this->get('cached_entry2')->id,
-                                                'entry' => clone $this->get('cached_entry2'),
-                                                'plain_text' => isset($atts['is_plain_text']) && $atts['is_plain_text'] == 'true' ? true : false,
-                                                'user_info' => isset($atts['user_info']) && $atts['user_info'] == 'true' ? true : false,
-                                            )
+                                    str_replace(array('default-message2', 'default_message2'), array('default-message', 'default_message'), $shortcode_value),
+                                    array(
+                                        'id' => $this->get('cached_entry2')->id,
+                                        'entry' => clone $this->get('cached_entry2'),
+                                        'plain_text' => isset($atts['is_plain_text']) && $atts['is_plain_text'] == 'true' ? true : false,
+                                        'user_info' => isset($atts['user_info']) && $atts['user_info'] == 'true' ? true : false,
+                                    )
                             );
                             $value = str_replace($shortcode_value, $default_message, $value);
                         }
                     }
                 }
 
-                /* Maybe [foreach] wrappers */
-                preg_match_all('/\[foreach[^\]]*?\]((?:(?!\[\/foreach).)+)(e2pdf-format-number|e2pdf-format-date|e2pdf-format-output)((?:(?!\[\/foreach).)+)\[\/foreach[^\]]*?\]/s', $value, $matches);
+                // Foreach Wrapper Shortcodes
+                preg_match_all('/\[foreach[^\]]*?\]((?:(?!\[\/foreach).)+)(e2pdf-format-number|e2pdf-format-date|e2pdf-format-output|e2pdf-math)((?:(?!\[\/foreach).)+)\[\/foreach[^\]]*?\]/s', $value, $matches);
                 if (!empty($matches[0])) {
                     foreach ($matches[0] as $match) {
-                        $new_match = preg_replace('/(\[)(\/?(e2pdf-format-number|e2pdf-format-date|e2pdf-format-output)[^\]]*?)(\])/', '{{$2}}', $match);
+                        $new_match = preg_replace('/(\[)(\/?(e2pdf-format-number|e2pdf-format-date|e2pdf-format-output|e2pdf-math)[^\]]*?)(\])/', '{{$2}}', $match);
                         $value = str_replace($match, $new_match, $value);
-                        $maybe_foreach_wrappers = true;
+                        $foreach_wrapper_shortcodes = true;
                     }
                 }
                 $value = $this->helper->load('field')->wrapper_shortcodes($value, $this, $field);
@@ -488,7 +520,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
              * Checkboxes separatable fix filter add
              * @since 0.01.43
              */
-            if ($maybe_checkbox_separated) {
+            if ($checkbox_separated) {
                 add_filter('frm_display_value_custom', array($this, 'filter_frm_display_value_custom'), 0, 3);
             }
 
@@ -530,7 +562,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
              * Checkboxes separatable fix filter remove
              * @since 0.01.43
              */
-            if ($maybe_checkbox_separated) {
+            if ($checkbox_separated) {
                 remove_filter('frm_display_value_custom', array($this, 'filter_frm_display_value_custom'), 0);
             }
 
@@ -538,21 +570,18 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             if (class_exists('FrmFieldFactory')) {
                 $signature_field = FrmFieldFactory::get_field_type('signature');
                 if ($signature_field->get_display_value('signature') == '') {
-                    $maybe_signature = true;
+                    $signature = true;
                 }
             }
-            if ($maybe_signature) {
+            if ($signature) {
                 remove_filter('frm_get_signature_display_value', 'FrmSigAppController::display_signature');
                 remove_filter('frmpro_fields_replace_shortcodes', 'FrmSigAppController::custom_display_signature');
                 add_filter('frm_keep_signature_value_array', array($this, 'filter_frm_keep_signature_value_array'), 10, 2);
             }
             add_filter('frmpro_fields_replace_shortcodes', array($this, 'filter_frmpro_fields_replace_shortcodes'), 20, 4);
 
-            $maybe_text_signature = false;
-            if (!empty($field['type']) && ($field['type'] == 'e2pdf-image' || $field['type'] == 'e2pdf-signature')) {
-                $maybe_text_signature = true;
-            }
-            if ($maybe_text_signature) {
+            $text_signature = !empty($field['type']) && ($field['type'] == 'e2pdf-image' || $field['type'] == 'e2pdf-signature') ? true : false;
+            if ($text_signature) {
                 add_filter('frm_get_signature_display_value', array($this, 'filter_frm_get_signature_display_value'), 20, 3);
             }
             if ($this->get('item') == '-2') {
@@ -571,15 +600,37 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     }
                 }
             } else {
+                if ($this->get('cached_shortcodes')) {
+                    remove_filter('frm_content', 'FrmFormsController::filter_content', 10, 3);
+                    add_filter('frm_content', array($this, 'filter_filter_content'), 10, 3);
+                }
                 $value = apply_filters('frm_content', $value, $this->get('cached_form'), $this->get('cached_entry'));
+                if ($this->get('cached_shortcodes')) {
+                    remove_filter('frm_content', array($this, 'filter_filter_content'), 10, 3);
+                    add_filter('frm_content', 'FrmFormsController::filter_content', 10, 3);
+                }
             }
 
-            /* [e2pdf-format-number], [e2pdf-format-date], [e2pdf-format-output] fix inside [foreach] */
-            if ($maybe_foreach_wrappers) {
-                $value = preg_replace('/(\{\{)(\/?(e2pdf-format-number|e2pdf-format-date|e2pdf-format-output)[^\}]*?)(\}\})/', '[$2]', $value);
+            // Foreach Wrapper Shortcodes Reverse
+            if ($foreach_wrapper_shortcodes) {
+                $value = preg_replace('/(\{\{)(\/?(e2pdf-format-number|e2pdf-format-date|e2pdf-format-output|e2pdf-math)[^\}]*?)(\}\})/', '[$2]', $value);
                 $value = $this->helper->load('field')->wrapper_shortcodes($value, $this, $field, true);
             }
-            if ($maybe_text_signature) {
+
+            // Foreach Inner Shortcodes Reverse
+            if ($foreach_inner_shortcodes) {
+                preg_match_all('/\{\{(e2pdf-if|e2pdf-for)\}\}(.*?)+\{\{\/(e2pdf-if|e2pdf-for)\}\}/s', $value, $matches);
+                if (!empty($matches[0])) {
+                    foreach ($matches[0] as $match) {
+                        $new_match = preg_replace('/(\{\{)(\/?(e2pdf-if|e2pdf-for)[^\}]*?)(\}\})/', '[$2]', $match);
+                        $value = str_replace($match, str_replace($if_shortcodes_new, $if_shortcodes, $new_match), $value);
+                    }
+                }
+                $value = $this->helper->load('field')->inner_shortcodes($value, $this, $field);
+            }
+
+            // Text Signature
+            if ($text_signature) {
                 remove_filter('frm_get_signature_display_value', array($this, 'filter_frm_get_signature_display_value'), 20);
                 if ($value && false !== strpos($value, ':e2pdf-text-filter:')) {
                     $value = str_replace(':e2pdf-text-filter:', '', $value);
@@ -587,7 +638,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 }
             }
             remove_filter('frmpro_fields_replace_shortcodes', array($this, 'filter_frmpro_fields_replace_shortcodes'), 20);
-            if ($maybe_signature) {
+            if ($signature) {
                 remove_filter('frm_keep_signature_value_array', array($this, 'filter_frm_keep_signature_value_array'));
                 add_filter('frm_get_signature_display_value', 'FrmSigAppController::display_signature', 10, 3);
                 add_filter('frmpro_fields_replace_shortcodes', 'FrmSigAppController::custom_display_signature', 10, 4);
@@ -900,7 +951,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                             }
                             $transient = false;
                             if (isset($atts['use_args_entry']) && $atts['use_args_entry'] == 'true' && $atts['dataset'] == $dataset_id) {
-                                $dataset = 'tmp-' . md5(microtime() . '_' . wp_rand());
+                                $dataset = 'tmp_' . $this->helper->load('encryption')->random_md5();
                                 $transient = 'e2pdf_' . $dataset;
                                 set_transient($transient, $args['entry'], 1800);
                                 $atts['dataset'] = $dataset;
@@ -1048,7 +1099,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
      */
     public function filter_e2pdf_model_options_get_options_options($options = array()) {
         $options['formidable_group'] = array(
-            'name' => __('Formidable Forms', 'e2pdf'),
+            'name' => 'Formidable Forms',
             'action' => 'extension',
             'group' => 'formidable_group',
             'options' => array(
@@ -1079,7 +1130,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
 
         if (isset($options['item'])) {
             $options['item']['options'][] = array(
-                'name' => __('Formidable Forms', 'e2pdf'),
+                'name' => 'Formidable Forms',
                 'key' => 'options[formidable_item_new_form]',
                 'value' => 1,
                 'default_value' => 0,
@@ -1101,7 +1152,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
 
         if ($extension->loaded('formidable')) {
             $options['formidable'] = array(
-                'name' => __('Formidable', 'e2pdf'),
+                'name' => 'Formidable Forms',
                 'options' => array(
                     array(
                         'name' => __('Force shortcodes to use', 'e2pdf'),
@@ -1357,7 +1408,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 foreach ($item_xml->form as $form_key => $form) {
                     if (($template->get('item') != '-2' && (string) $form->id == (string) $xml->template->item) || ($template->get('item') == '-2' && ((string) $form->id == (string) $xml->template->item1 || (string) $form->id == (string) $xml->template->item2))) {
                         foreach ($form->field as $field_key => $field) {
-                            $field_options = @json_decode((string) $field->field_options, true);
+                            $field_options = @json_decode((string) $field->field_options, true); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                             if (isset($field_options['form_select']) && $field_options['form_select']) {
                                 foreach ($item_xml->form as $sub_form_key => $sub_form) {
                                     if ((string) $sub_form->id == $field_options['form_select']) {
@@ -1576,7 +1627,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 foreach ($item_xml->form as $form_key => $form) {
                     if (($template->get('item') != '-2' && (string) $form->id == (string) $xml->template->item) || ($template->get('item') == '-2' && ((string) $form->id == (string) $xml->template->item1 || (string) $form->id == (string) $xml->template->item2))) {
                         foreach ($form->field as $field_key => $field) {
-                            $field_options = @json_decode((string) $field->field_options, true);
+                            $field_options = @json_decode((string) $field->field_options, true); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                             if (isset($field_options['form_select']) && $field_options['form_select']) {
                                 foreach ($item_xml->form as $sub_form_key => $sub_form) {
                                     if ((string) $sub_form->id == $field_options['form_select']) {
@@ -1734,7 +1785,22 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 }
             }
         }
+        return $content;
+    }
 
+    public function filter_filter_content($content, $form, $entry = false) {
+        $content = FrmFormsController::replace_form_name_shortcodes($content, $form);
+        if (!$entry) {
+            return $content;
+        }
+        if (is_object($form)) {
+            $form = $form->id;
+        }
+        if (!empty($entry->parent_entry)) {
+            $form = $entry->parent_entry->form_id;
+        }
+        $shortcodes = $this->get('cached_shortcodes');
+        $content = apply_filters('frm_replace_content_shortcodes', $content, $entry, $shortcodes);
         return $content;
     }
 
@@ -2572,8 +2638,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                             );
                         }
                         break;
-
-                    case 'file':
                     case 'textarea':
                         $elements[] = $this->auto_field(
                                 $field,
@@ -2590,15 +2654,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                                     ),
                                 )
                         );
-
-                        if ($field->type == 'file') {
-                            if (strpos($field_id, ':') !== false) {
-                                $field_id .= ' size="full" show_image="0" add_link="0"';
-                            } else {
-                                $field_id .= ' size="full"';
-                            }
-                        }
-
                         $elements[] = $this->auto_field(
                                 $field,
                                 array(
@@ -2608,6 +2663,40 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                                         'width' => '100%',
                                         'height' => '150',
                                         'value' => '[' . $field_id . ' wpautop=0]',
+                                    ),
+                                )
+                        );
+                        break;
+                    case 'file':
+                        $elements[] = $this->auto_field(
+                                $field,
+                                array(
+                                    'type' => 'e2pdf-html',
+                                    'block' => true,
+                                    'properties' => array(
+                                        'top' => '20',
+                                        'left' => '20',
+                                        'right' => '20',
+                                        'width' => '100%',
+                                        'height' => 'auto',
+                                        'value' => $field->name,
+                                    ),
+                                )
+                        );
+                        if (strpos($field_id, ':') !== false) {
+                            $field_id .= ' size="full" show_image="0" add_link="0"';
+                        } else {
+                            $field_id .= ' size="full"';
+                        }
+                        $elements[] = $this->auto_field(
+                                $field,
+                                array(
+                                    'type' => 'e2pdf-textarea',
+                                    'properties' => array(
+                                        'top' => '5',
+                                        'width' => '100%',
+                                        'height' => '150',
+                                        'value' => '[' . $field_id . ']',
                                     ),
                                 )
                         );
@@ -3076,7 +3165,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     $description = $this->get('cached_entry')->description;
                 }
                 if (isset($description['referrer'])) {
-                    $replace['[referer]'] = @preg_match('/Referer +\d+\:[ \t]+([^\n\t]+)/', $description['referrer'], $m) ? $m[1] : $description['referrer'];
+                    $replace['[referer]'] = @preg_match('/Referer +\d+\:[ \t]+([^\n\t]+)/', $description['referrer'], $m) ? $m[1] : $description['referrer']; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                 }
                 $replace['[browser]'] = isset($description['browser']) ? $description['browser'] : '';
             }
@@ -3088,7 +3177,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 }
                 $replace['[referer2]'] = '';
                 if (isset($description['referrer'])) {
-                    $replace['[referer2]'] = @preg_match('/Referer +\d+\:[ \t]+([^\n\t]+)/', $description['referrer'], $m) ? $m[1] : $description['referrer'];
+                    $replace['[referer2]'] = @preg_match('/Referer +\d+\:[ \t]+([^\n\t]+)/', $description['referrer'], $m) ? $m[1] : $description['referrer']; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                 }
                 $replace['[browser2]'] = isset($description['browser']) ? $description['browser'] : '';
             }
@@ -3417,9 +3506,17 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
                 if (function_exists('mb_convert_encoding')) {
-                    $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    } else {
+                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    }
                 } else {
-                    $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    } else {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    }
                 }
                 libxml_clear_errors();
             }
@@ -3553,7 +3650,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                         $input_cloned = $input->cloneNode(true);
 
                         $xml->set_node_value($input_cloned, 'type', 'text');
-                        $xml->set_node_value($input_cloned, 'value', __('File Upload', 'e2pdf'));
+                        $xml->set_node_value($input_cloned, 'value', __('File Upload', 'formidable'));
                         $xml->set_node_value($input_cloned, 'style', 'width: 100%; height: 200px; text-align: center;');
 
                         if (strpos($xml->get_node_value($input_cloned, 'name'), ':') !== false) {
@@ -3789,7 +3886,11 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     }
                 }
 
-                return $dom->saveHTML();
+                if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                    return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
+                } else {
+                    return $dom->saveHTML();
+                }
             }
         }
         return false;
@@ -4014,5 +4115,97 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
 
     public function merged_items() {
         return true;
+    }
+
+    public function hook_formidable_entry_view($entry) {
+        if (!empty($entry->form_id)) {
+            $hooks = $this->helper->load('hooks')->get('formidable', 'hook_formidable_entry_view', $entry->form_id);
+            if (!empty($hooks)) {
+                echo '<h3>' . apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_formidable_entry_view') . '</h3>';
+                echo '<div class="inside">';
+                foreach ($hooks as $hook) {
+                    $action = apply_filters('e2pdf_hook_action_button',
+                            array(
+                                'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $entry->id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook
+                            ), 'hook_formidable_entry_view', $hook, $entry->id
+                    );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
+                }
+                echo '</div>';
+            }
+        }
+    }
+
+    public function hook_formidable_entry_edit($entry) {
+        if (!empty($entry->form_id)) {
+            $hooks = $this->helper->load('hooks')->get('formidable', 'hook_formidable_entry_edit', $entry->form_id);
+            if (!empty($hooks)) {
+                echo '<h3>' . apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_formidable_entry_view') . '</h3>';
+                echo '<div class="inside">';
+                foreach ($hooks as $hook) {
+                    $action = apply_filters('e2pdf_hook_action_button',
+                            array(
+                                'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $entry->id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook
+                            ), 'hook_formidable_entry_edit', $hook, $entry->id
+                    );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
+                }
+                echo '</div>';
+            }
+        }
+    }
+
+    public function hook_formidable_row_actions($actions, $entry) {
+        if (!empty($entry->form_id) && !empty($entry->id)) {
+            $hooks = $this->helper->load('hooks')->get('formidable', 'hook_formidable_row_actions', $entry->form_id);
+            foreach ($hooks as $hook) {
+                $action = apply_filters('e2pdf_hook_action_button',
+                        array(
+                            'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                            'url' => $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf',
+                                        'action' => 'export',
+                                        'id' => $hook,
+                                        'dataset' => $entry->id,
+                                    ), 'admin.php?'
+                            ),
+                            'title' => 'PDF #' . $hook
+                        ), 'hook_formidable_row_actions', $hook, $entry->id
+                );
+                if (!empty($action)) {
+                    $actions['e2pdf_' . $hook] = sprintf(
+                            $action['html'], $action['url'], $action['title']
+                    );
+                }
+            }
+        }
+        return $actions;
     }
 }

@@ -152,7 +152,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         $content = array();
         $result = $wpdb->get_results(
                 $wpdb->prepare(
-                        "SELECT pm.post_id, pm.meta_value FROM {$wpdb->postmeta} pm INNER JOIN {$wpdb->posts} pp ON pp.ID = pm.post_id WHERE pm.meta_key = %s AND pp.post_type NOT IN ('revision')",
+                        'SELECT pm.post_id, pm.meta_value FROM `' . $wpdb->postmeta . '` pm INNER JOIN `' . $wpdb->posts . '` pp ON pp.ID = pm.post_id WHERE pm.meta_key = %s AND pp.post_type NOT IN ("revision")',
                         '_elementor_data'
                 )
         );
@@ -265,7 +265,12 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                         'action' => 'elementor',
                     )
             );
-            $item->name = $form['settings']['form_name'] . ' (' . $form['id'] . ')';
+            $post_name = '';
+            if (!empty($form['post_id'])) {
+                $post_name .= ' | ' . get_the_title($form['post_id']);
+            }
+
+            $item->name = $form['settings']['form_name'] . ' (' . $form['id'] . ')' . $post_name;
         } else {
             $item->id = '';
             $item->url = 'javascript:void(0);';
@@ -354,11 +359,13 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -387,7 +394,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
             if (class_exists('Superaddons_Elementor_Signature_Field')) {
                 $signatures = $this->get('cached_entry')->get_field(
                         array(
-                            'type' => 'signature'
+                            'type' => 'signature',
                         )
                 );
                 foreach ($signatures as $signature) {
@@ -480,9 +487,17 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
                 if (function_exists('mb_convert_encoding')) {
-                    $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    } else {
+                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                    }
                 } else {
-                    $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                    } else {
+                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                    }
                 }
                 libxml_clear_errors();
             }
@@ -523,7 +538,11 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                     }
                     $xml->set_node_value($element, 'type', 'text');
                 }
-                return $dom->saveHTML();
+                if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                    return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
+                } else {
+                    return $dom->saveHTML();
+                }
             }
         }
         return false;
@@ -552,7 +571,6 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 case 'number':
                 case 'date':
                 case 'time':
-                case 'upload':
                 case 'password':
                     $elements[] = $this->auto_field(
                             $field,
@@ -583,6 +601,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                             )
                     );
                     break;
+                case 'upload':
                 case 'textarea':
                     $elements[] = $this->auto_field(
                             $field,

@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Notification Helper
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-notification.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -15,12 +13,7 @@ if (!defined('ABSPATH')) {
 
 class Model_E2pdf_Notification extends Model_E2pdf_Model {
 
-    /**
-     * Add notification
-     * 
-     * @param string $type - Notification type
-     * @param string $text - Notification text
-     */
+    // add notification
     public function add_notification($type, $text) {
         $notifications = get_transient('e2pdf_notifications');
         $notifications[] = array(
@@ -30,11 +23,7 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
         set_transient('e2pdf_notifications', $notifications);
     }
 
-    /**
-     * Get notifications
-     * 
-     * @return array - List of notifications
-     */
+    // get notifications
     public function get_notifications() {
         $notifications = get_transient('e2pdf_notifications');
 
@@ -44,14 +33,18 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
 
         if (!get_option('e2pdf_hide_warnings', '0')) {
             if ($this->helper->get('license')->get('status') == 'pre_expired') {
+                /* translators: %s: License Key Expire Date */
                 $message = sprintf(__('Your E2Pdf License Key will expire at <strong>%s</strong>', 'e2pdf'), $this->helper->get('license')->get('expire'));
                 if (current_user_can('manage_options') || current_user_can('e2pdf_license')) {
                     $message .= ' | ' . sprintf('<a class="e2pdf-link" target="_blank" href="%s">%s »</a>', 'https://e2pdf.com/checkout/license/renew/' . get_option('e2pdf_license'), __('Renew License Key', 'e2pdf'));
                 }
-                array_unshift($notifications, array(
-                    'type' => 'notice',
-                    'text' => $message
-                ));
+                array_unshift(
+                        $notifications,
+                        array(
+                            'type' => 'notice',
+                            'text' => $message,
+                        )
+                );
             }
 
             if ($this->helper->get('license')->get('status') == 'expired') {
@@ -59,17 +52,23 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
                 if (current_user_can('manage_options') || current_user_can('e2pdf_license')) {
                     $message .= ' | ' . sprintf('<a class="e2pdf-link" target="_blank" href="%s">%s »</a>', 'https://e2pdf.com/checkout/license/renew/' . get_option('e2pdf_license'), __('Renew License Key', 'e2pdf'));
                 }
-                array_unshift($notifications, array(
-                    'type' => 'error',
-                    'text' => $message
-                ));
+                array_unshift(
+                        $notifications,
+                        array(
+                            'type' => 'error',
+                            'text' => $message,
+                        )
+                );
             }
 
             if ($this->helper->get('license')->get('type') == 'FREE' && $this->helper->get('page') == 'e2pdf-templates') {
-                array_unshift($notifications, array(
-                    'type' => 'notice',
-                    'text' => sprintf(__('You are using E2Pdf FREE License Type', 'e2pdf') . ' | ' . __('Up to 1 Page and up to 1 Template allowed', 'e2pdf') . ' | <a class="e2pdf-link" target="_blank" href="%s">%s »</a>', 'https://e2pdf.com/price', __('Upgrade License Key', 'e2pdf'))
-                ));
+                array_unshift(
+                        $notifications,
+                        array(
+                            'type' => 'notice',
+                            'text' => sprintf(__('You are using E2Pdf FREE License Type', 'e2pdf') . ' | ' . __('Up to 1 Page and up to 1 Template allowed', 'e2pdf') . ' | <a class="e2pdf-link" target="_blank" href="%s">%s »</a>', 'https://e2pdf.com/price', __('Upgrade License Key', 'e2pdf')),
+                        )
+                );
             }
         }
 
@@ -87,10 +86,13 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
             } else {
                 $message = $this->helper->get('license')->get('error');
             }
-            array_unshift($notifications, array(
-                'type' => 'error',
-                'text' => $message
-            ));
+            array_unshift(
+                    $notifications,
+                    array(
+                        'type' => 'error',
+                        'text' => $message,
+                    )
+            );
         }
 
         set_transient('e2pdf_notifications', array());

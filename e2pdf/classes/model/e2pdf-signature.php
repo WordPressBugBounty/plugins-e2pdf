@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Signature Model
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.00.10
+ * File: /model/e2pdf-signature.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -32,7 +30,7 @@ class Model_E2pdf_Signature extends Model_E2pdf_Model {
                 'x' => abs($min_x),
                 'y' => abs($min_y),
                 'width' => $max_x - $min_x,
-                'height' => $max_y - $min_y
+                'height' => $max_y - $min_y,
             );
 
             $box = $this->ttf_box_fix($value, $box, $options['fontSize'], $options['font']);
@@ -54,6 +52,7 @@ class Model_E2pdf_Signature extends Model_E2pdf_Model {
                 imagepng($img);
                 $tmp_image = ob_get_contents();
                 ob_end_clean();
+                // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
                 $response = base64_encode($tmp_image);
             }
         }
@@ -267,7 +266,10 @@ class Model_E2pdf_Signature extends Model_E2pdf_Model {
         imagesetthickness($img, 5);
 
         $pen = imagecolorallocate($img, $options['penColour'][0], $options['penColour'][1], $options['penColour'][2]);
+
+        // phpcs:ignore Generic.CodeAnalysis.ForLoopWithTestFunctionCall.NotAllowed, Squiz.PHP.DisallowSizeFunctionsInLoops.Found
         for ($i = 0; $i < count($a); $i++) {
+            // phpcs:ignore Generic.CodeAnalysis.ForLoopWithTestFunctionCall.NotAllowed, Squiz.PHP.DisallowSizeFunctionsInLoops.Found
             for ($j = 0; $j < count($a[$i]['x']); $j++) {
                 if (!isset($a[$i]['x'][$j])) {
                     break;
@@ -284,6 +286,7 @@ class Model_E2pdf_Signature extends Model_E2pdf_Model {
         imagedestroy($img);
 
         if ($tmp_image) {
+            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
             $response = base64_encode($tmp_image);
         }
 
@@ -350,5 +353,4 @@ class Model_E2pdf_Signature extends Model_E2pdf_Model {
 
         return $imagedata;
     }
-
 }

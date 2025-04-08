@@ -321,6 +321,14 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         /* https://wordpress.org/plugins/happy-elementor-addons/ compatibility fix */
         add_action('elementor/frontend/before_render', array($this, 'action_elementor_widget_before_render_content'), 0);
+
+        /* Temporary solution for File Downloads in WC Admin Order page */
+        add_action('add_meta_boxes_woocommerce_page_wc-orders', array($this, 'action_add_meta_boxes_woocommerce_page_wc_orders'));
+        add_action('add_meta_boxes_shop_order', array($this, 'action_add_meta_boxes_woocommerce_page_wc_orders'));
+
+        /* Hooks */
+        add_action('add_meta_boxes', array($this, 'hook_woocommerce_order_edit'));
+        add_action('woocommerce_admin_order_actions_end', array($this, 'hook_woocommerce_order_row_actions'));
     }
 
     public function load_filters() {
@@ -356,6 +364,9 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
          * https://theme.co/cornerstone/
          */
         add_filter('cs_element_pre_render', array($this, 'filter_cs_element_pre_render'));
+
+        /* Hooks */
+        add_filter('manage_edit-shop_order_columns', array($this, 'hook_woocommerce_order_row_column'));
     }
 
     /**
@@ -485,6 +496,74 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     $widget->set_settings('shortcode', $this->filter_content($content, false, false, $wp_reset_postdata));
                 } elseif ($widget->get_name() == 'text-editor' && !$wp_reset_postdata) {
                     $widget->set_settings('editor', $this->filter_content($content, false, false, $wp_reset_postdata));
+                }
+            }
+        }
+    }
+
+    public function action_add_meta_boxes_woocommerce_page_wc_orders($post) {
+        if (class_exists('Automattic\WooCommerce\Utilities\OrderUtil') && method_exists('Automattic\WooCommerce\Utilities\OrderUtil', 'is_order_edit_screen') && class_exists('WC_Data_Store')) {
+            if (Automattic\WooCommerce\Utilities\OrderUtil::is_order_edit_screen()) {
+                if ($post instanceof WC_Order) {
+                    $order_id = $post->get_id();
+                } else {
+                    $order_id = $post->ID;
+                }
+                $data_store = WC_Data_Store::load('customer-download');
+                $download_permissions = array();
+                if (0 !== $order_id) {
+                    $download_permissions = $data_store->get_downloads(
+                            array(
+                                'order_id' => $order_id,
+                                'orderby' => 'product_id',
+                            )
+                    );
+                }
+                $product = null;
+                $items = array();
+                $download_links = array();
+                if ($download_permissions && count($download_permissions) > 0) {
+                    foreach ($download_permissions as $download) {
+                        if (!$product || $product->get_id() !== $download->get_product_id()) {
+                            $product = wc_get_product($download->get_product_id());
+                        }
+                        if (!$product || !$product->exists() || !$product->has_file($download->get_download_id())) {
+                            continue;
+                        }
+                        $file = $product->get_file($download->get_download_id());
+                        if ($file && $file->get_file() && strpos($file->get_file(), '[e2pdf-download') !== false) {
+                            global $wpdb;
+                            if (isset($items[$download->get_download_id()])) {
+                                $item_ids = $items[$download->get_download_id()];
+                            } else {
+                                $item_ids = array();
+                            }
+                            $item_id = $wpdb->get_var($wpdb->prepare('SELECT `items`.`order_item_id` FROM `' . $wpdb->prefix . 'woocommerce_order_items` `items` INNER JOIN `' . $wpdb->prefix . "woocommerce_order_itemmeta` `itemmeta` ON `itemmeta`.`order_item_id` = `items`.`order_item_id` AND (`itemmeta`.`meta_key` = '_product_id' OR `itemmeta`.`meta_key` = '_variation_id' ) AND `itemmeta`.`meta_value` = %d WHERE `items`.`order_id` = %d and `items`.`order_item_type` = 'line_item' and `items`.`order_item_id` NOT IN ( '" . implode("','", $item_ids) . "' ) ORDER BY `items`.`order_item_id` ASC", $download->get_product_id(), $download->get_order_id()));
+                            if ($item_id) {
+                                $items[$download->get_download_id()][] = $item_id;
+                                $download_link = add_query_arg(
+                                        array(
+                                            'download_file' => $download->get_product_id(),
+                                            'order' => $download->get_order_key(),
+                                            'email' => urlencode($download->get_user_email()), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
+                                            'key' => $download->get_download_id(),
+                                        ),
+                                        trailingslashit(home_url())
+                                );
+                                $download_links[] = array(
+                                    's' => $download->get_download_id(),
+                                    'r' => add_query_arg(array('item_id' => $item_id), $download_link),
+                                );
+                            }
+                        }
+                    }
+                }
+                if (!empty($download_links)) {
+                    add_action(
+                            'admin_print_scripts', function () use ($download_links) {
+                                echo '<script>const e2pdf_wc_download_links = ' . wp_json_encode($download_links) . ';document.addEventListener("DOMContentLoaded", function(event) {for (var i = 0; i < e2pdf_wc_download_links.length; i++){var a = document.querySelector(\'a[id="copy-download-link"][href$="\'+e2pdf_wc_download_links[i][\'s\']+\'"]\');if (a) {a.setAttribute(\'href\',e2pdf_wc_download_links[i][\'r\']);}}});</script>';
+                            }
+                    );
                 }
             }
         }
@@ -1408,14 +1487,12 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             foreach ($downloads as $key => $download) {
                 if (isset($download['file']['file']) && $download['file']['file'] && strpos($download['file']['file'], '[e2pdf-download') !== false) {
                     global $wpdb;
-
                     if (isset($items[$download['download_id']])) {
                         $item_ids = $items[$download['download_id']];
                     } else {
                         $item_ids = array();
                     }
-
-                    $item_id = $wpdb->get_var($wpdb->prepare('SELECT `items`.`order_item_id` FROM ' . $wpdb->prefix . 'woocommerce_order_items `items` INNER JOIN ' . $wpdb->prefix . "woocommerce_order_itemmeta `itemmeta` ON `itemmeta`.`order_item_id` = `items`.`order_item_id` AND (`itemmeta`.`meta_key` = '_product_id' OR `itemmeta`.`meta_key` = '_variation_id' ) AND `itemmeta`.`meta_value` = %d WHERE `items`.`order_id` = %d and `items`.`order_item_type` = 'line_item' and `items`.`order_item_id` NOT IN ( '" . implode("','", $item_ids) . "' ) ORDER BY `items`.`order_item_id` ASC", $download['product_id'], $download['order_id']));
+                    $item_id = $wpdb->get_var($wpdb->prepare('SELECT `items`.`order_item_id` FROM `' . $wpdb->prefix . 'woocommerce_order_items` `items` INNER JOIN `' . $wpdb->prefix . "woocommerce_order_itemmeta` `itemmeta` ON `itemmeta`.`order_item_id` = `items`.`order_item_id` AND (`itemmeta`.`meta_key` = '_product_id' OR `itemmeta`.`meta_key` = '_variation_id' ) AND `itemmeta`.`meta_value` = %d WHERE `items`.`order_id` = %d and `items`.`order_item_type` = 'line_item' and `items`.`order_item_id` NOT IN ( '" . implode("','", $item_ids) . "' ) ORDER BY `items`.`order_item_id` ASC", $download['product_id'], $download['order_id']));
                     if ($item_id) {
                         $downloads[$key]['download_url'] = add_query_arg(
                                 array('item_id' => $item_id), $download['download_url']
@@ -1435,11 +1512,13 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -2241,7 +2320,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     if (isset($atts['id'])) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'wordpress') { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
+                        if ($template->get('extension') === 'wordpress' || $template->get('extension') === 'jetformbuilder') { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
                             if (!$download) {
                                 continue;
                             }
@@ -2381,13 +2460,13 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         }
 
         $options['woocommerce_group'] = array(
-            'name' => __('WooCommerce', 'e2pdf'),
+            'name' => 'WooCommerce',
             'action' => 'extension',
             'group' => 'woocommerce_group',
             'options' => array(
                 array(
-                    'header' => __('My Orders Actions', 'e2pdf'),
-                    'name' => __('E2Pdf Template', 'e2pdf'),
+                    'header' => __('User Order List', 'e2pdf'),
+                    'name' => __('Template', 'e2pdf'),
                     'key' => 'e2pdf_wc_my_orders_actions_template_id',
                     'value' => get_option('e2pdf_wc_my_orders_actions_template_id', '0'),
                     'default_value' => '0',
@@ -2410,8 +2489,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     'placeholder' => '0',
                 ),
                 array(
-                    'header' => __('Order Details', 'e2pdf'),
-                    'name' => __('E2Pdf Template', 'e2pdf'),
+                    'header' => __('User Order Details', 'e2pdf'),
+                    'name' => __('Template', 'e2pdf'),
                     'key' => 'e2pdf_wc_order_details_template_id',
                     'value' => get_option('e2pdf_wc_order_details_template_id', '0'),
                     'default_value' => '0',
@@ -2431,11 +2510,11 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     'default_value' => 'woocommerce_order_details_before_order_table',
                     'type' => 'select',
                     'options' => array(
-                        'woocommerce_order_details_before_order_table' => __('Before Order Table', 'e2pdf'),
-                        'woocommerce_order_details_before_order_table_items' => __('Before Order Table Items', 'e2pdf'),
-                        'woocommerce_order_details_after_order_table_items' => __('After Order Table Items', 'e2pdf'),
-                        'woocommerce_order_details_after_order_table' => __('After Order Table', 'e2pdf'),
-                        'woocommerce_after_order_details' => __('After Order Details', 'e2pdf'),
+                        'woocommerce_order_details_before_order_table' => 'woocommerce_order_details_before_order_table',
+                        'woocommerce_order_details_before_order_table_items' => 'woocommerce_order_details_before_order_table_items',
+                        'woocommerce_order_details_after_order_table_items' => 'woocommerce_order_details_after_order_table_items',
+                        'woocommerce_order_details_after_order_table' => 'woocommerce_order_details_after_order_table',
+                        'woocommerce_after_order_details' => 'woocommerce_after_order_details',
                     ),
                 ),
                 array(
@@ -2448,58 +2527,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     'placeholder' => '0',
                 ),
                 array(
-                    'header' => __('Admin Order List Actions', 'e2pdf'),
-                    'name' => __('E2Pdf Template', 'e2pdf'),
-                    'key' => 'e2pdf_wc_admin_order_actions_template_id',
-                    'value' => get_option('e2pdf_wc_admin_order_actions_template_id', '0'),
-                    'default_value' => '0',
-                    'type' => 'select',
-                    'options' => $order_templates,
-                ),
-                array(
-                    'name' => __('Hook', 'e2pdf'),
-                    'key' => 'e2pdf_wc_admin_order_actions_template_id_hook',
-                    'value' => get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end'),
-                    'default_value' => 'woocommerce_admin_order_actions_end',
-                    'type' => 'select',
-                    'options' => array(
-                        'woocommerce_admin_order_actions_start' => __('Before Actions', 'e2pdf'),
-                        'woocommerce_admin_order_actions_end' => __('After Actions', 'e2pdf'),
-                    ),
-                ),
-                array(
-                    'name' => __('Order Status', 'e2pdf'),
-                    'key' => 'e2pdf_wc_admin_order_actions_template_id_status',
-                    'type' => 'checkbox_list',
-                    'options' => $this->get_status_options('e2pdf_wc_admin_order_actions_template_id'),
-                ),
-                array(
-                    'name' => __('Priority', 'e2pdf'),
-                    'key' => 'e2pdf_wc_admin_order_actions_template_id_priority',
-                    'value' => get_option('e2pdf_wc_admin_order_actions_template_id_priority', '10'),
-                    'default_value' => '10',
-                    'type' => 'text',
-                    'class' => 'e2pdf-numbers',
-                    'placeholder' => '0',
-                ),
-                array(
-                    'header' => __('Admin Order Details', 'e2pdf'),
-                    'name' => __('E2Pdf Template', 'e2pdf'),
-                    'key' => 'e2pdf_wc_admin_order_details_template_id',
-                    'value' => get_option('e2pdf_wc_admin_order_details_template_id', '0'),
-                    'default_value' => '0',
-                    'type' => 'select',
-                    'options' => $order_templates,
-                ),
-                array(
-                    'name' => __('Order Status', 'e2pdf'),
-                    'key' => 'e2pdf_wc_admin_order_details_template_id_status',
-                    'type' => 'checkbox_list',
-                    'options' => $this->get_status_options('e2pdf_wc_admin_order_details_template_id'),
-                ),
-                array(
-                    'header' => __('Cart', 'e2pdf'),
-                    'name' => __('E2Pdf Template', 'e2pdf'),
+                    'header' => __('User Cart', 'e2pdf'),
+                    'name' => __('Template', 'e2pdf'),
                     'key' => 'e2pdf_wc_cart_template_id',
                     'value' => get_option('e2pdf_wc_cart_template_id', '0'),
                     'default_value' => '0',
@@ -2516,8 +2545,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     'placeholder' => '0',
                 ),
                 array(
-                    'header' => __('Checkout', 'e2pdf'),
-                    'name' => __('E2Pdf Template', 'e2pdf'),
+                    'header' => __('User Checkout', 'e2pdf'),
+                    'name' => __('Template', 'e2pdf'),
                     'key' => 'e2pdf_wc_checkout_template_id',
                     'value' => get_option('e2pdf_wc_checkout_template_id', '0'),
                     'default_value' => '0',
@@ -2531,8 +2560,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     'default_value' => 'woocommerce_review_order_before_submit',
                     'type' => 'select',
                     'options' => array(
-                        'woocommerce_review_order_before_submit' => __('Before Submit Button', 'e2pdf'),
-                        'woocommerce_review_order_after_submit' => __('After Submit Button', 'e2pdf'),
+                        'woocommerce_review_order_before_submit' => 'woocommerce_review_order_before_submit',
+                        'woocommerce_review_order_after_submit' => 'woocommerce_review_order_after_submit',
                     ),
                 ),
                 array(
@@ -2546,6 +2575,63 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 ),
             ),
         );
+
+        /* Deprecate and move to Hooks */
+        //if (get_option('e2pdf_wc_admin_order_actions_template_id', '0')) {
+        $options['woocommerce_group']['options'][] = array(
+            'header' => __('Admin Order List', 'e2pdf'),
+            'name' => __('Template', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_actions_template_id',
+            'value' => get_option('e2pdf_wc_admin_order_actions_template_id', '0'),
+            'default_value' => '0',
+            'type' => 'select',
+            'options' => $order_templates,
+        );
+        $options['woocommerce_group']['options'][] = array(
+            'name' => __('Hook', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_actions_template_id_hook',
+            'value' => get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end'),
+            'default_value' => 'woocommerce_admin_order_actions_end',
+            'type' => 'select',
+            'options' => array(
+                'woocommerce_admin_order_actions_start' => 'woocommerce_admin_order_actions_start',
+                'woocommerce_admin_order_actions_end' => 'woocommerce_admin_order_actions_end',
+            ),
+        );
+        $options['woocommerce_group']['options'][] = array(
+            'name' => __('Order Status', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_actions_template_id_status',
+            'type' => 'checkbox_list',
+            'options' => $this->get_status_options('e2pdf_wc_admin_order_actions_template_id'),
+        );
+        $options['woocommerce_group']['options'][] = array(
+            'name' => __('Priority', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_actions_template_id_priority',
+            'value' => get_option('e2pdf_wc_admin_order_actions_template_id_priority', '10'),
+            'default_value' => '10',
+            'type' => 'text',
+            'class' => 'e2pdf-numbers',
+            'placeholder' => '0',
+        );
+        //}
+        //if (get_option('e2pdf_wc_admin_order_details_template_id', '0')) {
+        $options['woocommerce_group']['options'][] = array(
+            'header' => __('Admin Order Details', 'e2pdf'),
+            'name' => __('Template', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_details_template_id',
+            'value' => get_option('e2pdf_wc_admin_order_details_template_id', '0'),
+            'default_value' => '0',
+            'type' => 'select',
+            'options' => $order_templates,
+        );
+        $options['woocommerce_group']['options'][] = array(
+            'name' => __('Order Status', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_details_template_id_status',
+            'type' => 'checkbox_list',
+            'options' => $this->get_status_options('e2pdf_wc_admin_order_details_template_id'),
+        );
+        // }
+
         return $options;
     }
 
@@ -2626,93 +2712,93 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         $vc = '';
 
         if ($this->get('item') == 'cart') {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Cart', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Cart</h3>';
             $vc .= '<div class="e2pdf-grid">';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart', 'e2pdf'), 'e2pdf-wc-cart key="cart"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Products', 'e2pdf'), 'e2pdf-wc-cart key="get_cart"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Applied Coupons', 'e2pdf'), 'e2pdf-wc-cart key="get_applied_coupons"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Total', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_total"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Subtotal', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_subtotal"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Tax', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_tax"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Hash', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_hash"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Contents Total', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_contents_total"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Contents Tax', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_contents_tax"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Contents Taxes', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_contents_taxes"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Contents Count', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_contents_count"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Contents Weight', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_contents_weight"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Item Quantities', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_item_quantities"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Item Tax Classes', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_item_tax_classes"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Item Tax Classes For Shipping', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_item_tax_classes_for_shipping"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Shipping Total', 'e2pdf'), 'e2pdf-wc-cart key="get_cart_shipping_total"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Coupon Discount Totals', 'e2pdf'), 'e2pdf-wc-cart key="get_coupon_discount_totals"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Coupon Discount Tax Totals', 'e2pdf'), 'e2pdf-wc-cart key="get_coupon_discount_tax_totals"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Totals', 'e2pdf'), 'e2pdf-wc-cart key="get_totals"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total', 'e2pdf'), 'e2pdf-wc-cart key="get_total"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Tax', 'e2pdf'), 'e2pdf-wc-cart key="get_total_tax"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Ex Tax', 'e2pdf'), 'e2pdf-wc-cart key="get_total_ex_tax"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Discount', 'e2pdf'), 'e2pdf-wc-cart key="get_total_discount"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Subtotal', 'e2pdf'), 'e2pdf-wc-cart key="get_subtotal"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Subtotal Tax', 'e2pdf'), 'e2pdf-wc-cart key="get_subtotal_tax"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Discount Total', 'e2pdf'), 'e2pdf-wc-cart key="get_discount_total"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Discount Tax', 'e2pdf'), 'e2pdf-wc-cart key="get_discount_tax"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Total', 'e2pdf'), 'e2pdf-wc-cart key="get_shipping_total"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Tax', 'e2pdf'), 'e2pdf-wc-cart key="get_shipping_tax"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Taxes', 'e2pdf'), 'e2pdf-wc-cart key="get_shipping_taxes"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Fees', 'e2pdf'), 'e2pdf-wc-cart key="get_fees"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Fee Total', 'e2pdf'), 'e2pdf-wc-cart key="get_fee_total"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Fee Tax', 'e2pdf'), 'e2pdf-wc-cart key="get_fee_tax"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Fee Taxes', 'e2pdf'), 'e2pdf-wc-cart key="get_fee_taxes"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Displayed Subtotal', 'e2pdf'), 'e2pdf-wc-cart key="get_displayed_subtotal"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Tax Price Display Mode', 'e2pdf'), 'e2pdf-wc-cart key="get_tax_price_display_mode"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Taxes', 'e2pdf'), 'e2pdf-wc-cart key="get_taxes"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Taxes Total', 'e2pdf'), 'e2pdf-wc-cart key="get_taxes_total"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Taxes Total', 'e2pdf'), 'e2pdf-wc-cart key="get_shipping_method_title"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Taxes Total', 'e2pdf'), 'e2pdf-wc-cart key="get_payment_method_title"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart', 'e2pdf-wc-cart key="cart"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Products', 'e2pdf-wc-cart key="get_cart"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Applied Coupons', 'e2pdf-wc-cart key="get_applied_coupons"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Total', 'e2pdf-wc-cart key="get_cart_total"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Subtotal', 'e2pdf-wc-cart key="get_cart_subtotal"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Tax', 'e2pdf-wc-cart key="get_cart_tax"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Hash', 'e2pdf-wc-cart key="get_cart_hash"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Contents Total', 'e2pdf-wc-cart key="get_cart_contents_total"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Contents Tax', 'e2pdf-wc-cart key="get_cart_contents_tax"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Contents Taxes', 'e2pdf-wc-cart key="get_cart_contents_taxes"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Contents Count', 'e2pdf-wc-cart key="get_cart_contents_count"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Contents Weight', 'e2pdf-wc-cart key="get_cart_contents_weight"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Item Quantities', 'e2pdf-wc-cart key="get_cart_item_quantities"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Item Tax Classes', 'e2pdf-wc-cart key="get_cart_item_tax_classes"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Item Tax Classes For Shipping', 'e2pdf-wc-cart key="get_cart_item_tax_classes_for_shipping"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Shipping Total', 'e2pdf-wc-cart key="get_cart_shipping_total"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Coupon Discount Totals', 'e2pdf-wc-cart key="get_coupon_discount_totals"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Coupon Discount Tax Totals', 'e2pdf-wc-cart key="get_coupon_discount_tax_totals"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Totals', 'e2pdf-wc-cart key="get_totals"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total', 'e2pdf-wc-cart key="get_total"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Tax', 'e2pdf-wc-cart key="get_total_tax"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Ex Tax', 'e2pdf-wc-cart key="get_total_ex_tax"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Discount', 'e2pdf-wc-cart key="get_total_discount"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Subtotal', 'e2pdf-wc-cart key="get_subtotal"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Subtotal Tax', 'e2pdf-wc-cart key="get_subtotal_tax"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Discount Total', 'e2pdf-wc-cart key="get_discount_total"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Discount Tax', 'e2pdf-wc-cart key="get_discount_tax"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Total', 'e2pdf-wc-cart key="get_shipping_total"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Tax', 'e2pdf-wc-cart key="get_shipping_tax"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Taxes', 'e2pdf-wc-cart key="get_shipping_taxes"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Fees', 'e2pdf-wc-cart key="get_fees"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Fee Total', 'e2pdf-wc-cart key="get_fee_total"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Fee Tax', 'e2pdf-wc-cart key="get_fee_tax"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Fee Taxes', 'e2pdf-wc-cart key="get_fee_taxes"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Displayed Subtotal', 'e2pdf-wc-cart key="get_displayed_subtotal"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Tax Price Display Mode', 'e2pdf-wc-cart key="get_tax_price_display_mode"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Taxes', 'e2pdf-wc-cart key="get_taxes"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Taxes Total', 'e2pdf-wc-cart key="get_taxes_total"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Taxes Total', 'e2pdf-wc-cart key="get_shipping_method_title"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Taxes Total', 'e2pdf-wc-cart key="get_payment_method_title"') . '</div>';
             $vc .= '</div>';
 
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Cart Common', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Cart Common</h3>';
             $vc .= '<div class="e2pdf-grid">';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('ID', 'e2pdf'), 'e2pdf-wc-cart key="id"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Author', 'e2pdf'), 'e2pdf-wc-cart key="post_author"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Author ID', 'e2pdf'), 'e2pdf-wc-cart key="post_author_id"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date', 'e2pdf'), 'e2pdf-wc-cart key="post_date"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date (GMT)', 'e2pdf'), 'e2pdf-wc-cart key="post_date_gmt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Content', 'e2pdf'), 'e2pdf-wc-cart key="post_content"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Title', 'e2pdf'), 'e2pdf-wc-cart key="post_title"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Excerpt', 'e2pdf'), 'e2pdf-wc-cart key="post_excerpt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Status', 'e2pdf'), 'e2pdf-wc-cart key="post_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Comment Status', 'e2pdf'), 'e2pdf-wc-cart key="comment_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Ping Status', 'e2pdf'), 'e2pdf-wc-cart key="ping_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Password', 'e2pdf'), 'e2pdf-wc-cart key="post_password"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Name', 'e2pdf'), 'e2pdf-wc-cart key="post_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('To Ping', 'e2pdf'), 'e2pdf-wc-cart key="to_ping"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Ping', 'e2pdf'), 'e2pdf-wc-cart key="pinged"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Modified Date', 'e2pdf'), 'e2pdf-wc-cart key="post_modified"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Modified Date (GMT)', 'e2pdf'), 'e2pdf-wc-cart key="post_modified_gmt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Filtered Content', 'e2pdf'), 'e2pdf-wc-cart key="post_content_filtered"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Parent ID', 'e2pdf'), 'e2pdf-wc-cart key="post_parent"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element("GUID", 'e2pdf-wc-cart key="guid"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Menu Order', 'e2pdf'), 'e2pdf-wc-cart key="menu_order"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Type', 'e2pdf'), 'e2pdf-wc-cart key="post_type"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Mime Type', 'e2pdf'), 'e2pdf-wc-cart key="post_mime_type"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Comments Count', 'e2pdf'), 'e2pdf-wc-cart key="comment_count"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Filter', 'e2pdf'), 'e2pdf-wc-cart key="filter"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Thumbnail', 'e2pdf'), 'e2pdf-wc-cart key="get_the_post_thumbnail"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Thumbnail URL', 'e2pdf'), 'e2pdf-wc-cart key="get_the_post_thumbnail_url"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Permalink', 'e2pdf'), 'e2pdf-wc-cart key="permalink"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Permalink', 'e2pdf'), 'e2pdf-wc-cart key="get_post_permalink"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('ID', 'e2pdf-wc-cart key="id"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Author', 'e2pdf-wc-cart key="post_author"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Author ID', 'e2pdf-wc-cart key="post_author_id"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date', 'e2pdf-wc-cart key="post_date"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date (GMT)', 'e2pdf-wc-cart key="post_date_gmt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Content', 'e2pdf-wc-cart key="post_content"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Title', 'e2pdf-wc-cart key="post_title"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Excerpt', 'e2pdf-wc-cart key="post_excerpt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Status', 'e2pdf-wc-cart key="post_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Comment Status', 'e2pdf-wc-cart key="comment_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Ping Status', 'e2pdf-wc-cart key="ping_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Password', 'e2pdf-wc-cart key="post_password"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Name', 'e2pdf-wc-cart key="post_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('To Ping', 'e2pdf-wc-cart key="to_ping"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Ping', 'e2pdf-wc-cart key="pinged"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Modified Date', 'e2pdf-wc-cart key="post_modified"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Modified Date (GMT)', 'e2pdf-wc-cart key="post_modified_gmt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Filtered Content', 'e2pdf-wc-cart key="post_content_filtered"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Parent ID', 'e2pdf-wc-cart key="post_parent"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('GUID', 'e2pdf-wc-cart key="guid"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Menu Order', 'e2pdf-wc-cart key="menu_order"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Type', 'e2pdf-wc-cart key="post_type"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Mime Type', 'e2pdf-wc-cart key="post_mime_type"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Comments Count', 'e2pdf-wc-cart key="comment_count"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Filter', 'e2pdf-wc-cart key="filter"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Thumbnail', 'e2pdf-wc-cart key="get_the_post_thumbnail"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Thumbnail URL', 'e2pdf-wc-cart key="get_the_post_thumbnail_url"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Permalink', 'e2pdf-wc-cart key="permalink"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Permalink', 'e2pdf-wc-cart key="get_post_permalink"') . '</div>';
             $vc .= '</div>';
 
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Cart Special Shortcodes', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Cart Special Shortcodes</h3>';
             $vc .= '<div class="e2pdf-grid">';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Products', 'e2pdf'), 'e2pdf-foreach shortcode="e2pdf-wc-cart" key="get_cart"][e2pdf-wc-product key="get_name" index="[e2pdf-foreach-index]" order="true" wc_filter="true"]' . "\r\n" . '[/e2pdf-foreach') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Totals', 'e2pdf'), 'e2pdf-foreach shortcode="e2pdf-wc-cart" key="get_formatted_cart_totals"][e2pdf-wc-cart key="get_formatted_cart_totals" path="[e2pdf-foreach-key].label"]:[e2pdf-wc-cart key="get_formatted_cart_totals" path="[e2pdf-foreach-key].value"]' . "\r\n" . '[/e2pdf-foreach') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Products', 'e2pdf-foreach shortcode="e2pdf-wc-cart" key="get_cart"][e2pdf-wc-product key="get_name" index="[e2pdf-foreach-index]" order="true" wc_filter="true"]' . "\r\n" . '[/e2pdf-foreach') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Totals', 'e2pdf-foreach shortcode="e2pdf-wc-cart" key="get_formatted_cart_totals"][e2pdf-wc-cart key="get_formatted_cart_totals" path="[e2pdf-foreach-key].label"]:[e2pdf-wc-cart key="get_formatted_cart_totals" path="[e2pdf-foreach-key].value"]' . "\r\n" . '[/e2pdf-foreach') . '</div>';
             $vc .= '</div>';
 
             if (function_exists('wc_get_page_id')) {
                 $meta_keys = $this->get_post_meta_keys(false, wc_get_page_id('cart'));
                 if (!empty($meta_keys)) {
-                    $vc .= '<h3 class="e2pdf-plr5">' . __('Cart Meta Keys', 'e2pdf') . '</h3>';
+                    $vc .= '<h3 class="e2pdf-plr5">Cart Meta Keys</h3>';
                     $vc .= '<div class="e2pdf-grid">';
                     $i = 0;
                     foreach ($meta_keys as $meta_key) {
@@ -2724,84 +2810,84 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             }
             $vc .= $this->get_vm_product_order();
             $vc .= $this->get_vm_product();
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Customer', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Customer</h3>';
             $vc .= '<div class="e2pdf-grid">';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Taxable Address', 'e2pdf'), 'e2pdf-wc-customer key="get_taxable_address"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Is Vat Exempt', 'e2pdf'), 'e2pdf-wc-customer key="is_vat_exempt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Is Vat Exempt', 'e2pdf'), 'e2pdf-wc-customer key="get_is_vat_exempt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Has Calculated Shipping', 'e2pdf'), 'e2pdf-wc-customer key="has_calculated_shipping"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Calculated Shipping', 'e2pdf'), 'e2pdf-wc-customer key="get_calculated_shipping"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Avatar Url', 'e2pdf'), 'e2pdf-wc-customer key="get_avatar_url"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Username', 'e2pdf'), 'e2pdf-wc-customer key="get_username"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('E-mail', 'e2pdf'), 'e2pdf-wc-customer key="get_email"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('First Name', 'e2pdf'), 'e2pdf-wc-customer key="get_first_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Last Name', 'e2pdf'), 'e2pdf-wc-customer key="get_last_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Display Name', 'e2pdf'), 'e2pdf-wc-customer key="get_display_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Role', 'e2pdf'), 'e2pdf-wc-customer key="get_role"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Created', 'e2pdf'), 'e2pdf-wc-customer key="get_date_created"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Modified', 'e2pdf'), 'e2pdf-wc-customer key="get_date_modified"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing', 'e2pdf'), 'e2pdf-wc-customer key="get_billing"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing First Name', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_first_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Last Name', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_last_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Company', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_company"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Address', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_address"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Address 1', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_address_1"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Address 2', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_address_2"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing City', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_city"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing State', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_state"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Postcode', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_postcode"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing E-mail', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_email"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Phone', 'e2pdf'), 'e2pdf-wc-customer key="get_billing_phone"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping First Name', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_first_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Last Name', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_last_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Company', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_company"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Address', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_address"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Address 1', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_address_1"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Address 2', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_address_2"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping City', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_city"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping State', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_state"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Postcode', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_postcode"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Country', 'e2pdf'), 'e2pdf-wc-customer key="get_shipping_country"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Is Paying Customer', 'e2pdf'), 'e2pdf-wc-customer key="get_is_paying_customer"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Shipping Address', 'e2pdf'), 'e2pdf-wc-customer key="get_formatted_shipping_address"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Billing Address', 'e2pdf'), 'e2pdf-wc-customer key="get_formatted_billing_address"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Taxable Address', 'e2pdf-wc-customer key="get_taxable_address"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Is Vat Exempt', 'e2pdf-wc-customer key="is_vat_exempt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Is Vat Exempt', 'e2pdf-wc-customer key="get_is_vat_exempt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Has Calculated Shipping', 'e2pdf-wc-customer key="has_calculated_shipping"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Calculated Shipping', 'e2pdf-wc-customer key="get_calculated_shipping"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Avatar Url', 'e2pdf-wc-customer key="get_avatar_url"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Username', 'e2pdf-wc-customer key="get_username"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('E-mail', 'e2pdf-wc-customer key="get_email"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('First Name', 'e2pdf-wc-customer key="get_first_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Last Name', 'e2pdf-wc-customer key="get_last_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Display Name', 'e2pdf-wc-customer key="get_display_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Role', 'e2pdf-wc-customer key="get_role"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Created', 'e2pdf-wc-customer key="get_date_created"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Modified', 'e2pdf-wc-customer key="get_date_modified"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing', 'e2pdf-wc-customer key="get_billing"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing First Name', 'e2pdf-wc-customer key="get_billing_first_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Last Name', 'e2pdf-wc-customer key="get_billing_last_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Company', 'e2pdf-wc-customer key="get_billing_company"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Address', 'e2pdf-wc-customer key="get_billing_address"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Address 1', 'e2pdf-wc-customer key="get_billing_address_1"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Address 2', 'e2pdf-wc-customer key="get_billing_address_2"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing City', 'e2pdf-wc-customer key="get_billing_city"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing State', 'e2pdf-wc-customer key="get_billing_state"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Postcode', 'e2pdf-wc-customer key="get_billing_postcode"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing E-mail', 'e2pdf-wc-customer key="get_billing_email"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Phone', 'e2pdf-wc-customer key="get_billing_phone"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping', 'e2pdf-wc-customer key="get_shipping"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping First Name', 'e2pdf-wc-customer key="get_shipping_first_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Last Name', 'e2pdf-wc-customer key="get_shipping_last_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Company', 'e2pdf-wc-customer key="get_shipping_company"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Address', 'e2pdf-wc-customer key="get_shipping_address"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Address 1', 'e2pdf-wc-customer key="get_shipping_address_1"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Address 2', 'e2pdf-wc-customer key="get_shipping_address_2"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping City', 'e2pdf-wc-customer key="get_shipping_city"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping State', 'e2pdf-wc-customer key="get_shipping_state"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Postcode', 'e2pdf-wc-customer key="get_shipping_postcode"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Country', 'e2pdf-wc-customer key="get_shipping_country"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Is Paying Customer', 'e2pdf-wc-customer key="get_is_paying_customer"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Shipping Address', 'e2pdf-wc-customer key="get_formatted_shipping_address"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Billing Address', 'e2pdf-wc-customer key="get_formatted_billing_address"') . '</div>';
             $vc .= '</div>';
         }
 
         if ($this->get('item') == 'shop_order') {
             $vc .= $this->get_vm_order();
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Order Common', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Order Common</h3>';
             $vc .= '<div class="e2pdf-grid">';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('ID', 'e2pdf'), 'e2pdf-wc-order key="id"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Author', 'e2pdf'), 'e2pdf-wc-order key="post_author"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Author ID', 'e2pdf'), 'e2pdf-wc-order key="post_author_id"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date', 'e2pdf'), 'e2pdf-wc-order key="post_date"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date (GMT)', 'e2pdf'), 'e2pdf-wc-order key="post_date_gmt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Content', 'e2pdf'), 'e2pdf-wc-order key="post_content"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Title', 'e2pdf'), 'e2pdf-wc-order key="post_title"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Excerpt', 'e2pdf'), 'e2pdf-wc-order key="post_excerpt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Status', 'e2pdf'), 'e2pdf-wc-order key="post_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Comment Status', 'e2pdf'), 'e2pdf-wc-order key="comment_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Ping Status', 'e2pdf'), 'e2pdf-wc-order key="ping_status"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Password', 'e2pdf'), 'e2pdf-wc-order key="post_password"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Name', 'e2pdf'), 'e2pdf-wc-order key="post_name"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('To Ping', 'e2pdf'), 'e2pdf-wc-order key="to_ping"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Ping', 'e2pdf'), 'e2pdf-wc-order key="pinged"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Modified Date', 'e2pdf'), 'e2pdf-wc-order key="post_modified"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Modified Date (GMT)', 'e2pdf'), 'e2pdf-wc-order key="post_modified_gmt"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Filtered Content', 'e2pdf'), 'e2pdf-wc-order key="post_content_filtered"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Parent ID', 'e2pdf'), 'e2pdf-wc-order key="post_parent"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element("GUID", 'e2pdf-wc-order key="guid"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Menu Order', 'e2pdf'), 'e2pdf-wc-order key="menu_order"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Type', 'e2pdf'), 'e2pdf-wc-order key="post_type"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Mime Type', 'e2pdf'), 'e2pdf-wc-order key="post_mime_type"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Comments Count', 'e2pdf'), 'e2pdf-wc-order key="comment_count"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Filter', 'e2pdf'), 'e2pdf-wc-order key="filter"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Thumbnail', 'e2pdf'), 'e2pdf-wc-order key="get_the_post_thumbnail"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Thumbnail URL', 'e2pdf'), 'e2pdf-wc-order key="get_the_post_thumbnail_url"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Permalink', 'e2pdf'), 'e2pdf-wc-order key="permalink"') . '</div>';
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Permalink', 'e2pdf'), 'e2pdf-wc-order key="get_post_permalink"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('ID', 'e2pdf-wc-order key="id"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Author', 'e2pdf-wc-order key="post_author"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Author ID', 'e2pdf-wc-order key="post_author_id"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date', 'e2pdf-wc-order key="post_date"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date (GMT)', 'e2pdf-wc-order key="post_date_gmt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Content', 'e2pdf-wc-order key="post_content"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Title', 'e2pdf-wc-order key="post_title"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Excerpt', 'e2pdf-wc-order key="post_excerpt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Status', 'e2pdf-wc-order key="post_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Comment Status', 'e2pdf-wc-order key="comment_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Ping Status', 'e2pdf-wc-order key="ping_status"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Password', 'e2pdf-wc-order key="post_password"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Name', 'e2pdf-wc-order key="post_name"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('To Ping', 'e2pdf-wc-order key="to_ping"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Ping', 'e2pdf-wc-order key="pinged"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Modified Date', 'e2pdf-wc-order key="post_modified"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Modified Date (GMT)', 'e2pdf-wc-order key="post_modified_gmt"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Filtered Content', 'e2pdf-wc-order key="post_content_filtered"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Parent ID', 'e2pdf-wc-order key="post_parent"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('GUID', 'e2pdf-wc-order key="guid"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Menu Order', 'e2pdf-wc-order key="menu_order"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Type', 'e2pdf-wc-order key="post_type"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Mime Type', 'e2pdf-wc-order key="post_mime_type"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Comments Count', 'e2pdf-wc-order key="comment_count"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Filter', 'e2pdf-wc-order key="filter"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Thumbnail', 'e2pdf-wc-order key="get_the_post_thumbnail"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Thumbnail URL', 'e2pdf-wc-order key="get_the_post_thumbnail_url"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Permalink', 'e2pdf-wc-order key="permalink"') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Permalink', 'e2pdf-wc-order key="get_post_permalink"') . '</div>';
             $vc .= '</div>';
             $vc .= $this->get_vm_product_order();
             $vc .= $this->get_vm_product_order_item_meta();
@@ -2816,6 +2902,15 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         }
 
         if (class_exists('ACF') && function_exists('acf_get_field_groups')) {
+            $user_groups = acf_get_field_groups(
+                    array(
+                        'user_id' => 'new',
+                        'user_form' => 'all',
+                    )
+            );
+            if (!empty($user_groups)) {
+                $user_groups = array_column($user_groups, 'key');
+            }
             if ($this->get('item') == 'product' || $this->get('item') == 'product_variation') {
                 $groups = acf_get_field_groups(array('post_type' => 'product'));
             } elseif ($this->get('item') == 'shop_order') {
@@ -2826,23 +2921,21 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             if (!empty($groups)) {
                 $vc .= "<h3 class='e2pdf-plr5'>ACF</h3>";
                 foreach ($groups as $group_key => $group) {
+                    $post_id = '';
+                    if (!empty($user_groups)) {
+                        if (in_array($group['key'], $user_groups)) {
+                            if ($this->get('item') == '-3') {
+                                $post_id = ' post_id="user_[e2pdf-dataset]"';
+                            } else {
+                                $post_id = ' post_id="user_[e2pdf-userid]"';
+                            }
+                        }
+                    }
+
                     $vc .= '<h3 class="e2pdf-plr5">' . $group['title'] . '</h3>';
                     $vc .= "<div class='e2pdf-grid'>";
                     foreach (acf_get_fields($group['key']) as $field_key => $field) {
-                        if ($field['type'] == 'repeater' && !empty($field['sub_fields'])) {
-                            $sub_fields = array();
-                            foreach ($field['sub_fields'] as $sub_field_key => $sub_field) {
-                                $sub_fields[] = '[acf field="' . $sub_field['name'] . '"]';
-                                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'] . ' ' . $sub_field['label'], 'acf field="' . $field['name'] . '_0_' . $sub_field['name'] . '"') . '</div>';
-                            }
-                            if (!empty($sub_fields)) {
-                                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'] . ' Iteration', 'e2pdf-acf-repeater field="' . $field['name'] . '"]' . implode(' ', $sub_fields) . "\r\n" . '[/e2pdf-acf-repeater') . '</div>';
-                            }
-                        } else {
-                            if ($field['name']) {
-                                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'], 'acf field="' . $field['name'] . '"') . '</div>';
-                            }
-                        }
+                        $vc = $this->get_acf_field($vc, $field, $post_id);
                     }
                     $vc .= '</div>';
                 }
@@ -2854,10 +2947,37 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         return $vc;
     }
 
+    public function get_acf_field($vc, $field, $post_id) {
+        if ($field['type'] == 'repeater' && !empty($field['sub_fields'])) {
+            $sub_fields = array();
+            foreach ($field['sub_fields'] as $sub_field_key => $sub_field) {
+                $sub_fields[] = '[acf field="' . $sub_field['name'] . '"' . $post_id . ']';
+                $sub_field['label'] = $field['label'] . ' ' . $sub_field['label'];
+                $sub_field['name'] = $field['name'] . '_0_' . $sub_field['name'];
+                $vc = $this->get_acf_field($vc, $sub_field, $post_id);
+            }
+            if (!empty($sub_fields)) {
+                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'] . ' Iteration', 'e2pdf-acf-repeater field="' . $field['name'] . '"' . $post_id . ']' . implode(' ', $sub_fields) . "\r\n" . '[/e2pdf-acf-repeater') . '</div>';
+            }
+        } elseif ($field['type'] == 'group' && !empty($field['sub_fields'])) {
+            $sub_fields = array();
+            foreach ($field['sub_fields'] as $sub_field_key => $sub_field) {
+                $sub_field['label'] = $field['label'] . ' ' . $sub_field['label'];
+                $sub_field['name'] = $field['name'] . '_' . $sub_field['name'];
+                $vc = $this->get_acf_field($vc, $sub_field, $post_id);
+            }
+        } else {
+            if ($field['name']) {
+                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'], 'acf field="' . $field['name'] . '"' . $post_id) . '</div>';
+            }
+        }
+        return $vc;
+    }
+
     private function get_item_type_keys_subkeys($item_type = false) {
         global $wpdb;
 
-        $meta_data = $wpdb->get_results('SELECT DISTINCT `meta`.`meta_key`, `item`.`order_item_type` FROM ' . $wpdb->prefix . 'woocommerce_order_itemmeta `meta` LEFT JOIN ' . $wpdb->prefix . 'woocommerce_order_items `item` ON (`meta`.`order_item_id` = `item`.`order_item_id`)', ARRAY_A);
+        $meta_data = $wpdb->get_results('SELECT DISTINCT `meta`.`meta_key`, `item`.`order_item_type` FROM `' . $wpdb->prefix . 'woocommerce_order_itemmeta` `meta` LEFT JOIN `' . $wpdb->prefix . 'woocommerce_order_items` `item` ON (`meta`.`order_item_id` = `item`.`order_item_id`)', ARRAY_A);
         $meta_keys = array();
         if ($meta_data) {
             foreach ($meta_data as $key => $meta) {
@@ -2894,7 +3014,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 'order' => 'desc',
             );
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `taxonomy` FROM ' . $wpdb->term_taxonomy . ' `t` ' . $orderby . '', ''));
+            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `taxonomy` FROM `' . $wpdb->term_taxonomy . '` `t` ' . $orderby . '', ''));
         }
 
         return $meta_keys;
@@ -2915,7 +3035,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     'order' => 'desc',
                 );
                 $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-                $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM ' . $wpdb->prefix . 'wc_orders_meta' . ' `pm` ' . $orderby . ''));
+                $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->prefix . 'wc_orders_meta` `pm` ' . $orderby . ''));
                 if (class_exists('WC_Order_Data_Store_CPT')) {
                     $internal_meta_keys = (new WC_Order_Data_Store_CPT())->get_internal_meta_keys();
                     if (!empty($internal_meta_keys) && is_array($internal_meta_keys)) {
@@ -2946,7 +3066,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 );
                 $where = $this->helper->load('db')->prepare_where($condition);
                 $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-                $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM ' . $wpdb->postmeta . ' `pm` LEFT JOIN ' . $wpdb->posts . ' `p` ON (`p`.`ID` = `pm`.`post_ID`) ' . $where['sql'] . $orderby . '', $where['filter']));
+                $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->postmeta . '` `pm` LEFT JOIN `' . $wpdb->posts . '` `p` ON (`p`.`ID` = `pm`.`post_ID`) ' . $where['sql'] . $orderby . '', $where['filter']));
             }
         }
 
@@ -2981,7 +3101,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         $where = $this->helper->load('db')->prepare_where($condition);
         $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
 
-        $custom_meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_value` FROM ' . $wpdb->postmeta . ' `pm`' . $where['sql'] . $orderby . '', $where['filter']));
+        $custom_meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_value` FROM `' . $wpdb->postmeta . '` `pm`' . $where['sql'] . $orderby . '', $where['filter']));
         foreach ($custom_meta_keys as $custom_meta_key) {
             $custom_metas = $this->helper->load('convert')->unserialize($custom_meta_key);
             if ($custom_metas && is_array($custom_metas)) {
@@ -3020,115 +3140,115 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         $vc = '';
 
-        $vc .= '<h3 class="e2pdf-plr5">' . __('Product', 'e2pdf') . '</h3>';
+        $vc .= '<h3 class="e2pdf-plr5">Product</h3>';
         $vc .= '<div class="e2pdf-grid">';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Name', 'e2pdf'), 'e2pdf-wc-product key="get_name"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Type', 'e2pdf'), 'e2pdf-wc-product key="get_type"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Slug', 'e2pdf'), 'e2pdf-wc-product key="get_slug"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Created', 'e2pdf'), 'e2pdf-wc-product key="get_date_created"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Modified', 'e2pdf'), 'e2pdf-wc-product key="get_date_modified"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Status', 'e2pdf'), 'e2pdf-wc-product key="get_status"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Featured', 'e2pdf'), 'e2pdf-wc-product key="get_featured"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Catalog Visibility', 'e2pdf'), 'e2pdf-wc-product key="get_catalog_visibility"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Description', 'e2pdf'), 'e2pdf-wc-product key="get_description" wc_format_content="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Short Description', 'e2pdf'), 'e2pdf-wc-product key="get_short_description" wc_format_content="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Sku', 'e2pdf'), 'e2pdf-wc-product key="get_sku"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Price', 'e2pdf'), 'e2pdf-wc-product key="get_price"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Regular Price', 'e2pdf'), 'e2pdf-wc-product key="get_regular_price"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Sale Price', 'e2pdf'), 'e2pdf-wc-product key="get_sale_price"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Sale From', 'e2pdf'), 'e2pdf-wc-product key="get_date_on_sale_from"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Sale To', 'e2pdf'), 'e2pdf-wc-product key="get_date_on_sale_to"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Sales', 'e2pdf'), 'e2pdf-wc-product key="get_total_sales"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Tax Status', 'e2pdf'), 'e2pdf-wc-product key="get_tax_status"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Tax Class', 'e2pdf'), 'e2pdf-wc-product key="get_tax_class"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Manage Stock', 'e2pdf'), 'e2pdf-wc-product key="get_manage_stock"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Stock Quantity', 'e2pdf'), 'e2pdf-wc-product key="get_stock_quantity"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Stock Status', 'e2pdf'), 'e2pdf-wc-product key="get_stock_status"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Backorders', 'e2pdf'), 'e2pdf-wc-product key="get_backorders"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Low Stock Amount', 'e2pdf'), 'e2pdf-wc-product key="get_low_stock_amount"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Sold Individually', 'e2pdf'), 'e2pdf-wc-product key="get_sold_individually"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Weight', 'e2pdf'), 'e2pdf-wc-product key="get_weight"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Length', 'e2pdf'), 'e2pdf-wc-product key="get_length"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Width', 'e2pdf'), 'e2pdf-wc-product key="get_width"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Height', 'e2pdf'), 'e2pdf-wc-product key="get_height"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Dimensions', 'e2pdf'), 'e2pdf-wc-product key="get_dimensions"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Upsell IDs', 'e2pdf'), 'e2pdf-wc-product key="get_upsell_ids"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cross Sell IDs', 'e2pdf'), 'e2pdf-wc-product key="get_cross_sell_ids"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Parent ID', 'e2pdf'), 'e2pdf-wc-product key="get_parent_id"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Reviews Allowed', 'e2pdf'), 'e2pdf-wc-product key="get_reviews_allowed"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Purchase Note', 'e2pdf'), 'e2pdf-wc-product key="get_purchase_note"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Attributes', 'e2pdf'), 'e2pdf-wc-product key="get_attributes"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Default Attributes', 'e2pdf'), 'e2pdf-wc-product key="get_default_attributes"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Menu Order', 'e2pdf'), 'e2pdf-wc-product key="get_menu_order"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Password', 'e2pdf'), 'e2pdf-wc-product key="get_post_password"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Category IDs', 'e2pdf'), 'e2pdf-wc-product key="get_category_ids"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Tag IDs', 'e2pdf'), 'e2pdf-wc-product key="get_tag_ids"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Virtual', 'e2pdf'), 'e2pdf-wc-product key="get_virtual"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Gallery Image Ids', 'e2pdf'), 'e2pdf-wc-product key="get_gallery_image_ids"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Class ID', 'e2pdf'), 'e2pdf-wc-product key="get_shipping_class_id"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Downloads', 'e2pdf'), 'e2pdf-wc-product key="get_downloads"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Download Expiry', 'e2pdf'), 'e2pdf-wc-product key="get_download_expiry"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Downloadable', 'e2pdf'), 'e2pdf-wc-product key="get_downloadable"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Download Limit', 'e2pdf'), 'e2pdf-wc-product key="get_download_limit"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Image ID', 'e2pdf'), 'e2pdf-wc-product key="get_image_id"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Rating Counts', 'e2pdf'), 'e2pdf-wc-product key="get_rating_counts"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Average Rating', 'e2pdf'), 'e2pdf-wc-product key="get_average_rating"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Review Count', 'e2pdf'), 'e2pdf-wc-product key="get_review_count"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Title', 'e2pdf'), 'e2pdf-wc-product key="get_title"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Product Permalink', 'e2pdf'), 'e2pdf-wc-product key="get_permalink"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Children', 'e2pdf'), 'e2pdf-wc-product key="get_children"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Stock Managed ID', 'e2pdf'), 'e2pdf-wc-product key="get_stock_managed_by_id"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Price (HTML)', 'e2pdf'), 'e2pdf-wc-product key="get_price_html"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Name', 'e2pdf'), 'e2pdf-wc-product key="get_formatted_name"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Min Purchase Quantity', 'e2pdf'), 'e2pdf-wc-product key="get_min_purchase_quantity"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Max Purchase Quantity', 'e2pdf'), 'e2pdf-wc-product key="get_max_purchase_quantity"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Image', 'e2pdf'), 'e2pdf-wc-product key="get_image"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Class', 'e2pdf'), 'e2pdf-wc-product key="get_shipping_class"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Rating Count', 'e2pdf'), 'e2pdf-wc-product key="get_rating_count"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('File', 'e2pdf'), 'e2pdf-wc-product key="get_file"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('File Download Path', 'e2pdf'), 'e2pdf-wc-product key="get_file_download_path"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Price Suffix', 'e2pdf'), 'e2pdf-wc-product key="get_price_suffix"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Availability', 'e2pdf'), 'e2pdf-wc-product key="get_availability"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Name', 'e2pdf-wc-product key="get_name"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Type', 'e2pdf-wc-product key="get_type"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Slug', 'e2pdf-wc-product key="get_slug"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Created', 'e2pdf-wc-product key="get_date_created"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Modified', 'e2pdf-wc-product key="get_date_modified"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Status', 'e2pdf-wc-product key="get_status"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Featured', 'e2pdf-wc-product key="get_featured"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Catalog Visibility', 'e2pdf-wc-product key="get_catalog_visibility"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Description', 'e2pdf-wc-product key="get_description" wc_format_content="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Short Description', 'e2pdf-wc-product key="get_short_description" wc_format_content="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Sku', 'e2pdf-wc-product key="get_sku"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Price', 'e2pdf-wc-product key="get_price"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Regular Price', 'e2pdf-wc-product key="get_regular_price"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Sale Price', 'e2pdf-wc-product key="get_sale_price"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Sale From', 'e2pdf-wc-product key="get_date_on_sale_from"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Sale To', 'e2pdf-wc-product key="get_date_on_sale_to"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Sales', 'e2pdf-wc-product key="get_total_sales"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Tax Status', 'e2pdf-wc-product key="get_tax_status"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Tax Class', 'e2pdf-wc-product key="get_tax_class"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Manage Stock', 'e2pdf-wc-product key="get_manage_stock"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Stock Quantity', 'e2pdf-wc-product key="get_stock_quantity"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Stock Status', 'e2pdf-wc-product key="get_stock_status"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Backorders', 'e2pdf-wc-product key="get_backorders"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Low Stock Amount', 'e2pdf-wc-product key="get_low_stock_amount"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Sold Individually', 'e2pdf-wc-product key="get_sold_individually"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Weight', 'e2pdf-wc-product key="get_weight"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Length', 'e2pdf-wc-product key="get_length"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Width', 'e2pdf-wc-product key="get_width"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Height', 'e2pdf-wc-product key="get_height"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Dimensions', 'e2pdf-wc-product key="get_dimensions"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Upsell IDs', 'e2pdf-wc-product key="get_upsell_ids"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cross Sell IDs', 'e2pdf-wc-product key="get_cross_sell_ids"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Parent ID', 'e2pdf-wc-product key="get_parent_id"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Reviews Allowed', 'e2pdf-wc-product key="get_reviews_allowed"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Purchase Note', 'e2pdf-wc-product key="get_purchase_note"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Attributes', 'e2pdf-wc-product key="get_attributes"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Default Attributes', 'e2pdf-wc-product key="get_default_attributes"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Menu Order', 'e2pdf-wc-product key="get_menu_order"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Password', 'e2pdf-wc-product key="get_post_password"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Category IDs', 'e2pdf-wc-product key="get_category_ids"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Tag IDs', 'e2pdf-wc-product key="get_tag_ids"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Virtual', 'e2pdf-wc-product key="get_virtual"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Gallery Image Ids', 'e2pdf-wc-product key="get_gallery_image_ids"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Class ID', 'e2pdf-wc-product key="get_shipping_class_id"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Downloads', 'e2pdf-wc-product key="get_downloads"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Download Expiry', 'e2pdf-wc-product key="get_download_expiry"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Downloadable', 'e2pdf-wc-product key="get_downloadable"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Download Limit', 'e2pdf-wc-product key="get_download_limit"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Image ID', 'e2pdf-wc-product key="get_image_id"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Rating Counts', 'e2pdf-wc-product key="get_rating_counts"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Average Rating', 'e2pdf-wc-product key="get_average_rating"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Review Count', 'e2pdf-wc-product key="get_review_count"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Title', 'e2pdf-wc-product key="get_title"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Product Permalink', 'e2pdf-wc-product key="get_permalink"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Children', 'e2pdf-wc-product key="get_children"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Stock Managed ID', 'e2pdf-wc-product key="get_stock_managed_by_id"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Price (HTML)', 'e2pdf-wc-product key="get_price_html"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Name', 'e2pdf-wc-product key="get_formatted_name"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Min Purchase Quantity', 'e2pdf-wc-product key="get_min_purchase_quantity"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Max Purchase Quantity', 'e2pdf-wc-product key="get_max_purchase_quantity"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Image', 'e2pdf-wc-product key="get_image"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Class', 'e2pdf-wc-product key="get_shipping_class"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Rating Count', 'e2pdf-wc-product key="get_rating_count"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('File', 'e2pdf-wc-product key="get_file"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('File Download Path', 'e2pdf-wc-product key="get_file_download_path"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Price Suffix', 'e2pdf-wc-product key="get_price_suffix"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Availability', 'e2pdf-wc-product key="get_availability"' . $index) . '</div>';
         if ($this->get('item') == 'product_variation') {
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Product Variation Attributes', 'e2pdf'), 'e2pdf-wc-product key="get_variation_attributes"' . $index) . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Product Variation Attributes', 'e2pdf-wc-product key="get_variation_attributes"' . $index) . '</div>';
         }
         $vc .= '</div>';
 
-        $vc .= '<h3 class="e2pdf-plr5">' . __('Product Common', 'e2pdf') . '</h3>';
+        $vc .= '<h3 class="e2pdf-plr5">Product Common</h3>';
         $vc .= '<div class="e2pdf-grid">';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('ID', 'e2pdf'), 'e2pdf-wc-product key="id"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Author', 'e2pdf'), 'e2pdf-wc-product key="post_author"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Author ID', 'e2pdf'), 'e2pdf-wc-product key="post_author_id"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date', 'e2pdf'), 'e2pdf-wc-product key="post_date"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date (GMT)', 'e2pdf'), 'e2pdf-wc-product key="post_date_gmt"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Content', 'e2pdf'), 'e2pdf-wc-product key="post_content"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Title', 'e2pdf'), 'e2pdf-wc-product key="post_title"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Excerpt', 'e2pdf'), 'e2pdf-wc-product key="post_excerpt"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Status', 'e2pdf'), 'e2pdf-wc-product key="post_status"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Comment Status', 'e2pdf'), 'e2pdf-wc-product key="comment_status"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Ping Status', 'e2pdf'), 'e2pdf-wc-product key="ping_status"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Password', 'e2pdf'), 'e2pdf-wc-product key="post_password"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Name', 'e2pdf'), 'e2pdf-wc-product key="post_name"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('To Ping', 'e2pdf'), 'e2pdf-wc-product key="to_ping"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Ping', 'e2pdf'), 'e2pdf-wc-product key="pinged"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Modified Date', 'e2pdf'), 'e2pdf-wc-product key="post_modified"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Modified Date (GMT)', 'e2pdf'), 'e2pdf-wc-product key="post_modified_gmt"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Filtered Content', 'e2pdf'), 'e2pdf-wc-product key="post_content_filtered"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Parent ID', 'e2pdf'), 'e2pdf-wc-product key="post_parent"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('ID', 'e2pdf-wc-product key="id"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Author', 'e2pdf-wc-product key="post_author"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Author ID', 'e2pdf-wc-product key="post_author_id"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date', 'e2pdf-wc-product key="post_date"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date (GMT)', 'e2pdf-wc-product key="post_date_gmt"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Content', 'e2pdf-wc-product key="post_content"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Title', 'e2pdf-wc-product key="post_title"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Excerpt', 'e2pdf-wc-product key="post_excerpt"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Status', 'e2pdf-wc-product key="post_status"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Comment Status', 'e2pdf-wc-product key="comment_status"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Ping Status', 'e2pdf-wc-product key="ping_status"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Password', 'e2pdf-wc-product key="post_password"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Name', 'e2pdf-wc-product key="post_name"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('To Ping', 'e2pdf-wc-product key="to_ping"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Ping', 'e2pdf-wc-product key="pinged"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Modified Date', 'e2pdf-wc-product key="post_modified"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Modified Date (GMT)', 'e2pdf-wc-product key="post_modified_gmt"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Filtered Content', 'e2pdf-wc-product key="post_content_filtered"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Parent ID', 'e2pdf-wc-product key="post_parent"' . $index) . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('GUID', 'e2pdf-wc-product key="guid"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Menu Order', 'e2pdf'), 'e2pdf-wc-product key="menu_order"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Type', 'e2pdf'), 'e2pdf-wc-product key="post_type"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Mime Type', 'e2pdf'), 'e2pdf-wc-product key="post_mime_type"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Comments Count', 'e2pdf'), 'e2pdf-wc-product key="comment_count"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Filter', 'e2pdf'), 'e2pdf-wc-product key="filter"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Thumbnail', 'e2pdf'), 'e2pdf-wc-product key="get_the_post_thumbnail"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Thumbnail URL', 'e2pdf'), 'e2pdf-wc-product key="get_the_post_thumbnail_url"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Permalink', 'e2pdf'), 'e2pdf-wc-product key="permalink"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Post Permalink', 'e2pdf'), 'e2pdf-wc-product key="get_post_permalink"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Menu Order', 'e2pdf-wc-product key="menu_order"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Type', 'e2pdf-wc-product key="post_type"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Mime Type', 'e2pdf-wc-product key="post_mime_type"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Comments Count', 'e2pdf-wc-product key="comment_count"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Filter', 'e2pdf-wc-product key="filter"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Thumbnail', 'e2pdf-wc-product key="get_the_post_thumbnail"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Thumbnail URL', 'e2pdf-wc-product key="get_the_post_thumbnail_url"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Permalink', 'e2pdf-wc-product key="permalink"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Post Permalink', 'e2pdf-wc-product key="get_post_permalink"' . $index) . '</div>';
         $vc .= '</div>';
 
         $meta_keys = $this->get_product_attribute_keys();
-        $vc .= '<h3 class="e2pdf-plr5">' . __('Product Attributes', 'e2pdf') . '</h3>';
+        $vc .= '<h3 class="e2pdf-plr5">Product Attributes</h3>';
         $vc .= '<div class="e2pdf-grid">';
         $i = 0;
         foreach ($meta_keys as $meta_key) {
@@ -3138,12 +3258,12 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         }
         $vc .= '</div>';
 
-        $vc .= '<h3 class="e2pdf-plr5">' . __('Product Special Shortcodes', 'e2pdf') . '</h3>';
+        $vc .= '<h3 class="e2pdf-plr5">Product Special Shortcodes</h3>';
         $vc .= '<div class="e2pdf-grid">';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Product Attributes', 'e2pdf'), 'e2pdf-foreach shortcode="e2pdf-wc-product" key="get_attributes"' . $index . ' wc_filter="true"][e2pdf-wc-product key="get_attributes" path="[e2pdf-foreach-key].label" wc_filter="true"' . $index . ']: [e2pdf-wc-product key="get_attributes" path="[e2pdf-foreach-key].value" wc_filter="true"' . $index . ']' . "\r\n" . '[/e2pdf-foreach') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Meta Data', 'e2pdf'), 'e2pdf-foreach shortcode="e2pdf-wc-product" key="get_formatted_meta_data"' . $index . '][e2pdf-wc-product key="get_formatted_meta_data" path="[e2pdf-foreach-key].display_key"' . $index . ']:[e2pdf-wc-product key="get_formatted_meta_data" path="[e2pdf-foreach-key].display_value"' . $index . ']' . "\r\n" . '[/e2pdf-foreach') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Product Attributes', 'e2pdf-foreach shortcode="e2pdf-wc-product" key="get_attributes"' . $index . ' wc_filter="true"][e2pdf-wc-product key="get_attributes" path="[e2pdf-foreach-key].label" wc_filter="true"' . $index . ']: [e2pdf-wc-product key="get_attributes" path="[e2pdf-foreach-key].value" wc_filter="true"' . $index . ']' . "\r\n" . '[/e2pdf-foreach') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Meta Data', 'e2pdf-foreach shortcode="e2pdf-wc-product" key="get_formatted_meta_data"' . $index . '][e2pdf-wc-product key="get_formatted_meta_data" path="[e2pdf-foreach-key].display_key"' . $index . ']:[e2pdf-wc-product key="get_formatted_meta_data" path="[e2pdf-foreach-key].display_value"' . $index . ']' . "\r\n" . '[/e2pdf-foreach') . '</div>';
         if ($this->get('item') == 'product_variation') {
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Product Variation Attributes', 'e2pdf'), 'e2pdf-foreach shortcode="e2pdf-wc-product" key="get_variation_attributes"' . $index . ' wc_filter="true"][e2pdf-wc-product key="get_variation_attributes" path="[e2pdf-foreach-key].label" wc_filter="true"' . $index . ']: [e2pdf-wc-product key="get_variation_attributes" path="[e2pdf-foreach-key].value" wc_filter="true"' . $index . ']' . "\r\n" . '[/e2pdf-foreach') . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Product Variation Attributes', 'e2pdf-foreach shortcode="e2pdf-wc-product" key="get_variation_attributes"' . $index . ' wc_filter="true"][e2pdf-wc-product key="get_variation_attributes" path="[e2pdf-foreach-key].label" wc_filter="true"' . $index . ']: [e2pdf-wc-product key="get_variation_attributes" path="[e2pdf-foreach-key].value" wc_filter="true"' . $index . ']' . "\r\n" . '[/e2pdf-foreach') . '</div>';
         }
 
         $vc .= '</div>';
@@ -3160,7 +3280,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         }
 
         if (!empty($meta_keys)) {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Product Meta Keys', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Product Meta Keys</h3>';
             $vc .= '<div class="e2pdf-grid">';
             $i = 0;
             foreach ($meta_keys as $meta_key) {
@@ -3172,11 +3292,11 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         $meta_keys = $this->get_post_taxonomy_keys();
         if (!empty($meta_keys)) {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Product Taxonomy', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Product Taxonomy</h3>';
             $vc .= '<div class="e2pdf-grid">';
             $i = 0;
             foreach ($meta_keys as $meta_key) {
-                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wc-product key="' . $meta_key . '" terms="true"' . $index) . '</div>';
+                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wc-product key="' . $meta_key . '" terms="true" names="true"' . $index) . '</div>';
                 $i++;
             }
             $vc .= '</div>';
@@ -3194,39 +3314,39 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         $vc = '';
 
         if ($this->get('item') == 'cart') {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Cart Product', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Cart Product</h3>';
         } else {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Order Product', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Order Product</h3>';
         }
         $vc .= '<div class="e2pdf-grid">';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Name', 'e2pdf'), 'e2pdf-wc-product key="get_name" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Type', 'e2pdf'), 'e2pdf-wc-product key="get_type" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Quantity', 'e2pdf'), 'e2pdf-wc-product key="get_quantity" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Tax Status', 'e2pdf'), 'e2pdf-wc-product key="get_tax_status" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Tax Class', 'e2pdf'), 'e2pdf-wc-product key="get_tax_class" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Meta Data', 'e2pdf'), 'e2pdf-wc-product key="get_formatted_meta_data" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Product ID', 'e2pdf'), 'e2pdf-wc-product key="get_product_id" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Variation ID', 'e2pdf'), 'e2pdf-wc-product key="get_variation_id" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Subtotal', 'e2pdf'), 'e2pdf-wc-product key="get_subtotal" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Subtotal Tax', 'e2pdf'), 'e2pdf-wc-product key="get_subtotal_tax" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total', 'e2pdf'), 'e2pdf-wc-product key="get_total" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Tax', 'e2pdf'), 'e2pdf-wc-product key="get_total_tax" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Taxes', 'e2pdf'), 'e2pdf-wc-product key="get_taxes" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Item Download URL', 'e2pdf'), 'e2pdf-wc-product key="get_item_download_url" order="true" index="0" download_order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Downloads', 'e2pdf'), 'e2pdf-wc-product key="get_item_downloads" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Item Subtotal', 'e2pdf'), 'e2pdf-wc-product key="get_item_subtotal" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Item Total', 'e2pdf'), 'e2pdf-wc-product key="get_item_total" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Item Tax', 'e2pdf'), 'e2pdf-wc-product key="get_item_tax" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Line Total', 'e2pdf'), 'e2pdf-wc-product key="get_line_total" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Line Tax', 'e2pdf'), 'e2pdf-wc-product key="get_line_tax" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Line Subtotal', 'e2pdf'), 'e2pdf-wc-product key="get_formatted_line_subtotal" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Order Item ID', 'e2pdf'), 'e2pdf-wc-product key="get_order_item_id" order="true"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Order Response Hook', 'e2pdf'), 'e2pdf-wc-product key="order_response_hook" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Name', 'e2pdf-wc-product key="get_name" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Type', 'e2pdf-wc-product key="get_type" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Quantity', 'e2pdf-wc-product key="get_quantity" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Tax Status', 'e2pdf-wc-product key="get_tax_status" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Tax Class', 'e2pdf-wc-product key="get_tax_class" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Meta Data', 'e2pdf-wc-product key="get_formatted_meta_data" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Product ID', 'e2pdf-wc-product key="get_product_id" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Variation ID', 'e2pdf-wc-product key="get_variation_id" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Subtotal', 'e2pdf-wc-product key="get_subtotal" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Subtotal Tax', 'e2pdf-wc-product key="get_subtotal_tax" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total', 'e2pdf-wc-product key="get_total" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Tax', 'e2pdf-wc-product key="get_total_tax" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Taxes', 'e2pdf-wc-product key="get_taxes" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Item Download URL', 'e2pdf-wc-product key="get_item_download_url" order="true" index="0" download_order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Downloads', 'e2pdf-wc-product key="get_item_downloads" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Item Subtotal', 'e2pdf-wc-product key="get_item_subtotal" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Item Total', 'e2pdf-wc-product key="get_item_total" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Item Tax', 'e2pdf-wc-product key="get_item_tax" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Line Total', 'e2pdf-wc-product key="get_line_total" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Line Tax', 'e2pdf-wc-product key="get_line_tax" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Line Subtotal', 'e2pdf-wc-product key="get_formatted_line_subtotal" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Order Item ID', 'e2pdf-wc-product key="get_order_item_id" order="true"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Order Response Hook', 'e2pdf-wc-product key="order_response_hook" order="true"' . $index) . '</div>';
 
         if ($this->get('item') == 'cart') {
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Item Cart Response Hook', 'e2pdf'), 'e2pdf-wc-product key="item_cart_response_hook"' . $index) . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Item Cart Response Hook', 'e2pdf-wc-product key="item_cart_response_hook"' . $index) . '</div>';
         } else {
-            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Item Response Hook', 'e2pdf'), 'e2pdf-wc-product key="item_response_hook" order="true"' . $index) . '</div>';
+            $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Item Response Hook', 'e2pdf-wc-product key="item_response_hook" order="true"' . $index) . '</div>';
         }
 
         $vc .= '</div>';
@@ -3244,7 +3364,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         $vc = '';
         $meta_keys = $this->get_item_type_keys_subkeys('line_item');
         if (!empty($meta_keys)) {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Order Product Item Meta Keys', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Order Product Item Meta Keys</h3>';
             $vc .= '<div class="e2pdf-grid">';
             $i = 0;
             foreach ($meta_keys as $meta_key) {
@@ -3260,92 +3380,92 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
     private function get_vm_order() {
 
         $vc = '';
-        $vc .= '<h3 class="e2pdf-plr5">' . __('Order', 'e2pdf') . '</h3>';
+        $vc .= '<h3 class="e2pdf-plr5">Order</h3>';
         $vc .= '<div class="e2pdf-grid">';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Order ID', 'e2pdf'), 'e2pdf-wc-order key="get_id"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Order Key', 'e2pdf'), 'e2pdf-wc-order key="get_order_key"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Order Number', 'e2pdf'), 'e2pdf-wc-order key="get_order_number"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Order Total', 'e2pdf'), 'e2pdf-wc-order key="get_formatted_order_total"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart Tax', 'e2pdf'), 'e2pdf-wc-order key="get_cart_tax"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Currency', 'e2pdf'), 'e2pdf-wc-order key="get_currency"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Discount Tax', 'e2pdf'), 'e2pdf-wc-order key="get_discount_tax"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Discount to Display', 'e2pdf'), 'e2pdf-wc-order key="get_discount_to_display"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Discount Total', 'e2pdf'), 'e2pdf-wc-order key="get_discount_total"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Tax', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_tax"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Total', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_total"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Subtotal', 'e2pdf'), 'e2pdf-wc-order key="get_subtotal"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Subtotal to Display', 'e2pdf'), 'e2pdf-wc-order key="get_subtotal_to_display"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Get Total', 'e2pdf'), 'e2pdf-wc-order key="get_total"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Discount', 'e2pdf'), 'e2pdf-wc-order key="get_total_discount"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Tax', 'e2pdf'), 'e2pdf-wc-order key="get_total_tax"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Refunded', 'e2pdf'), 'e2pdf-wc-order key="get_total_refunded"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Tax Refunded', 'e2pdf'), 'e2pdf-wc-order key="get_total_tax_refunded"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total Shipping Refunded', 'e2pdf'), 'e2pdf-wc-order key="get_total_shipping_refunded"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Item Count Refunded', 'e2pdf'), 'e2pdf-wc-order key="get_item_count_refunded"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Total QTY Refunded', 'e2pdf'), 'e2pdf-wc-order key="get_total_qty_refunded"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Remaining Refund Amount', 'e2pdf'), 'e2pdf-wc-order key="get_remaining_refund_amount"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Item Count', 'e2pdf'), 'e2pdf-wc-order key="get_item_count"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Method', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_method"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping to Display', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_to_display"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Created', 'e2pdf'), 'e2pdf-wc-order key="get_date_created"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Modified', 'e2pdf'), 'e2pdf-wc-order key="get_date_modified"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Completed', 'e2pdf'), 'e2pdf-wc-order key="get_date_completed"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Date Paid', 'e2pdf'), 'e2pdf-wc-order key="get_date_paid"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Custom ID', 'e2pdf'), 'e2pdf-wc-order key="get_customer_id"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('User ID', 'e2pdf'), 'e2pdf-wc-order key="get_user_id"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Customer IP Address', 'e2pdf'), 'e2pdf-wc-order key="get_customer_ip_address"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Customer User Agent', 'e2pdf'), 'e2pdf-wc-order key="get_customer_user_agent"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Created Via', 'e2pdf'), 'e2pdf-wc-order key="get_created_via"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Customer Note', 'e2pdf'), 'e2pdf-wc-order key="get_customer_note"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing First Name', 'e2pdf'), 'e2pdf-wc-order key="get_billing_first_name"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Last Name', 'e2pdf'), 'e2pdf-wc-order key="get_billing_last_name"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Company', 'e2pdf'), 'e2pdf-wc-order key="get_billing_company"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Address 1', 'e2pdf'), 'e2pdf-wc-order key="get_billing_address_1"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Address 2', 'e2pdf'), 'e2pdf-wc-order key="get_billing_address_2"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing City', 'e2pdf'), 'e2pdf-wc-order key="get_billing_city"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing State', 'e2pdf'), 'e2pdf-wc-order key="get_billing_state"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Postcode', 'e2pdf'), 'e2pdf-wc-order key="get_billing_postcode"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Country', 'e2pdf'), 'e2pdf-wc-order key="get_billing_country"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing E-mail', 'e2pdf'), 'e2pdf-wc-order key="get_billing_email"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Billing Phone', 'e2pdf'), 'e2pdf-wc-order key="get_billing_phone"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shopping First Name', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_first_name"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Last Name', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_last_name"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Company', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_company"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Address 1', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_address_1"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Address 2', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_address_2"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping City', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_city"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping State', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_state"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Postcode', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_postcode"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Country', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_country"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Shipping Address Map URL', 'e2pdf'), 'e2pdf-wc-order key="get_shipping_address_map_url"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Billing Full Name', 'e2pdf'), 'e2pdf-wc-order key="get_formatted_billing_full_name"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Shipping Full Name', 'e2pdf'), 'e2pdf-wc-order key="get_formatted_shipping_full_name"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Billing Address', 'e2pdf'), 'e2pdf-wc-order key="get_formatted_billing_address"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Formatted Shipping Address', 'e2pdf'), 'e2pdf-wc-order key="get_formatted_shipping_address"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Payment Method', 'e2pdf'), 'e2pdf-wc-order key="get_payment_method"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Payment Method Title', 'e2pdf'), 'e2pdf-wc-order key="get_payment_method_title"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Transaction ID', 'e2pdf'), 'e2pdf-wc-order key="get_transaction_id"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Checkout Payment URL', 'e2pdf'), 'e2pdf-wc-order key="get_checkout_payment_url"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Checkout Order Received URL', 'e2pdf'), 'e2pdf-wc-order key="get_checkout_order_received_url"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cancel Order URL', 'e2pdf'), 'e2pdf-wc-order key="get_cancel_order_url"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cancel Order URL (raw)', 'e2pdf'), 'e2pdf-wc-order key="get_cancel_order_url_raw"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cancel Endpoint', 'e2pdf'), 'e2pdf-wc-order key="get_cancel_endpoint"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('View Order URL', 'e2pdf'), 'e2pdf-wc-order key="get_view_order_url"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Edit Order URL', 'e2pdf'), 'e2pdf-wc-order key="get_edit_order_url"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Status', 'e2pdf'), 'e2pdf-wc-order key="get_status"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Cart', 'e2pdf'), 'e2pdf-wc-order key="cart"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Order ID', 'e2pdf-wc-order key="get_id"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Order Key', 'e2pdf-wc-order key="get_order_key"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Order Number', 'e2pdf-wc-order key="get_order_number"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Order Total', 'e2pdf-wc-order key="get_formatted_order_total"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart Tax', 'e2pdf-wc-order key="get_cart_tax"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Currency', 'e2pdf-wc-order key="get_currency"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Discount Tax', 'e2pdf-wc-order key="get_discount_tax"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Discount to Display', 'e2pdf-wc-order key="get_discount_to_display"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Discount Total', 'e2pdf-wc-order key="get_discount_total"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Tax', 'e2pdf-wc-order key="get_shipping_tax"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Total', 'e2pdf-wc-order key="get_shipping_total"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Subtotal', 'e2pdf-wc-order key="get_subtotal"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Subtotal to Display', 'e2pdf-wc-order key="get_subtotal_to_display"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Get Total', 'e2pdf-wc-order key="get_total"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Discount', 'e2pdf-wc-order key="get_total_discount"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Tax', 'e2pdf-wc-order key="get_total_tax"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Refunded', 'e2pdf-wc-order key="get_total_refunded"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Tax Refunded', 'e2pdf-wc-order key="get_total_tax_refunded"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total Shipping Refunded', 'e2pdf-wc-order key="get_total_shipping_refunded"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Item Count Refunded', 'e2pdf-wc-order key="get_item_count_refunded"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Total QTY Refunded', 'e2pdf-wc-order key="get_total_qty_refunded"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Remaining Refund Amount', 'e2pdf-wc-order key="get_remaining_refund_amount"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Item Count', 'e2pdf-wc-order key="get_item_count"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Method', 'e2pdf-wc-order key="get_shipping_method"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping to Display', 'e2pdf-wc-order key="get_shipping_to_display"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Created', 'e2pdf-wc-order key="get_date_created"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Modified', 'e2pdf-wc-order key="get_date_modified"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Completed', 'e2pdf-wc-order key="get_date_completed"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Date Paid', 'e2pdf-wc-order key="get_date_paid"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Custom ID', 'e2pdf-wc-order key="get_customer_id"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('User ID', 'e2pdf-wc-order key="get_user_id"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Customer IP Address', 'e2pdf-wc-order key="get_customer_ip_address"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Customer User Agent', 'e2pdf-wc-order key="get_customer_user_agent"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Created Via', 'e2pdf-wc-order key="get_created_via"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Customer Note', 'e2pdf-wc-order key="get_customer_note"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing First Name', 'e2pdf-wc-order key="get_billing_first_name"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Last Name', 'e2pdf-wc-order key="get_billing_last_name"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Company', 'e2pdf-wc-order key="get_billing_company"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Address 1', 'e2pdf-wc-order key="get_billing_address_1"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Address 2', 'e2pdf-wc-order key="get_billing_address_2"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing City', 'e2pdf-wc-order key="get_billing_city"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing State', 'e2pdf-wc-order key="get_billing_state"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Postcode', 'e2pdf-wc-order key="get_billing_postcode"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Country', 'e2pdf-wc-order key="get_billing_country"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing E-mail', 'e2pdf-wc-order key="get_billing_email"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Billing Phone', 'e2pdf-wc-order key="get_billing_phone"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shopping First Name', 'e2pdf-wc-order key="get_shipping_first_name"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Last Name', 'e2pdf-wc-order key="get_shipping_last_name"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Company', 'e2pdf-wc-order key="get_shipping_company"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Address 1', 'e2pdf-wc-order key="get_shipping_address_1"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Address 2', 'e2pdf-wc-order key="get_shipping_address_2"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping City', 'e2pdf-wc-order key="get_shipping_city"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping State', 'e2pdf-wc-order key="get_shipping_state"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Postcode', 'e2pdf-wc-order key="get_shipping_postcode"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Country', 'e2pdf-wc-order key="get_shipping_country"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Address Map URL', 'e2pdf-wc-order key="get_shipping_address_map_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Billing Full Name', 'e2pdf-wc-order key="get_formatted_billing_full_name"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Shipping Full Name', 'e2pdf-wc-order key="get_formatted_shipping_full_name"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Billing Address', 'e2pdf-wc-order key="get_formatted_billing_address"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Formatted Shipping Address', 'e2pdf-wc-order key="get_formatted_shipping_address"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Payment Method', 'e2pdf-wc-order key="get_payment_method"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Payment Method Title', 'e2pdf-wc-order key="get_payment_method_title"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Transaction ID', 'e2pdf-wc-order key="get_transaction_id"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Checkout Payment URL', 'e2pdf-wc-order key="get_checkout_payment_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Checkout Order Received URL', 'e2pdf-wc-order key="get_checkout_order_received_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cancel Order URL', 'e2pdf-wc-order key="get_cancel_order_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cancel Order URL (raw)', 'e2pdf-wc-order key="get_cancel_order_url_raw"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cancel Endpoint', 'e2pdf-wc-order key="get_cancel_endpoint"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('View Order URL', 'e2pdf-wc-order key="get_view_order_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Edit Order URL', 'e2pdf-wc-order key="get_edit_order_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Status', 'e2pdf-wc-order key="get_status"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart', 'e2pdf-wc-order key="cart"') . '</div>';
         $vc .= '</div>';
 
-        $vc .= '<h3 class="e2pdf-plr5">' . __('Order Special Shortcodes', 'e2pdf') . '</h3>';
+        $vc .= '<h3 class="e2pdf-plr5">Order Special Shortcodes</h3>';
         $vc .= '<div class="e2pdf-grid">';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Order Products', 'e2pdf'), 'e2pdf-foreach shortcode="e2pdf-wc-order" key="get_items"][e2pdf-wc-product key="get_name" order="true" index="[e2pdf-foreach-index]"]' . "\r\n" . '[/e2pdf-foreach') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Order Totals', 'e2pdf'), 'e2pdf-foreach shortcode="e2pdf-wc-order" key="get_order_item_totals"][e2pdf-wc-order key="get_order_item_totals" path="[e2pdf-foreach-key].label"][e2pdf-wc-order key="get_order_item_totals" path="[e2pdf-foreach-key].value"]' . "\r\n" . '[/e2pdf-foreach') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Order Products', 'e2pdf-foreach shortcode="e2pdf-wc-order" key="get_items"][e2pdf-wc-product key="get_name" order="true" index="[e2pdf-foreach-index]"]' . "\r\n" . '[/e2pdf-foreach') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Order Totals', 'e2pdf-foreach shortcode="e2pdf-wc-order" key="get_order_item_totals"][e2pdf-wc-order key="get_order_item_totals" path="[e2pdf-foreach-key].label"][e2pdf-wc-order key="get_order_item_totals" path="[e2pdf-foreach-key].value"]' . "\r\n" . '[/e2pdf-foreach') . '</div>';
 
         $vc .= '</div>';
 
         $meta_keys = $this->get_post_meta_keys('shop_order');
         if (!empty($meta_keys)) {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Order Meta Keys', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Order Meta Keys</h3>';
             $vc .= '<div class="e2pdf-grid">';
             $i = 0;
             foreach ($meta_keys as $meta_key) {
@@ -3355,13 +3475,31 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             $vc .= '</div>';
         }
 
+        /*
+         * Checkout Field Editor (Checkout Manager) for WooCommerce
+         * https://wordpress.org/plugins/woo-checkout-field-editor-pro/
+         */
+        if (class_exists('THWCFD_Utils')) {
+            $meta_keys = array_merge(THWCFD_Utils::get_fields('billing'), THWCFD_Utils::get_fields('shipping'), THWCFD_Utils::get_fields('additional'));
+            if (!empty($meta_keys)) {
+                $vc .= '<h3 class="e2pdf-plr5">Checkout Field Editor for WooCommerce</h3>';
+                $vc .= '<div class="e2pdf-grid">';
+                $i = 0;
+                foreach ($meta_keys as $meta_key => $meta_value) {
+                    $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wc-order key="' . $meta_key . '" meta="true" checkout_field_editor="true"') . '</div>';
+                    $i++;
+                }
+                $vc .= '</div>';
+            }
+        }
+
         $meta_keys = $this->get_post_taxonomy_keys();
         if (!empty($meta_keys)) {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Order Taxonomy', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Order Taxonomy</h3>';
             $vc .= '<div class="e2pdf-grid">';
             $i = 0;
             foreach ($meta_keys as $meta_key) {
-                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wc-order key="' . $meta_key . '" terms="true"') . '</div>';
+                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wc-order key="' . $meta_key . '" terms="true" names="true"') . '</div>';
                 $i++;
             }
             $vc .= '</div>';
@@ -3369,7 +3507,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         $meta_keys = $this->get_item_type_keys_subkeys();
         if (!empty($meta_keys)) {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('Order Item Meta Keys', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">Order Item Meta Keys</h3>';
             $vc .= '<div class="e2pdf-grid">';
 
             $i = 0;
@@ -3388,34 +3526,34 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
     public function get_vm_user() {
 
-        $vc = '<h3 class="e2pdf-plr5">' . __('User', 'e2pdf') . '</h3>';
+        $vc = '<h3 class="e2pdf-plr5">User</h3>';
         $vc .= '<div class="e2pdf-grid">';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('ID', 'e2pdf'), 'e2pdf-user key="ID"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Description', 'e2pdf'), 'e2pdf-user key="user_description"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('First Name', 'e2pdf'), 'e2pdf-user key="user_firstname"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Last Name', 'e2pdf'), 'e2pdf-user key="user_lastname"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Login', 'e2pdf'), 'e2pdf-user key="user_login"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Nicename', 'e2pdf'), 'e2pdf-user key="user_nicename"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('E-mail', 'e2pdf'), 'e2pdf-user key="user_email"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Url', 'e2pdf'), 'e2pdf-user key="user_url"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Registered', 'e2pdf'), 'e2pdf-user key="user_registered"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('User Status', 'e2pdf'), 'e2pdf-user key="user_status"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('User Level', 'e2pdf'), 'e2pdf-user key="user_level"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Display Name', 'e2pdf'), 'e2pdf-user key="display_name"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Spam', 'e2pdf'), 'e2pdf-user key="spam"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Deleted', 'e2pdf'), 'e2pdf-user key="deleted"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Locale', 'e2pdf'), 'e2pdf-user key="locale"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Rich Editing', 'e2pdf'), 'e2pdf-user key="rich_editing"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Syntax Highlighting', 'e2pdf'), 'e2pdf-user key="syntax_highlighting"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Use SSL', 'e2pdf'), 'e2pdf-user key="use_ssl"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Roles', 'e2pdf'), 'e2pdf-user key="roles"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Avatar', 'e2pdf'), 'e2pdf-user key="get_avatar"') . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element(__('Avatar Url', 'e2pdf'), 'e2pdf-user key="get_avatar_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('ID', 'e2pdf-user key="ID"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Description', 'e2pdf-user key="user_description"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('First Name', 'e2pdf-user key="user_firstname"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Last Name', 'e2pdf-user key="user_lastname"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Login', 'e2pdf-user key="user_login"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Nicename', 'e2pdf-user key="user_nicename"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('E-mail', 'e2pdf-user key="user_email"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Url', 'e2pdf-user key="user_url"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Registered', 'e2pdf-user key="user_registered"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('User Status', 'e2pdf-user key="user_status"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('User Level', 'e2pdf-user key="user_level"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Display Name', 'e2pdf-user key="display_name"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Spam', 'e2pdf-user key="spam"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Deleted', 'e2pdf-user key="deleted"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Locale', 'e2pdf-user key="locale"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Rich Editing', 'e2pdf-user key="rich_editing"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Syntax Highlighting', 'e2pdf-user key="syntax_highlighting"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Use SSL', 'e2pdf-user key="use_ssl"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Roles', 'e2pdf-user key="roles"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Avatar', 'e2pdf-user key="get_avatar"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Avatar Url', 'e2pdf-user key="get_avatar_url"') . '</div>';
         $vc .= '</div>';
 
         $meta_keys = $this->get_user_meta_keys();
         if (!empty($meta_keys)) {
-            $vc .= '<h3 class="e2pdf-plr5">' . __('User Meta Keys', 'e2pdf') . '</h3>';
+            $vc .= '<h3 class="e2pdf-plr5">User Meta Keys</h3>';
             $vc .= '<div class="e2pdf-grid">';
             $i = 0;
             foreach ($meta_keys as $meta_key) {
@@ -3430,7 +3568,6 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
     private function get_user_meta_keys() {
         global $wpdb;
-
         $meta_keys = array();
         if ($this->get('item')) {
             $order_condition = array(
@@ -3438,8 +3575,110 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 'order' => 'desc',
             );
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM ' . $wpdb->usermeta . ' ' . $orderby . ''));
+            $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->usermeta . '` ' . $orderby . ''));
         }
         return $meta_keys;
+    }
+
+    public function hook_woocommerce_order_edit() {
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_order_edit', 'shop_order');
+        if (!empty($hooks)) {
+            add_meta_box(
+                    'e2pdf',
+                    apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_woocommerce_order_edit'),
+                    array($this, 'hook_woocommerce_order_edit_callback'),
+                    'shop_order',
+                    'side',
+                    'default',
+                    array('hooks' => $hooks)
+            );
+        }
+    }
+
+    public function hook_woocommerce_order_edit_callback($post, $metabox) {
+        foreach ($metabox['args']['hooks'] as $hook) {
+            $action = apply_filters('e2pdf_hook_action_button',
+                    array(
+                        'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
+                        'url' => $this->helper->get_url(
+                                array(
+                                    'page' => 'e2pdf',
+                                    'action' => 'export',
+                                    'id' => $hook,
+                                    'dataset' => $post->ID,
+                                ), 'admin.php?'
+                        ),
+                        'title' => 'PDF #' . $hook
+                    ), 'hook_woocommerce_order_edit', $hook, $post->ID
+            );
+            if (!empty($action)) {
+                echo sprintf(
+                        $action['html'], $action['url'], $action['title']
+                );
+            }
+        }
+    }
+
+    public function hook_woocommerce_order_row_actions($order) {
+        if (!empty($order->id)) {
+            $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_order_row_actions', 'shop_order');
+            foreach ($hooks as $hook) {
+                $action = apply_filters('e2pdf_hook_action_button',
+                        array(
+                            'html' => '<a class="button e2pdf-download-hook e2pdf-download-hook-icon-button" target="_blank" title="%2$s" href="%1$s">%2$s</a> ',
+                            'url' => $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf',
+                                        'action' => 'export',
+                                        'id' => $hook,
+                                        'dataset' => $order->id,
+                                    ), 'admin.php?'
+                            ),
+                            'title' => 'PDF #' . $hook
+                        ), 'hook_woocommerce_order_row_actions', $hook, $order->id
+                );
+                if (!empty($action)) {
+                    echo sprintf(
+                            $action['html'], $action['url'], $action['title']
+                    );
+                }
+            }
+        }
+    }
+
+    public function hook_woocommerce_order_row_column($columns) {
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_order_row_column', 'shop_order');
+        if (!empty($hooks)) {
+            $columns['e2pdf_hook_woocommerce_order_row_column'] = apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_woocommerce_order_row_column');
+            add_action('manage_shop_order_posts_custom_column', array($this, 'hook_woocommerce_order_row_column_callback'), 10, 2);
+        }
+        return $columns;
+    }
+
+    public function hook_woocommerce_order_row_column_callback($column, $post_id) {
+        if ($column == 'e2pdf_hook_woocommerce_order_row_column') {
+            $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_order_row_column', 'shop_order');
+            foreach ($hooks as $hook) {
+                $action = apply_filters('e2pdf_hook_action_button',
+                        array(
+                            'html' => '<a class="button e2pdf-download-hook e2pdf-download-hook-icon-button" target="_blank" title="%2$s" href="%1$s">%2$s</a> ',
+                            'url' => $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf',
+                                        'action' => 'export',
+                                        'id' => $hook,
+                                        'dataset' => $post_id,
+                                    ), 'admin.php?'
+                            ),
+                            'title' => 'PDF #' . $hook
+                        ), 'hook_woocommerce_order_row_column', $hook, $post_id
+                );
+                if (!empty($action)) {
+                    echo sprintf(
+                            $action['html'], $action['url'], $action['title']
+                    );
+                }
+            }
+        }
     }
 }

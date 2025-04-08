@@ -52,7 +52,7 @@ class Helper_E2pdf_Math {
         }
         while (($op = array_pop($this->operators))) {
             if (isset($op->type) && $op->type == 'parenthesis') {
-                throw new Exception(__('Mismatched Parenthesis', 'e2pdf'));
+                throw new Exception(__('Mismatched Parenthesis in Math operation', 'e2pdf'));
             }
             $this->output[] = $op;
         }
@@ -89,7 +89,7 @@ class Helper_E2pdf_Math {
         if ($output) {
             return $output;
         }
-        throw new Exception(__('Could not render output', 'e2pdf'));
+        throw new Exception(__('Could not parse Math operation', 'e2pdf'));
     }
 
     protected function parseParenthesis($expression) {
@@ -106,7 +106,7 @@ class Helper_E2pdf_Math {
                 }
             }
             if (!$clean) {
-                throw new Exception(__('Mismatched Parenthesis', 'e2pdf'));
+                throw new Exception(__('Mismatched Parenthesis in Math operation', 'e2pdf'));
             }
         }
     }

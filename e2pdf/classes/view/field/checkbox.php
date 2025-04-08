@@ -3,10 +3,10 @@ if (!defined('ABSPATH')) {
     die('Access denied.');
 }
 ?>
+<?php $checkbox_field = $this->tpl_args->get('field'); ?>
 <fieldset class="<?php echo isset($checkbox_field['class']) ? esc_attr($checkbox_field['class']) : ''; ?>">
     <legend class="screen-reader-text"><span><?php echo esc_html($this->tpl_args->get('title')); ?></span></legend>
     <label>
-        <?php $checkbox_field = $this->tpl_args->get('field'); ?>
         <?php if (isset($checkbox_field['name']) && preg_match('/\[\]$/', $checkbox_field['name'])) { ?>
         <?php } else { ?>
             <input type="hidden" name="<?php echo isset($checkbox_field['name']) ? esc_attr($checkbox_field['name']) : '' ?>" value="<?php echo esc_attr($this->tpl_args->get('default_value')); ?>"/>

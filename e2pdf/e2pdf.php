@@ -3,8 +3,8 @@
 /*
   Plugin Name: E2Pdf
   Plugin URI:  https://e2pdf.com
-  Description: Export to PDF tool
-  Version:     1.25.15
+  Description: Export PDF tool
+  Version:     1.28.00
   Author:      E2Pdf.com
   Author URI:  https://e2pdf.com/contributors
   Text Domain: e2pdf
@@ -29,14 +29,14 @@ if (!defined('ABSPATH')) {
     die('Access denied.');
 }
 
-// Recovery Mode Email in Debug Mode
+// recoverty mode email
 if (get_option('e2pdf_debug', '0') && get_option('e2pdf_recovery_mode_email', '')) {
     if (!defined('RECOVERY_MODE_EMAIL')) {
         define('RECOVERY_MODE_EMAIL', get_option('e2pdf_recovery_mode_email', ''));
     }
 }
 
-// Autoloader Convert Class Name to Filename
+// autoloader name to filename
 function e2pdf_autoloader_convert_name($class_name) {
     $search = array(
         '_',
@@ -47,7 +47,6 @@ function e2pdf_autoloader_convert_name($class_name) {
         'Extension-',
         'Api-',
     );
-
     $replace = array(
         '-',
         '',
@@ -57,22 +56,18 @@ function e2pdf_autoloader_convert_name($class_name) {
         '',
         '',
     );
-
     return strtolower(
             str_replace($search, $replace, $class_name)
     );
 }
 
-// E2Pdf Class Autoloader
+// e2pdf autoloader
 function e2pdf_autoloader($class_name) {
-
     if (!preg_match('/^(.*?)E2pdf(.*?)$/', $class_name)) {
         return;
     }
-
     $path = dirname(__FILE__);
     $path .= '/classes';
-
     if (preg_match('/^Helper.+$/', $class_name)) {
         $path .= '/helper/';
     } elseif (preg_match('/^Controller_Frontend.+$/', $class_name)) {
@@ -88,7 +83,6 @@ function e2pdf_autoloader($class_name) {
     } elseif (preg_match('/^Api.+$/', $class_name)) {
         $path .= '/api/';
     }
-
     $class_path = e2pdf_autoloader_convert_name($class_name);
     $path .= $class_path . '.php';
     if (file_exists($path)) {

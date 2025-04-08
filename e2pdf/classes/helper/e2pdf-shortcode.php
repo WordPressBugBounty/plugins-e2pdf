@@ -82,9 +82,9 @@ class Helper_E2pdf_Shortcode {
         return $response;
     }
 
-    public function apply_path_attribute($value, $path = false) {
+    public function apply_path_attribute($value, $path = false, $delimiter = '.') {
         if ((is_array($value) || is_object($value)) && $path !== false) {
-            $keys = explode('.', $path);
+            $keys = explode($delimiter, $path);
             $obj = &$value;
             $found = true;
             foreach ($keys as $key) {

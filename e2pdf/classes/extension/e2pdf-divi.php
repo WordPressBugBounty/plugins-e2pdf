@@ -63,52 +63,33 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         $this->options->$key = $value;
         switch ($key) {
             case 'dataset':
-                global $wpdb;
-                $this->set('cached_entry', false);
+                $this->set('cached_entry', array());
                 $this->set('cached_meta', array());
                 if ($this->get('item') && $this->get('dataset')) {
-                    $condition = array(
-                        'ID' => array(
-                            'condition' => '=',
-                            'value' => $this->get('dataset'),
-                            'type' => '%d',
-                        ),
-                        'item' => array(
-                            'condition' => '=',
-                            'value' => $this->get('item'),
-                            'type' => '%s',
-                        ),
-                        'extension' => array(
-                            'condition' => '=',
-                            'value' => 'divi',
-                            'type' => '%s',
-                        ),
-                    );
-                    $where = $this->helper->load('db')->prepare_where($condition);
-                    $this->set('cached_entry', $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . $wpdb->prefix . 'e2pdf_datasets' . $where['sql'] . '', $where['filter'])));
-
-                    if ($this->get('cached_entry')) {
-                        $post = $this->helper->load('convert')->unserialize($this->get('cached_entry')->entry);
+                    $entry = new Model_E2pdf_Dataset();
+                    if ($entry->load($this->get('dataset'), $this->get('item'), 'divi')) {
+                        $cached_entry = $entry->get('entry');
+                        $this->set('cached_entry', $cached_entry);
                         $processed_fields_values = array();
-                        if ($post && is_array($post)) {
-                            $et_contact_proccess = array_search('et_contact_proccess', $post);
+                        if ($cached_entry && is_array($cached_entry)) {
+                            $et_contact_proccess = array_search('et_contact_proccess', $cached_entry);
                             $et_pb_contact_form_num = $et_contact_proccess === false ? 0 : str_replace('et_pb_contactform_submit_', '', $et_contact_proccess);
-                            $current_form_fields = isset($post['et_pb_contact_email_fields_' . $et_pb_contact_form_num]) ? $post['et_pb_contact_email_fields_' . $et_pb_contact_form_num] : '';
+                            $current_form_fields = isset($cached_entry['et_pb_contact_email_fields_' . $et_pb_contact_form_num]) ? $cached_entry['et_pb_contact_email_fields_' . $et_pb_contact_form_num] : '';
                             if ('' !== $current_form_fields) {
                                 $fields_data_json = str_replace('\\', '', $current_form_fields);
                                 $fields_data_array = json_decode($fields_data_json, true);
                                 if (!empty($fields_data_array)) {
                                     foreach ($fields_data_array as $index => $field_value) {
-                                        $processed_fields_values[$field_value['original_id']]['value'] = isset($post[$field_value['field_id']]) ? $post[$field_value['field_id']] : '';
+                                        $processed_fields_values[$field_value['original_id']]['value'] = isset($cached_entry[$field_value['field_id']]) ? $cached_entry[$field_value['field_id']] : '';
                                         $processed_fields_values[$field_value['original_id']]['label'] = $field_value['field_label'];
                                         if (
                                                 (
-                                                (isset($post[$field_value['field_id'] . '_is_signature_pad']) && $post[$field_value['field_id'] . '_is_signature_pad'] == 'yes') ||
-                                                (isset($post[$field_value['field_id'] . '_is_file']) && $post[$field_value['field_id'] . '_is_file'] == 'yes')
+                                                (isset($cached_entry[$field_value['field_id'] . '_is_signature_pad']) && $cached_entry[$field_value['field_id'] . '_is_signature_pad'] == 'yes') ||
+                                                (isset($cached_entry[$field_value['field_id'] . '_is_file']) && $cached_entry[$field_value['field_id'] . '_is_file'] == 'yes')
                                                 ) && $processed_fields_values[$field_value['original_id']]['value']
                                         ) {
-                                            $subdir = isset($post['_subdir']) ? $post['_subdir'] : '';
-                                            if (isset($post['_save_files_to_media']) && $post['_save_files_to_media'] == 'on') {
+                                            $subdir = isset($cached_entry['_subdir']) ? $cached_entry['_subdir'] : '';
+                                            if (isset($cached_entry['_save_files_to_media']) && $cached_entry['_save_files_to_media'] == 'on') {
                                                 if ($subdir && !file_exists(path_join(wp_upload_dir()['basedir'] . $subdir, $processed_fields_values[$field_value['original_id']]['value'])) && preg_match('/^\/\d{4}\/\d{2}$/', $subdir)) {
                                                     $tmpsubdir = '/' . date('Y/m', strtotime(str_replace('/', '-', ltrim($subdir, '/')) . " -1 month"));
                                                     if (file_exists(path_join(wp_upload_dir()['basedir'] . $tmpsubdir, $processed_fields_values[$field_value['original_id']]['value']))) {
@@ -117,7 +98,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                                 }
                                                 $processed_fields_values[$field_value['original_id']]['value'] = path_join(wp_upload_dir()['baseurl'] . $subdir, $processed_fields_values[$field_value['original_id']]['value']);
                                             } else {
-                                                $contact_form_id = isset($post['_unique_id']) ? $post['_unique_id'] : '';
+                                                $contact_form_id = isset($cached_entry['_unique_id']) ? $cached_entry['_unique_id'] : '';
                                                 if (function_exists('pwh_dcfh_file_helpers') && $contact_form_id) {
                                                     if ($subdir && !file_exists(pwh_dcfh_file_helpers()::get_form_upload_dir($contact_form_id, $subdir, $processed_fields_values[$field_value['original_id']]['value'])) && preg_match('/^\d{4}\/\d{2}$/', $subdir)) {
                                                         $tmpsubdir = date('Y/m', strtotime(str_replace('/', '-', ltrim($subdir, '/')) . " -1 month"));
@@ -137,7 +118,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
 
                             if (!isset($processed_fields_values['_wp_http_referer'])) {
                                 $processed_fields_values['_wp_http_referer'] = array(
-                                    'value' => isset($post['_wp_http_referer']) ? $post['_wp_http_referer'] : '',
+                                    'value' => isset($cached_entry['_wp_http_referer']) ? $cached_entry['_wp_http_referer'] : '',
                                     'label' => '_wp_http_referer',
                                 );
                             }
@@ -173,6 +154,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         } else {
             switch ($key) {
                 case 'args':
+                case 'cached_entry':
                 case 'cached_meta':
                     $value = array();
                     break;
@@ -190,7 +172,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
      */
     public function items() {
         global $wpdb;
-
         $condition = array(
             'post_content' => array(
                 'condition' => 'LIKE',
@@ -212,7 +193,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         );
         $where = $this->helper->load('db')->prepare_where($condition);
         $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-        $posts = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . $wpdb->prefix . 'posts' . $where['sql'] . $orderby . '', $where['filter']));
+        $posts = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'posts`' . $where['sql'] . $orderby . '', $where['filter']));
 
         $content = array();
         foreach ($posts as $key => $post) {
@@ -280,7 +261,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
             );
             $where = $this->helper->load('db')->prepare_where($condition);
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-            $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . $wpdb->prefix . 'e2pdf_datasets' . $where['sql'] . $orderby . '', $where['filter']));
+            $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'e2pdf_datasets`' . $where['sql'] . $orderby . '', $where['filter']));
 
             if ($entries) {
                 $this->set('item', $item_id);
@@ -395,7 +376,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         $where = $this->helper->load('db')->prepare_where($condition);
         $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
 
-        $posts = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . $wpdb->prefix . 'posts' . $where['sql'] . $orderby . '', $where['filter']));
+        $posts = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'posts`' . $where['sql'] . $orderby . '', $where['filter']));
         foreach ($posts as $key => $post) {
             if (in_array($item_id, $this->get_forms($post->post_content))) {
                 $item_post = $post;
@@ -412,11 +393,13 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
      * @param array $field - Field details
      * @return string - Fully rendered value
      */
-    public function render($value, $field = array(), $convert_shortcodes = true) {
+    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
-        $value = $this->strip_shortcodes($value);
-        $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
-        $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        if (!$raw) {
+            $value = $this->strip_shortcodes($value);
+            $value = $this->convert_shortcodes($value, $convert_shortcodes, isset($field['type']) && $field['type'] == 'e2pdf-html' ? true : false);
+            $value = $this->helper->load('field')->render_checkbox($value, $this, $field);
+        }
         return $value;
     }
 
@@ -522,9 +505,17 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                 libxml_use_internal_errors(true);
                                 $dom = new DOMDocument();
                                 if (function_exists('mb_convert_encoding')) {
-                                    $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                                    } else {
+                                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
+                                    }
                                 } else {
-                                    $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                                    } else {
+                                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
+                                    }
                                 }
                                 libxml_clear_errors();
 
@@ -987,7 +978,12 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                         }
                                     }
                                 }
-                                return $dom->saveHTML();
+
+                                if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
+                                    return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
+                                } else {
+                                    return $dom->saveHTML();
+                                }
                             }
                         }
                     }
@@ -1087,58 +1083,9 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
             add_filter('et_pb_module_shortcode_attributes', array($this, 'filter_et_pb_module_shortcode_attributes'), 30, 5);
         }
         add_filter('et_module_shortcode_output', array($this, 'filter_et_module_shortcode_output'), 30, 3);
-        add_filter('et_pb_module_content', array($this, 'filter_et_pb_module_content'), 30, 6);
-    }
-
-    public function filter_et_pb_module_content($content, $props, $attrs, $render_slug, $_address, $global_content) {
-
-        if (($render_slug == 'et_pb_code' || $render_slug == 'et_pb_text') &&
-                false !== strpos($content, '[') &&
-                function_exists('et_core_is_builder_used_on_current_request') &&
-                !et_core_is_builder_used_on_current_request()
-        ) {
-            global $post;
-            $shortcode_tags = array(
-                'e2pdf-download',
-                'e2pdf-save',
-                'e2pdf-view',
-                'e2pdf-adobesign',
-                'e2pdf-zapier',
-            );
-            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
-            $tagnames = array_intersect($shortcode_tags, $matches[1]);
-            if (!empty($tagnames)) {
-                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $content, $shortcodes);
-                foreach ($shortcodes[0] as $key => $shortcode_value) {
-                    wp_reset_postdata();
-                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
-                    $atts = shortcode_parse_atts($shortcode[3]);
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
-                    } else {
-                        if (!isset($atts['dataset']) && isset($atts['id']) && (isset($post->ID))) {
-                            $dataset = $post->ID;
-                            $atts['dataset'] = $dataset;
-                            $shortcode[3] .= ' dataset="' . $dataset . '"';
-                        }
-                    }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
-                    $new_shortcode = '[' . $shortcode[2] . $shortcode[3] . ']';
-                    $content = str_replace($shortcode_value, $new_shortcode, $content);
-                }
-            }
-        }
-        return $content;
     }
 
     public function filter_et_pb_module_shortcode_attributes($props, $attrs, $render_slug, $address, $content) {
-        global $wpdb;
-
         if ($render_slug && $render_slug == 'et_pb_contact_form' && !empty($_POST) && $et_contact_proccess = array_search('et_contact_proccess', $_POST)) {
             $e2pdf_shortcodes = false;
             $success_message = isset($props['success_message']) ? str_replace(array('&#91;', '&#93;', '&quot;'), array('[', ']', '"'), $props['success_message']) : '';
@@ -1310,13 +1257,11 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                         if ($template->get('extension') === 'divi') {
                                             $item = $template->get('item');
                                             if (!$dataset) {
-                                                $entry = array(
-                                                    'extension' => 'divi',
-                                                    'item' => $item,
-                                                    'entry' => serialize($data),
-                                                );
-                                                $wpdb->insert($wpdb->prefix . 'e2pdf_datasets', $entry);
-                                                $dataset = $wpdb->insert_id;
+                                                $entry = new Model_E2pdf_Dataset();
+                                                $entry->set('extension', 'divi');
+                                                $entry->set('item', $item);
+                                                $entry->set('entry', $data);
+                                                $dataset = $entry->save();
                                             }
                                             $atts['dataset'] = $dataset;
                                             $shortcode[3] .= ' dataset="' . $dataset . '"';
@@ -1358,13 +1303,11 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     if ($template->get('extension') === 'divi') {
                                         $item = $template->get('item');
                                         if (!$dataset) {
-                                            $entry = array(
-                                                'extension' => 'divi',
-                                                'item' => $item,
-                                                'entry' => serialize($data),
-                                            );
-                                            $wpdb->insert($wpdb->prefix . 'e2pdf_datasets', $entry);
-                                            $dataset = $wpdb->insert_id;
+                                            $entry = new Model_E2pdf_Dataset();
+                                            $entry->set('extension', 'divi');
+                                            $entry->set('item', $item);
+                                            $entry->set('entry', $data);
+                                            $dataset = $entry->save();
                                         }
                                         $atts['dataset'] = $dataset;
                                         $shortcode[3] .= ' dataset="' . $dataset . '"';
@@ -1406,13 +1349,11 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     if ($template->get('extension') === 'divi') {
                                         $item = $template->get('item');
                                         if (!$dataset) {
-                                            $entry = array(
-                                                'extension' => 'divi',
-                                                'item' => $item,
-                                                'entry' => serialize($data),
-                                            );
-                                            $wpdb->insert($wpdb->prefix . 'e2pdf_datasets', $entry);
-                                            $dataset = $wpdb->insert_id;
+                                            $entry = new Model_E2pdf_Dataset();
+                                            $entry->set('extension', 'divi');
+                                            $entry->set('item', $item);
+                                            $entry->set('entry', $data);
+                                            $dataset = $entry->save();
                                         }
                                         $atts['dataset'] = $dataset;
                                         $shortcode[3] .= ' dataset="' . $dataset . '"';
@@ -1502,7 +1443,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
      */
     public function delete_item($template_id = false, $dataset = false) {
         global $wpdb;
-
         $template = new Model_E2pdf_Template();
         if ($template_id && $dataset && $template->load($template_id)) {
             if ($template->get('extension') === 'divi' && $template->get('item')) {
@@ -1516,7 +1456,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                 return true;
             }
         }
-
         return false;
     }
 
@@ -1527,21 +1466,17 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
      */
     public function delete_items($template_id = false) {
         global $wpdb;
-
         $template = new Model_E2pdf_Template();
-
         if ($template_id && $template->load($template_id)) {
             if ($template->get('extension') === 'divi' && $template->get('item')) {
-                $item = $template->get('item');
                 $where = array(
-                    'item' => $item,
+                    'item' => $template->get('item'),
                     'extension' => 'divi',
                 );
                 $wpdb->delete($wpdb->prefix . 'e2pdf_datasets', $where);
                 return true;
             }
         }
-
         return false;
     }
 

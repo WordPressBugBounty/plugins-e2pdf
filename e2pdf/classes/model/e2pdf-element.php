@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Template Model
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-element.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -29,7 +27,20 @@ class Model_E2pdf_Element extends Model_E2pdf_Model {
     }
 
     public function set($key, $value) {
-        $this->element[$key] = $value;
+        switch ($key) {
+            case 'properties':
+            case 'actions':
+                if (!is_array($value)) {
+                    $this->element[$key] = array();
+                } else {
+                    $this->element[$key] = $value;
+                }
+                break;
+
+            default:
+                $this->element[$key] = $value;
+                break;
+        }
     }
 
     public function get($key) {
@@ -47,12 +58,10 @@ class Model_E2pdf_Element extends Model_E2pdf_Model {
                 case 'revision_id':
                     $value = 0;
                     break;
-
                 case 'properties':
                 case 'actions':
                     $value = array();
                     break;
-
                 default:
                     $value = '';
                     break;
@@ -77,9 +86,9 @@ class Model_E2pdf_Element extends Model_E2pdf_Model {
             'width' => $this->get('width'),
             'height' => $this->get('height'),
             'value' => $this->get('value'),
-            'properties' => serialize($this->get('properties')),
-            'actions' => serialize($this->get('actions')),
-            'revision_id' => $this->get('revision_id')
+            'properties' => serialize($this->get('properties')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'actions' => serialize($this->get('actions')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'revision_id' => $this->get('revision_id'),
         );
         return $element;
     }
@@ -97,7 +106,9 @@ class Model_E2pdf_Element extends Model_E2pdf_Model {
 
     public function load($element_id, $template_id, $revision_id = 0) {
         global $wpdb;
-        $element = $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$this->get_table()}` WHERE element_id = %d AND template_id = %d AND revision_id = %d", $element_id, $template_id, $revision_id), ARRAY_A);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $element = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $this->get_table() . '` WHERE element_id = %d AND template_id = %d AND revision_id = %d', $element_id, $template_id, $revision_id), ARRAY_A);
         if ($element) {
             if ($element['type'] == 'e2pdf-html' || $element['type'] == 'e2pdf-page-number') {
                 $element['value'] = $this->helper->load('filter')->filter_html_tags($element['value']);
@@ -115,7 +126,8 @@ class Model_E2pdf_Element extends Model_E2pdf_Model {
 
         $element = false;
         if ($template_id) {
-            $element = $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$this->get_table()}` WHERE template_id = %d AND revision_id = %d ORDER BY element_id DESC", $template_id, $revision_id), ARRAY_A);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+            $element = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $this->get_table() . '` WHERE template_id = %d AND revision_id = %d ORDER BY element_id DESC', $template_id, $revision_id), ARRAY_A);
         }
 
         if ($element) {
@@ -131,7 +143,7 @@ class Model_E2pdf_Element extends Model_E2pdf_Model {
             $where = array(
                 'element_id' => $this->get('element_id'),
                 'template_id' => $this->get('template_id'),
-                'revision_id' => $this->get('revision_id')
+                'revision_id' => $this->get('revision_id'),
             );
             $wpdb->delete($this->get_table(), $where);
         }
@@ -139,7 +151,9 @@ class Model_E2pdf_Element extends Model_E2pdf_Model {
 
     public function get_elements($page_id, $template_id, $revision_id = 0) {
         global $wpdb;
-        $elements = $wpdb->get_results($wpdb->prepare("SELECT * FROM `{$this->get_table()}` WHERE page_id = %d AND template_id = %d AND revision_id = %d", $page_id, $template_id, $revision_id), ARRAY_A);
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $elements = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $this->get_table() . '` WHERE page_id = %d AND template_id = %d AND revision_id = %d', $page_id, $template_id, $revision_id), ARRAY_A);
         if ($elements) {
             $elements_list = array();
             foreach ($elements as $element_key => $element) {

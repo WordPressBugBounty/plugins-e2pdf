@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2pdf Revision Model
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.09.02
+ * File: /model/e2pdf-revision.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -19,29 +17,21 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
     private $extension = null;
     private $table;
 
-    /*
-     * On Revision init
-     */
-
     public function __construct() {
         global $wpdb;
         parent::__construct();
         $this->table = $wpdb->prefix . 'e2pdf_revisions';
     }
 
-    /**
-     * Load Revision by ID
-     * 
-     * @param int $template_id - ID of template
-     */
+    // load
     public function load($template_id, $full = true, $revision_id = 0) {
         global $wpdb;
 
-        $template = $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$this->get_table()}` WHERE template_id = %d AND revision_id = %d", $template_id, $revision_id), ARRAY_A);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $template = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $this->get_table() . '` WHERE template_id = %d AND revision_id = %d', $template_id, $revision_id), ARRAY_A);
 
         if ($template && $revision_id) {
             $this->template = $template;
-
             $extension = new Model_E2pdf_Extension();
             if ($this->get('extension')) {
                 $extension->load($this->get('extension'));
@@ -56,11 +46,12 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
 
             if ($full) {
                 $this->set('fonts', $this->helper->load('convert')->unserialize($template['fonts']));
+                $this->set('permissions', $this->helper->load('convert')->unserialize($template['permissions']));
+                $this->set('properties', $this->helper->load('convert')->unserialize($template['properties']));
                 $this->set('actions', $this->helper->load('convert')->unserialize($template['actions']));
 
                 $model_e2pdf_page = new Model_E2pdf_Page();
-                $pages = $model_e2pdf_page->get_pages($this->get('template_id'), $revision_id);
-                $this->set('pages', $pages);
+                $this->set('pages', $model_e2pdf_page->get_pages($this->get('template_id'), $revision_id));
             }
             return true;
         }
@@ -70,25 +61,31 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
     public function revision($template_id = false) {
         global $wpdb;
         if ($template_id) {
-            $template = $wpdb->get_row($wpdb->prepare("SELECT * FROM `" . $wpdb->prefix . "e2pdf_templates` WHERE ID = %d", $template_id), ARRAY_A);
+            $template = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'e2pdf_templates` WHERE ID = %d', $template_id), ARRAY_A);
             if ($template) {
                 $this->template = $template;
+
                 $this->set('fonts', $this->helper->load('convert')->unserialize($template['fonts']));
-                $this->set('actions', $this->helper->load('convert')->unserialize($template['actions']));
                 $this->set('permissions', $this->helper->load('convert')->unserialize($template['permissions']));
+                $this->set('properties', $this->helper->load('convert')->unserialize($template['properties']));
+                $this->set('actions', $this->helper->load('convert')->unserialize($template['actions']));
+
                 $this->set('template_id', $template_id);
 
                 $condition = array(
                     'template_id' => array(
                         'condition' => '=',
                         'value' => $this->get('template_id'),
-                        'type' => '%d'
-                    )
+                        'type' => '%d',
+                    ),
                 );
                 $where = $this->helper->load('db')->prepare_where($condition);
-                $wpdb->query($wpdb->prepare("UPDATE `" . $wpdb->prefix . "e2pdf_elements` set revision_id = revision_id + 1 " . $where['sql'] . "", $where['filter']));
-                $wpdb->query($wpdb->prepare("UPDATE `" . $wpdb->prefix . "e2pdf_pages` set revision_id = revision_id + 1 " . $where['sql'] . "", $where['filter']));
-                $wpdb->query($wpdb->prepare("UPDATE `" . $wpdb->prefix . "e2pdf_revisions` set revision_id = revision_id + 1 " . $where['sql'] . "", $where['filter']));
+
+                // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+                $wpdb->query($wpdb->prepare('UPDATE `' . $wpdb->prefix . 'e2pdf_elements` set revision_id = revision_id + 1 ' . $where['sql'] . '', $where['filter']));
+                $wpdb->query($wpdb->prepare('UPDATE `' . $wpdb->prefix . 'e2pdf_pages` set revision_id = revision_id + 1 ' . $where['sql'] . '', $where['filter']));
+                $wpdb->query($wpdb->prepare('UPDATE `' . $wpdb->prefix . 'e2pdf_revisions` set revision_id = revision_id + 1 ' . $where['sql'] . '', $where['filter']));
+                // phpcs:enable
 
                 $this->save();
             }
@@ -130,71 +127,82 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
             'savename' => $this->get('savename'),
             'password' => $this->get('password'),
             'owner_password' => $this->get('owner_password'),
-            'permissions' => serialize($this->get('permissions')),
+            'permissions' => serialize($this->get('permissions')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'hooks' => $this->get('hooks'),
             'meta_title' => $this->get('meta_title'),
             'meta_subject' => $this->get('meta_subject'),
             'meta_author' => $this->get('meta_author'),
             'meta_keywords' => $this->get('meta_keywords'),
-            'fonts' => serialize($this->get('fonts')),
+            'lang_code' => $this->get('lang_code'),
+            'fonts' => serialize($this->get('fonts')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
             'font' => $this->get('font'),
             'font_size' => $this->get('font_size'),
             'font_color' => $this->get('font_color'),
             'line_height' => $this->get('line_height'),
             'text_align' => $this->get('line_height'),
             'author' => $this->get('author'),
-            'actions' => serialize($this->get('actions')),
+            'properties' => serialize($this->get('properties')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'actions' => serialize($this->get('actions')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'attachments' => $this->get('attachments'),
             'created_at' => $this->get('created_at'),
         );
 
         return $template;
     }
 
-    /**
-     * Get loaded Template
-     * 
-     * @return object
-     */
+    // template
     public function template() {
         return $this->template;
     }
 
+    // extension
     public function extension() {
         return $this->extension;
     }
 
-    /**
-     * Set Revision attribute
-     * 
-     * @param string $key - Attribute Key 
-     * @param string $value - Attribute Value 
-     */
+    // set
     public function set($key, $value) {
-        if ($key == 'permissions') {
-            $this->template[$key] = serialize($value);
-        } else {
-            $this->template[$key] = $value;
+        switch ($key) {
+            case 'format':
+                if (in_array($value, array('pdf', 'jpg'), true)) {
+                    $this->template[$key] = $value;
+                    return true;
+                } else {
+                    return false;
+                }
+                break;
+            case 'permissions':
+                if (!is_array($value)) {
+                    $this->template[$key] = array('printing');
+                } else {
+                    $this->template[$key] = $value;
+                }
+                break;
+            case 'fonts':
+            case 'properties':
+            case 'actions':
+                if (!is_array($value)) {
+                    $this->template[$key] = array();
+                } else {
+                    $this->template[$key] = $value;
+                }
+                break;
+            default:
+                $this->template[$key] = $value;
+                break;
         }
+        return true;
     }
 
-    /**
-     * Get Revision attribute by Key
-     * 
-     * @param string $key - Attribute Key 
-     * 
-     * @return mixed
-     */
+    // get
     public function get($key) {
         if (isset($this->template[$key])) {
-            if ($key == 'permissions') {
-                $value = $this->helper->load('convert')->unserialize($this->template[$key]);
-            } else {
-                $value = $this->template[$key];
-            }
+            $value = $this->template[$key];
             return $value;
         } else {
             switch ($key) {
                 case 'title':
-                    $value = __("(no title)", 'e2pdf');
+                    $value = __('(no title)', 'e2pdf');
                     break;
                 case 'width':
                 case 'height':
@@ -227,16 +235,21 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
                 case 'text_align':
                     $value = 'left';
                     break;
+                case 'permissions':
+                    $value = array(
+                        'printing',
+                    );
+                    break;
                 case 'fonts':
+                case 'properties':
                 case 'actions':
                     $value = array();
                     break;
-                case 'permissions':
-                    $value = array(
-                        'printing'
-                    );
+                case 'pages':
+                case 'revisions':
+                    $value = array();
                     break;
-                 case 'font_processor':
+                case 'font_processor':
                     $value = get_option('e2pdf_font_processor', '0');
                     break;
                 default:
@@ -247,30 +260,24 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Get Revisions table
-     * 
-     * @return string
-     */
+    // get table
     public function get_table() {
         return $this->table;
     }
 
-    /**
-     * Delete loaded revision
-     */
+    // delete
     public function delete() {
         global $wpdb;
         if ($this->get('template_id') && $this->get('revision_id')) {
 
             if ($this->get('pdf')) {
-                $pdf_dir = $this->helper->get('pdf_dir') . $this->get('pdf') . "/";
+                $pdf_dir = $this->helper->get('pdf_dir') . $this->get('pdf') . '/';
                 $this->helper->delete_dir($pdf_dir);
             }
 
             $where = array(
                 'template_id' => $this->get('template_id'),
-                'revision_id' => $this->get('revision_id')
+                'revision_id' => $this->get('revision_id'),
             );
             $wpdb->delete($this->get_table(), $where);
 
@@ -282,6 +289,7 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
         }
     }
 
+    // save
     public function save() {
         global $wpdb;
 
@@ -305,6 +313,7 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
         }
     }
 
+    // flush
     public function flush() {
         if ($this->get('template_id')) {
             $revisions_limit = max(1, (int) get_option('e2pdf_revisions_limit', '3'));
@@ -317,6 +326,7 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
         }
     }
 
+    // revisions
     public function revisions($template_id = false) {
         global $wpdb;
 
@@ -326,12 +336,13 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
                 'template_id' => array(
                     'condition' => '=',
                     'value' => $template_id,
-                    'type' => '%d'
-                )
+                    'type' => '%d',
+                ),
             );
 
             $where = $this->helper->load('db')->prepare_where($condition);
-            $revisions = $wpdb->get_results($wpdb->prepare("SELECT `revision_id`, `updated_at` FROM " . $this->get_table() . $where['sql'] . " ORDER BY revision_id ASC", $where['filter']), ARRAY_A);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+            $revisions = $wpdb->get_results($wpdb->prepare('SELECT `revision_id`, `updated_at` FROM `' . $this->get_table() . '`' . $where['sql'] . ' ORDER BY revision_id ASC', $where['filter']), ARRAY_A);
         }
 
         return $revisions;

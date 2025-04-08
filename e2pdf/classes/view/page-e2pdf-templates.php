@@ -3,7 +3,13 @@ if (!defined('ABSPATH')) {
     die('Access denied.');
 }
 ?>
-<div class='wrap js'>
+<?php
+$wrapper = '';
+if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($this->get->get('action') === 'edit') && $this->view->template) && get_option('e2pdf_new_edit_layout', '1')) {
+    $wrapper = 'e2pdf-new-edit-layout';
+}
+?>
+<div class='wrap js <?php echo $wrapper; ?>'>
     <?php if (!$this->get->get('action')) { ?>
         <h1><?php _e('Templates', 'e2pdf'); ?>
             <a href="<?php echo ($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'create'))); ?>" class="page-title-action">
@@ -16,9 +22,8 @@ if (!defined('ABSPATH')) {
         <form id="e2pdf-templates-filter" method="post">
             <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_templates'); ?>">
             <p class="search-box">
-                <label class="screen-reader-text" for="post-search-input"><?php _e('Search Templates', 'e2pdf'); ?></label>
-                <input type="search" id="post-search-input" name="s" value="<?php echo $this->get->get('s'); ?>">
-                <input type="submit" id="search-submit" class="button" value="<?php _e('Search Templates', 'e2pdf'); ?>">
+                <input type="search" id="post-search-input" name="s" placeholder="<?php _e('Search...', 'e2pdf'); ?>" value="<?php echo $this->get->get('s'); ?>">
+                <input type="submit" id="search-submit" class="button" value="<?php _e('Search', 'e2pdf'); ?>">
             </p>
             <div class="tablenav top e2pdf-templates-list-tablenav">
                 <?php
@@ -36,9 +41,9 @@ if (!defined('ABSPATH')) {
                         'id' => 'doaction',
                         'name' => 'action',
                         'options' => array(
-                            'trash' => __('Move To Trash', 'e2pdf'),
                             'activate' => __('Activate', 'e2pdf'),
-                            'deactivate' => __('Deactivate', 'e2pdf')
+                            'deactivate' => __('Deactivate', 'e2pdf'),
+                            'trash' => __('Trash', 'e2pdf'),
                         )
                     ));
                 }
@@ -75,7 +80,7 @@ if (!defined('ABSPATH')) {
                                 <span class="sorting-indicator"></span>
                             </a>
                         </th>
-                        <th scope="col" id="item" class="manage-column column-item"><?php _e('Item', 'e2pdf'); ?></th>
+                        <th scope="col" id="item" class="manage-column column-item"><?php _e('Connection', 'e2pdf'); ?></th>
                         <th scope="col" id="shortcodes" class="manage-column column-shortcode"><?php _e('Shortcode', 'e2pdf'); ?></th>
                         <th scope="col" id="updated" class="manage-column column-updated sortable <?php if ($this->get->get('orderby') == 'updated_at') { ?>sorted<?php } ?> <?php if ($this->get->get('orderby') == 'updated_at' && $this->get->get('order') == 'asc') { ?>asc<?php } else { ?>desc<?php } ?>">
                             <a href="<?php
@@ -113,19 +118,19 @@ if (!defined('ABSPATH')) {
                                     <div class="row-actions">
                                         <?php if ($this->get->get('status') == 'trash') { ?>
                                             <span class="restore"><a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'restore', 'id' => $template->get('ID'), '_wpnonce' => wp_create_nonce('e2pdf_templates'), 'status' => $this->get->get('status'), 's' => $this->get->get('s'), 'orderby' => $this->get->get('orderby'), 'order' => $this->get->get('order'))); ?>" rel="permalink"><?php _e('Restore', 'e2pdf'); ?></a>  | </span>
-                                            <span class="delete"><a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'delete', 'id' => $template->get('ID'), '_wpnonce' => wp_create_nonce('e2pdf_templates'), 'status' => $this->get->get('status'), 's' => $this->get->get('s'), 'orderby' => $this->get->get('orderby'), 'order' => $this->get->get('order'))); ?>" onclick="return confirm('<?php _e('Delete permanently?', 'e2pdf'); ?> ')" class="submitdelete"><?php _e('Delete', 'e2pdf'); ?></a></span>
+                                            <span class="delete"><a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'delete', 'id' => $template->get('ID'), '_wpnonce' => wp_create_nonce('e2pdf_templates'), 'status' => $this->get->get('status'), 's' => $this->get->get('s'), 'orderby' => $this->get->get('orderby'), 'order' => $this->get->get('order'))); ?>" onclick="return confirm('<?php _e('Template will be removed! Continue?', 'e2pdf'); ?> ')" class="submitdelete"><?php _e('Delete', 'e2pdf'); ?></a></span>
                                         <?php } else { ?>
                                             <span class="edit"><a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'edit', 'id' => $template->get('ID'))); ?>"><?php _e('Edit', 'e2pdf'); ?></a> | </span>
                                             <span class="duplicate"><a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'duplicate', 'id' => $template->get('ID'), '_wpnonce' => wp_create_nonce('e2pdf_templates'))); ?>"><?php _e('Duplicate', 'e2pdf'); ?></a> | </span>
                                             <span class="trash"><a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'trash', 'id' => $template->get('ID'), '_wpnonce' => wp_create_nonce('e2pdf_templates'), 'status' => $this->get->get('status'), 's' => $this->get->get('s'), 'orderby' => $this->get->get('orderby'), 'order' => $this->get->get('order'))); ?>" class="submitdelete"><?php _e('Trash', 'e2pdf'); ?></a> | </span>
                                             <span class="view"><a target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'view', 'id' => $template->get('ID'))); ?>" rel="permalink"><?php _e('View', 'e2pdf'); ?></a> | </span>
-                                            <span class="backup"><a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'backup', 'id' => $template->get('ID'))); ?>" rel="permalink"><?php _e('Backup', 'e2pdf'); ?></a></span>
+                                            <span class="download"><a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'download', 'id' => $template->get('ID'))); ?>" rel="permalink"><?php _e('Download', 'e2pdf'); ?></a></span>
                                             <?php if ($template->get('activated')) { ?>
-                                                <span class="export"> | <a target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'id' => $template->get('ID'))); ?>"><?php _e('Generate PDF', 'e2pdf'); ?></a></span>
+                                                <span class="export"> | <a target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'id' => $template->get('ID'))); ?>"><?php _e('Create PDF', 'e2pdf'); ?></a></span>
                                             <?php } ?>
                                         <?php } ?>
                                     </div>
-                                    <button type="button" class="toggle-row"><span class="screen-reader-text"><?php _e('Show more details', 'e2pdf'); ?></span></button>
+                                    <button type="button" class="toggle-row"></button>
                                 </td>
                                 <td class="item column-item" data-colname="Item">
                                     <div>
@@ -161,7 +166,7 @@ if (!defined('ABSPATH')) {
                                     </div>
                                 </td>
                                 <td class="updated column-updated" data-colname="<?php _e('Updated', 'e2pdf') ?>">
-                                    <abbr title="<?php echo $template->get('updated_at'); ?>"><?php echo $template->get('updated_at'); ?></abbr>
+                                    <?php echo $template->get('updated_at'); ?>
                                     <div class="e2pdf-small">by <strong><?php echo get_userdata($template->get('author'))->user_nicename; ?></strong></div>
                                 </td>
                                 <td class="author column-activation" data-colname="Activation">
@@ -203,7 +208,7 @@ if (!defined('ABSPATH')) {
                                 <span class="sorting-indicator"></span>
                             </a>
                         </th>
-                        <th scope="col" id="item" class="manage-column column-item"><?php _e('Item', 'e2pdf'); ?></th>
+                        <th scope="col" id="item" class="manage-column column-item"><?php _e('Connection', 'e2pdf'); ?></th>
                         <th scope="col" id="shortcodes" class="manage-column column-shortcode"><?php _e('Shortcode', 'e2pdf'); ?></th>
                         <th scope="col" id="updated" class="manage-column column-updated sortable <?php if ($this->get->get('orderby') == 'updated_at') { ?>sorted<?php } ?> <?php if ($this->get->get('orderby') == 'updated_at' && $this->get->get('order') == 'asc') { ?>asc<?php } else { ?>desc<?php } ?>">
                             <a href="<?php
@@ -238,9 +243,9 @@ if (!defined('ABSPATH')) {
                         'id' => 'doaction2',
                         'name' => 'action2',
                         'options' => array(
-                            'trash' => __('Move To Trash', 'e2pdf'),
                             'activate' => __('Activate', 'e2pdf'),
-                            'deactivate' => __('Deactivate', 'e2pdf')
+                            'deactivate' => __('Deactivate', 'e2pdf'),
+                            'trash' => __('Trash', 'e2pdf'),
                         )
                     ));
                 }
@@ -251,23 +256,28 @@ if (!defined('ABSPATH')) {
                     'url' => array('page' => 'e2pdf-templates', 'action' => $this->get->get('action'), 'status' => $this->get->get('status'), 's' => $this->get->get('s'), 'orderby' => $this->get->get('orderby'), 'order' => $this->get->get('order'))
                 ));
                 ?>
-                <br class="clear">
+                <div class="clear"></div>
             </div>
         </form>
-        <br class="clear">
+        <div class="clear"></div>
+        <?php $this->render('blocks', 'debug-panel'); ?>
     <?php } elseif ($this->get->get('action')) { ?>
         <?php if ($this->get->get('action') === 'create' || ($this->get->get('action') === 'edit' && $this->view->template)) { ?>
-            <h1><?php echo $this->get->get('action') === 'edit' ? sprintf(__("ID: %d | Edit Template", 'e2pdf'), $this->view->template->get('ID')) : __('New Template', 'e2pdf'); ?>
-                <a href="<?php echo ($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'create'))); ?>" class="page-title-action">
-                    <?php _e('Add New', 'e2pdf') ?>
-                </a>
-            </h1>
-            <hr class="wp-header-end">
-            <?php $this->render('blocks', 'notifications'); ?>
+            <?php if (!get_option('e2pdf_new_edit_layout', '1')) { ?>
+                <div id="e2pdf-form-editor-header" class="e2pdf-form-editor-header">
+                    <h1><?php echo $this->get->get('action') === 'edit' ? sprintf(__("ID: %d | Edit Template", 'e2pdf'), $this->view->template->get('ID')) : __('New Template', 'e2pdf'); ?>
+                        <a href="<?php echo ($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'create'))); ?>" class="page-title-action">
+                            <?php _e('Add New', 'e2pdf') ?>
+                        </a>
+                    </h1>
+                    <hr class="wp-header-end">
+                    <?php $this->render('blocks', 'notifications'); ?>
+                </div>
+            <?php } ?>
             <div id="poststuff">
                 <form method="post" id="e2pdf-build-form">
                     <div id="post-body" class="metabox-holder columns-2">
-                        <div id="post-body-content">
+                        <div id="post-body-content" class="e2pdf-post-body-content">
                             <div class="e2pdf-form-builder">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_templates'); ?>">
                                 <input type="hidden" name="sub_action" value="<?php echo $this->get->get('action') === 'create' ? 'create' : 'edit'; ?>">
@@ -281,8 +291,20 @@ if (!defined('ABSPATH')) {
                                     <input type="hidden" name="item2" value="<?php echo $this->view->template->get('item2'); ?>">
                                     <input type="hidden" name="pdf" value="<?php echo $this->view->template->get('pdf'); ?>">
                                     <input type="hidden" name="format" value="<?php echo $this->view->template->get('format'); ?>">
+                                    <input type="hidden" name="hooks" value="<?php echo $this->view->template->get('hooks'); ?>">
                                 <?php } ?>
-                                <div id="e2pdf-build-form-wrapper">
+                                <div id="e2pdf-build-form-wrapper" class="e2pdf-build-form-wrapper">
+                                    <?php if (get_option('e2pdf_new_edit_layout', '1')) { ?>
+                                        <div id="e2pdf-form-editor-header" class="e2pdf-form-editor-header">
+                                            <h1><?php echo $this->get->get('action') === 'edit' ? sprintf(__("ID: %d | Edit Template", 'e2pdf'), $this->view->template->get('ID')) : __('New Template', 'e2pdf'); ?>
+                                                <a href="<?php echo ($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'create'))); ?>" class="page-title-action">
+                                                    <?php _e('Add New', 'e2pdf') ?>
+                                                </a>
+                                            </h1>
+                                            <hr class="wp-header-end">
+                                            <?php $this->render('blocks', 'notifications'); ?>
+                                        </div>
+                                    <?php } ?>
                                     <div id="e2pdf-form-editor-container" class="e2pdf-form-editor-container">
                                         <div id="titlediv">
                                             <?php
@@ -303,8 +325,8 @@ if (!defined('ABSPATH')) {
                                         <div class="clear"></div>
                                     </div>
                                     <div class="e2pdf-tpl-wrapper">
-                                        <div id="e2pdf-tpl" <?php echo $this->view->template->get('rtl') ? 'dir="rtl"' : ''; ?> class="e2pdf-tpl e2pdf-center" data-width="<?php echo $this->view->template->get('width'); ?>" data-height="<?php echo $this->view->template->get('height'); ?>">
-                                            <div id="e2pdf-tpl-inner" class="e2pdf-tpl-inner">
+                                        <div <?php echo $this->view->template->get('rtl') ? 'dir="rtl"' : ''; ?> class="e2pdf-tpl e2pdf-center" data-width="<?php echo $this->view->template->get('width'); ?>" data-height="<?php echo $this->view->template->get('height'); ?>">
+                                            <div class="e2pdf-tpl-inner">
                                                 <?php if ($this->get->get('action') === 'edit') { ?>
                                                     <?php $fonts = $this->view->template->get('fonts'); ?>
                                                     <?php foreach ($fonts as $font_key => $font) { ?>
@@ -315,18 +337,24 @@ if (!defined('ABSPATH')) {
                                                         <div data-page_id="<?php echo $page['page_id']; ?>" class="e2pdf-page ui-droppable e2pdf-load-page" data-width="<?php echo $page['properties']['width']; ?>" data-height="<?php echo $page['properties']['height']; ?>" style="width: <?php echo $page['properties']['width']; ?>px; height: <?php echo $page['properties']['height']; ?>px; <?php if ($this->view->template->get('pdf') && file_exists($this->helper->get('pdf_dir') . $this->view->template->get('pdf') . '/images/' . $page['page_id'] . '.png')) { ?>background-image: url('<?php echo $this->helper->get_upload_url('pdf/' . $this->view->template->get('pdf') . '/images/' . $page['page_id'] . '.png') ?>')<?php } ?>">
                                                             <div class="page-options-icons"><a href="javascript:void(0);" class="page-options-icon e2pdf-up-page e2pdf-link" <?php if ($page['page_id'] == '1' || $this->view->template->get('pdf')) { ?>disabled="disabled"<?php } ?>><i class="dashicons dashicons-arrow-up-alt2"></i></a><a href="javascript:void(0);" class="page-options-icon e2pdf-down-page e2pdf-link" <?php if ($page['page_id'] == count($pages) || $this->view->template->get('pdf')) { ?>disabled="disabled" <?php } ?>><i class="dashicons dashicons-arrow-down-alt2"></i></a><a href="javascript:void(0);" class="page-options-icon e2pdf-page-options e2pdf-modal e2pdf-link" data-modal="page-options"><i class="dashicons dashicons-admin-generic"></i></a><a href="javascript:void(0);" class="page-options-icon e2pdf-delete-page e2pdf-link"><i class="dashicons dashicons-no"></i></a></div>
                                                             <?php foreach ($page['elements'] as $key => $value) { ?>
-                                                                <div class="e2pdf-load-el" data-width="<?php echo $value['width']; ?>" data-height="<?php echo $value['height']; ?>" data-top="<?php echo $value['top']; ?>"  data-left="<?php echo $value['left']; ?>" data-type="<?php echo $value['type'] ?>" data-element_id="<?php echo $value['element_id'] ?>"><div class="e2pdf-data-name"><?php echo htmlspecialchars($value['name']) ?></div><div class="e2pdf-data-properties"><?php echo htmlspecialchars(json_encode($value['properties'], JSON_FORCE_OBJECT)); ?></div><div class="e2pdf-data-actions"><?php echo htmlspecialchars(json_encode($value['actions'], JSON_FORCE_OBJECT)); ?></div><div class="e2pdf-data-value"><?php echo (($value['type'] === 'e2pdf-html' && (!isset($value['properties']['wysiwyg_disable']) || (isset($value['properties']['wysiwyg_disable']) && $value['properties']['wysiwyg_disable'] != '1'))) || $value['type'] === 'e2pdf-page-number') ? $value['value'] : htmlspecialchars($value['value']) ?></div></div>
+                                                                <div class="e2pdf-load-el" data-width="<?php echo $value['width']; ?>" data-height="<?php echo $value['height']; ?>" data-top="<?php echo $value['top']; ?>"  data-left="<?php echo $value['left']; ?>" data-type="<?php echo $value['type'] ?>" data-element_id="<?php echo $value['element_id'] ?>">
+                                                                    <textarea class="e2pdf-data-name"><?php echo htmlspecialchars($value['name'], ENT_QUOTES); ?></textarea>
+                                                                    <textarea class="e2pdf-data-properties"><?php echo htmlspecialchars(json_encode($value['properties'], JSON_FORCE_OBJECT), ENT_QUOTES); ?></textarea>
+                                                                    <textarea class="e2pdf-data-actions"><?php echo htmlspecialchars(json_encode($value['actions'], JSON_FORCE_OBJECT), ENT_QUOTES); ?></textarea>
+                                                                    <textarea class="e2pdf-data-value"><?php echo htmlspecialchars($value['value'], ENT_QUOTES); ?></textarea>
+                                                                </div>
                                                             <?php } ?>
-                                                            <div class="e2pdf-data-actions e2pdf-hide"><?php echo htmlspecialchars(json_encode($page['actions'], JSON_FORCE_OBJECT)); ?></div>
-                                                            <div class="e2pdf-data-properties e2pdf-hide"><?php echo htmlspecialchars(json_encode($page['properties'], JSON_FORCE_OBJECT)); ?></div>
+                                                            <textarea class="e2pdf-data-actions e2pdf-hide"><?php echo htmlspecialchars(json_encode($page['actions'], JSON_FORCE_OBJECT), ENT_QUOTES); ?></textarea>
+                                                            <textarea class="e2pdf-data-properties e2pdf-hide"><?php echo htmlspecialchars(json_encode($page['properties'], JSON_FORCE_OBJECT), ENT_QUOTES); ?></textarea>
                                                             <div class="e2pdf-guide e2pdf-guide-h"></div>
                                                             <div class="e2pdf-guide e2pdf-guide-v"></div>
-                                                        </div>  
+                                                        </div>
                                                     <?php } ?>
                                                 <?php } ?>
                                             </div>
                                             <div class="e2pdf-load-tpl">
-                                                <div class="e2pdf-data-actions"><?php echo htmlspecialchars(json_encode($this->view->template->get('actions'), JSON_FORCE_OBJECT)); ?></div>
+                                                <textarea class="e2pdf-data-actions"><?php echo htmlspecialchars(json_encode($this->view->template->get('actions'), JSON_FORCE_OBJECT), ENT_QUOTES); ?></textarea>
+                                                <textarea class="e2pdf-data-properties"><?php echo htmlspecialchars(json_encode($this->view->template->get('properties'), JSON_FORCE_OBJECT), ENT_QUOTES); ?></textarea>
                                             </div>
                                         </div>
                                     </div>
@@ -343,6 +371,7 @@ if (!defined('ABSPATH')) {
                             do_meta_boxes(null, 'side', null);
                             ?>
                         </div>
+                        <div class="clear"></div>
                     </div>
                 </form>
             </div>
@@ -356,11 +385,10 @@ if (!defined('ABSPATH')) {
                     <ul class="e2pdf-options-list">
                         <li><div class="e2pdf-name"><?php _e('Template', 'e2pdf'); ?>:
                             </div><div class="e2pdf-value"><input name="template" type="file">
-                                <div class="e2pdf-note"><?php _e('Allowed filetypes', 'e2pdf'); ?>: <strong>.xml</strong></div>
-                                <div class="e2pdf-note"><?php _e('Max upload filesize', 'e2pdf'); ?>: <strong><?php echo $this->view->upload_max_filesize; ?></strong></div>
+                                <div class="e2pdf-note"><?php _e('Allowed File Types', 'e2pdf'); ?>: <strong>.xml</strong></div>
+                                <div class="e2pdf-note"><?php _e('Max Upload File Size', 'e2pdf'); ?>: <strong><?php echo $this->view->upload_max_filesize; ?></strong></div>
                             </div>
                         </li>
-
                         <?php foreach ($this->view->options as $group_key => $group) { ?>
                             <?php if (isset($group['name'])) { ?>
                                 <li><h4><?php echo $group['name']; ?>:</h4></li>
@@ -430,8 +458,8 @@ if (!defined('ABSPATH')) {
                     <p class="submit"><input type="submit" <?php if ($this->view->import_disabled) { ?>disabled="disabled"<?php } ?> name="submit" id="submit" class="button button-primary" value="<?php _e('Import', 'e2pdf'); ?>"></p>
                 </form>
             </div>
-        <?php } elseif ($this->get->get('action') === 'backup') { ?>
-            <h1><?php _e('Backup E2Pdf Template', 'e2pdf'); ?></h1>
+        <?php } elseif ($this->get->get('action') === 'download') { ?>
+            <h1><?php _e('Download', 'e2pdf'); ?></h1>
             <hr class="wp-header-end">
             <?php $this->render('blocks', 'notifications'); ?>
             <div id="poststuff" class="e2pdf-view-area">
@@ -451,7 +479,7 @@ if (!defined('ABSPATH')) {
                                 <a target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'edit', 'id' => $this->view->template->get('ID'))); ?>"><?php echo esc_html($this->view->template->get('title')); ?></a>
                             </div>
                         </li>
-                        <li><div class="e2pdf-name"><?php _e('Item', 'e2pdf'); ?>:
+                        <li><div class="e2pdf-name"><?php _e('Connection', 'e2pdf'); ?>:
                             </div><div class="e2pdf-value">
                                 <?php if ($this->view->template->extension()->method('item') && $this->view->template->get('item')) { ?><a target="_blank" href="<?php echo $this->view->template->extension()->item()->url; ?>"><?php echo $this->view->template->extension()->item()->name; ?></a><?php } else { ?>—<?php } ?>
                             </div>
@@ -517,7 +545,6 @@ if (!defined('ABSPATH')) {
             </div>
         <?php } ?>
     <?php } else { ?>
-        <?php $this->error(); ?>
+        <?php $this->handle_404(); ?>
     <?php } ?>
 </div>
-<?php $this->render('blocks', 'debug-panel'); ?>

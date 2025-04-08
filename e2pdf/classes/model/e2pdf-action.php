@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Action Model
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.01.63
+ * File: /model/e2pdf-action.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -31,7 +30,7 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
             }
         }
 
-        if (isset($page['hidden']) && $page['hidden']) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+        if (isset($page['hidden']) && $page['hidden']) {  // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
         } else {
             if (!empty($page['elements'])) {
                 foreach ($page['elements'] as $el_key => $el_value) {
@@ -148,16 +147,42 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
             case 'in_array':
                 $unserialized = false;
                 if (is_serialized($value)) {
-                    $unserialized = $this->helper->load('convert')->unserialize($value); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    $unserialized = $this->helper->load('convert')->unserialize($value);
                 }
+                // phpcs:ignore WordPress.PHP.StrictInArray.MissingTrueStrict
                 $result = is_array($unserialized) && in_array($if, $unserialized) ? true : false;
+                break;
+            case 'not_in_array':
+                $unserialized = false;
+                if (is_serialized($value)) {
+                    $unserialized = $this->helper->load('convert')->unserialize($value);
+                }
+                // phpcs:ignore WordPress.PHP.StrictInArray.MissingTrueStrict
+                $result = is_array($unserialized) && in_array($if, $unserialized) ? false : true;
+                break;
+            case 'in_list':
+                $list_if = array_map('trim', explode(',', $if));
+                $list_value = array_map('trim', explode(',', $value));
+                $result = !array_diff($list_if, $list_value) ? true : false;
+                break;
+            case 'not_in_list':
+                $list_if = array_map('trim', explode(',', $if));
+                $list_value = array_map('trim', explode(',', $value));
+                $result = !array_diff($list_if, $list_value) ? false : true;
                 break;
             case 'array_key_exists':
                 $unserialized = false;
                 if (is_serialized($value)) {
-                    $unserialized = $this->helper->load('convert')->unserialize($value); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    $unserialized = $this->helper->load('convert')->unserialize($value);
                 }
                 $result = is_array($unserialized) && array_key_exists($if, $unserialized) ? true : false;
+                break;
+            case 'array_key_not_exists':
+                $unserialized = false;
+                if (is_serialized($value)) {
+                    $unserialized = $this->helper->load('convert')->unserialize($value);
+                }
+                $result = is_array($unserialized) && array_key_exists($if, $unserialized) ? false : true;
                 break;
         }
 
@@ -210,7 +235,7 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
                 $change = $this->extension->render($action['change']);
             }
 
-            if ((substr($change, 0, 1) === '+' || substr($change, 0, 1) === '-') && in_array($action['property'], $number_properties)) {
+            if ((substr($change, 0, 1) === '+' || substr($change, 0, 1) === '-') && in_array($action['property'], $number_properties, true)) {
                 if (isset($element['element_id'])) {
                     $value = isset($element[$action['property']]) ? $element[$action['property']] : 0;
                 } else {
@@ -220,7 +245,7 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
                 $change = $value + floatval($change);
             }
 
-            if (in_array($action['property'], $not_properties) && isset($element['element_id'])) {
+            if (in_array($action['property'], $not_properties, true) && isset($element['element_id'])) {
                 $element[$action['property']] = $change;
             } else {
                 $element['properties'][$action['property']] = $change;

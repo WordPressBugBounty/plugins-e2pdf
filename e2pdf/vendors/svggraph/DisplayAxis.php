@@ -168,6 +168,8 @@ class DisplayAxis {
       $styles['t_font_adjust'] = $get_axis_option('axis_font_adjust');
       $styles['t_font_weight'] = $get_axis_option('axis_font_weight');
       $styles['t_space'] = $get_axis_option('axis_text_space');
+      $styles['t_offset_x'] = $get_axis_option('axis_text_offset_x');
+      $styles['t_offset_y'] = $get_axis_option('axis_text_offset_y');
       $styles['t_colour'] = new Colour($graph, $graph->getOption(
         ['axis_text_colour_' . $o, $axis_no], 'axis_text_colour',
         ['@', $styles['colour']]));
@@ -422,7 +424,7 @@ class DisplayAxis {
           $pnext = $points[$k + 1];
           $yoff = ($pnext->position - $p->position) / 2;
         }
-        $positions[] = ['x' => $x + $xoff, 'y' => $y + $yoff];
+        $positions[] = ['x' => $x + $xoff + $this->styles['t_offset_x'], 'y' => $y + $yoff + $this->styles['t_offset_y']];
       }
       return $positions;
     }
@@ -437,7 +439,7 @@ class DisplayAxis {
         $pnext = $points[$k + 1];
         $xoff = ($pnext->position - $p->position) / 2;
       }
-      $positions[] = ['x' => $x + $xoff, 'y' => $y + $yoff];
+      $positions[] = ['x' => $x + $xoff + $this->styles['t_offset_x'], 'y' => $y + $yoff + $this->styles['t_offset_y']];
     }
     return $positions;
   }

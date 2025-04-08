@@ -49,3 +49,7 @@ div.wpforms-container-full .wpforms-form textarea.wpforms-field-medium {
     display: block !important;
     height: 150px !important;
 }
+
+.wpforms-container input.wpforms-field-medium, .wpforms-container select.wpforms-field-medium, .wpforms-container .wpforms-field-row.wpforms-field-medium, .wp-core-ui div.wpforms-container input.wpforms-field-medium, .wp-core-ui div.wpforms-container select.wpforms-field-medium, .wp-core-ui div.wpforms-container .wpforms-field-row.wpforms-field-medium {
+    max-width: 100%;
+}

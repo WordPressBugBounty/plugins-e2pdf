@@ -47,6 +47,8 @@ class Helper_E2pdf_If {
             '[is_array]',
             '[in_array]',
             '[not_in_array]',
+            '[in_list]',
+            '[not_in_list]',
             '[array_key_exists]',
             '[array_key_not_exists]',
             '[isset]',
@@ -185,6 +187,16 @@ class Helper_E2pdf_If {
                             $unserialized = $this->helper->load('convert')->unserialize($value); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                         }
                         $result = !is_array($unserialized) || (is_array($unserialized) && !in_array($if, $unserialized)) ? true : false;
+                        break;
+                    case '[in_list]':
+                        $list_if = array_map('trim', explode(',', $if));
+                        $list_value = array_map('trim', explode(',', $value));
+                        $result = !array_diff($list_if, $list_value) ? true : false;
+                        break;
+                    case '[not_in_list]':
+                        $list_if = array_map('trim', explode(',', $if));
+                        $list_value = array_map('trim', explode(',', $value));
+                        $result = !array_diff($list_if, $list_value) ? false : true;
                         break;
                     case '[array_key_exists]':
                         $unserialized = false;

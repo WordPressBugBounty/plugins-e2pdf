@@ -14,6 +14,8 @@ if (!defined('ABSPATH')) {
 
 class Helper_E2pdf_Graph {
 
+    private $helper;
+
     public function __construct() {
         $this->helper = Helper_E2pdf_Helper::instance();
     }
@@ -103,6 +105,14 @@ class Helper_E2pdf_Graph {
             'show_subdivisions' => $this->get_boolean('g_show_subdivisions', $field),
             'axis_stroke_width_v' => $this->get_value('g_axis_stroke_width_v', '0', $field),
             'axis_stroke_width_h' => $this->get_value('g_axis_stroke_width_h', '0', $field),
+            'axis_text_position_v' => $this->get_value('g_axis_text_position_v', 'outside', $field),
+            'axis_text_position_h' => $this->get_value('g_axis_text_position_h', 'outside', $field),
+            'axis_text_space_v' => $this->get_value('g_axis_text_space_v', '2', $field),
+            'axis_text_space_h' => $this->get_value('g_axis_text_space_h', '2', $field),
+            'axis_text_offset_x_v' => $this->get_value('g_axis_text_offset_x_v', '0', $field),
+            'axis_text_offset_y_v' => $this->get_value('g_axis_text_offset_y_v', '0', $field),
+            'axis_text_offset_x_h' => $this->get_value('g_axis_text_offset_x_h', '0', $field),
+            'axis_text_offset_y_h' => $this->get_value('g_axis_text_offset_y_h', '0', $field),
             /* Bar Labels */
             'show_bar_labels' => $this->get_boolean('g_show_bar_labels', $field),
             'bar_label_colour' => $this->get_value('g_bar_label_colour', '', $field),
@@ -118,6 +128,14 @@ class Helper_E2pdf_Graph {
             'stack_group' => $this->get_value('g_stack_group', '0', $field),
             'project_angle' => $this->get_value('g_project_angle', '0', $field),
         ];
+
+        if (!$this->is_empty('g_axis_text_align_v', $field)) {
+            $settings['axis_text_align_v'] = $this->get_value('g_axis_text_align_v', '', $field);
+        }
+
+        if (!$this->is_empty('g_axis_text_align_h', $field)) {
+            $settings['axis_text_align_h'] = $this->get_value('g_axis_text_align_h', '', $field);
+        }
 
         if (!$this->is_empty('g_line_curve', $field)) {
             $settings['line_curve'] = $this->get_value('g_line_curve', '', $field);
@@ -303,8 +321,17 @@ class Helper_E2pdf_Graph {
                 $hue += $color_change;
             }
         }
+
+        $colors = apply_filters('e2pdf_helper_graph_colors', $colors, $field);
+        if ($this->get_boolean('g_stroke_dynamic_colour', $field)) {
+            $settings['stroke_colour'] = apply_filters('e2pdf_helper_graph_stroke_colors', $colors, $field);
+        }
+        if ($this->get_boolean('g_marker_dynamic_colour', $field)) {
+            $settings['marker_colour'] = apply_filters('e2pdf_helper_graph_marker_colors', $colors, $field);
+        }
+
         $graph = new Goat1000\SVGGraph\SVGGraph($width, $height, apply_filters('e2pdf_helper_graph_settings', $settings, $field));
-        $graph->colours(apply_filters('e2pdf_helper_graph_colors', $colors, $field));
+        $graph->colours($colors);
         $graph->values(apply_filters('e2pdf_helper_graph_data', $data, $field));
         try {
             $svg = $graph->fetch($this->get_value('g_type', 'BarGraph', $field));
