@@ -402,6 +402,21 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 }
             }
 
+            /**
+             * Compatibility fix Repeater Fields for Elementor Forms
+             * https://wordpress.org/plugins/repeater-for-elementor/
+             */
+            if (class_exists('Rednumber_Repeater_Custom_Validation')) {
+                $repeaters = $this->get('cached_entry')->get_field(
+                        array(
+                            'type' => 'repeater',
+                        )
+                );
+                foreach ($repeaters as $repeater) {
+                    $this->get('cached_entry')->update_field($repeater['id'], 'value', $this->repeater_field_value($repeater['raw_value']));
+                }
+            }
+
             $value = $this->get('cached_entry')->replace_setting_shortcodes($value);
             $value = $this->helper->load('field')->render(
                     apply_filters('e2pdf_extension_render_shortcodes_pre_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), false, false),
@@ -511,6 +526,9 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 $xpath = new DomXPath($dom);
                 $remove_by_class = array(
                     'dce-conditions-js-error-notice',
+                    'repeater-field-button-add',
+                    'elementor-field-type-submit',
+                    'select-caret-down-wrapper'
                 );
                 foreach ($remove_by_class as $key => $class) {
                     $elements = $xpath->query("//*[contains(@class, '{$class}')]");
@@ -518,6 +536,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                         $element->parentNode->removeChild($element);
                     }
                 }
+
                 $elements = $xpath->query('//input|//textarea|//select');
                 foreach ($elements as $element) {
                     if ($xml->get_node_value($element, 'type') == 'checkbox' || $xml->get_node_value($element, 'type') == 'file') {
@@ -538,6 +557,13 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                     }
                     $xml->set_node_value($element, 'type', 'text');
                 }
+
+                $elements = $xpath->query("//*[contains(@class, 'elementor-field-repeater-data')]");
+                foreach ($elements as $element) {
+                    $xml->set_node_value($element, 'value', $xml->get_node_value($element, 'name'));
+                    $xml->set_node_value($element, 'type', 'text');
+                }
+
                 if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
                     return str_replace(array('<html>', '</html>'), '', $dom->saveHTML());
                 } else {
@@ -626,6 +652,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                                     'top' => '5',
                                     'width' => '100%',
                                     'height' => '150',
+                                    'text_auto_font_size' => '1',
                                     'value' => '[field id="' . $id . '"]',
                                 ),
                             )
@@ -836,6 +863,38 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                             )
                     );
                     break;
+                case 'repeater':
+                    if (class_exists('Rednumber_Repeater_Custom_Validation')) {
+                        $elements[] = $this->auto_field(
+                                $field,
+                                array(
+                                    'type' => 'e2pdf-html',
+                                    'block' => true,
+                                    'properties' => array(
+                                        'top' => '20',
+                                        'left' => '20',
+                                        'right' => '20',
+                                        'width' => '100%',
+                                        'height' => 'auto',
+                                        'value' => isset($field['repeater_title']) ? $field['repeater_title'] : '',
+                                    ),
+                                )
+                        );
+                        $elements[] = $this->auto_field(
+                                $field,
+                                array(
+                                    'type' => 'e2pdf-textarea',
+                                    'properties' => array(
+                                        'top' => '5',
+                                        'width' => '100%',
+                                        'height' => '150',
+                                        'text_auto_font_size' => '1',
+                                        'value' => '[field id="' . $id . '"]',
+                                    ),
+                                )
+                        );
+                    }
+                    break;
                 default:
                     break;
             }
@@ -991,7 +1050,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         if (!isset($atts['dataset']) && isset($atts['id'])) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
@@ -1057,7 +1116,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
                         if (!isset($atts['dataset']) && isset($atts['id'])) {
                             $template = new Model_E2pdf_Template();
@@ -1098,5 +1157,34 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         );
 
         return $wp_mail;
+    }
+
+    function repeater_field_value($value) {
+        $dom = new DOMDocument();
+        if (function_exists('mb_convert_encoding')) {
+            $dom->loadHTML(mb_convert_encoding($value, 'HTML-ENTITIES', 'UTF-8'));
+        } else {
+            $dom->loadHTML('<?xml encoding="UTF-8">' . $value);
+        }
+        $ol = $dom->getElementsByTagName('ol')->item(0);
+        $items = [];
+        if ($ol) {
+            foreach ($ol->getElementsByTagName('li') as $li) {
+                $nestedUl = $li->getElementsByTagName('ul')->item(0);
+                if ($nestedUl) {
+                    $data = [];
+                    foreach ($nestedUl->getElementsByTagName('li') as $innerLi) {
+                        $parts = explode(' : ', $innerLi->textContent, 2);
+                        if (count($parts) === 2) {
+                            $key = trim($parts[0]);
+                            $value = trim($parts[1]);
+                            $data[$key] = $value;
+                        }
+                    }
+                    $items[] = $data;
+                }
+            }
+        }
+        return serialize($items);
     }
 }

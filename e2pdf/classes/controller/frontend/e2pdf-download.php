@@ -28,6 +28,8 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
             $uid = get_query_var('uid');
         }
 
+        do_action('e2pdf_controller_frontend_e2pdf_pre_download', $this);
+
         $entry = new Model_E2pdf_Entry();
         if ($uid && $entry->load_by_uid($uid)) {
             $template = new Model_E2pdf_Template();
@@ -124,23 +126,51 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                 }
 
                 if ($template->extension()->verify()) {
-
                     if ($template->get('actions')) {
                         $model_e2pdf_action = new Model_E2pdf_Action();
                         $model_e2pdf_action->load($template->extension());
                         $actions = $model_e2pdf_action->process_global_actions($template->get('actions'));
                         foreach ($actions as $action) {
-                            if (isset($action['action']) &&
-                                    (
-                                    ($action['action'] == 'access_by_url' && !isset($action['success'])) ||
-                                    ($action['action'] == 'restrict_access_by_url' && isset($action['success']))
-                                    )
-                            ) {
-                                $error_message = __('Access Denied!', 'e2pdf');
-                                if (isset($action['error_message']) && $action['error_message']) {
-                                    $error_message = $template->extension()->render($action['error_message']);
+                            if (isset($action['action'])) {
+                                switch (true) {
+                                    case $action['action'] == 'restrict_access_by_url' && isset($action['success']):
+                                    case $action['action'] == 'access_by_url' && !isset($action['success']):
+                                        $error_message = '';
+                                        if (!empty($action['error_message'])) {
+                                            $error_message = $template->extension()->render($action['error_message']);
+                                        }
+                                        $error_message = $error_message ? $error_message : __('Access Denied!', 'e2pdf');
+                                        if (isset($_SERVER['HTTP_X_E2PDF_REQUEST'])) {
+                                            $response = array(
+                                                'error' => $error_message
+                                            );
+                                            $this->json_response_ajax($response, 403);
+                                        } else {
+                                            wp_die($error_message, '', array('exit' => true));
+                                        }
+                                        break;
+                                    case $action['action'] == 'redirect_access_by_url' && isset($action['success']):
+                                        $redirect_url = '';
+                                        if (!empty($action['redirect_url'])) {
+                                            $redirect_url = $template->extension()->render($action['redirect_url']);
+                                        }
+                                        if ($redirect_url) {
+                                            $redirect_url = apply_filters('e2pdf_download_redirect_access_by_url', esc_url_raw($redirect_url), $entry);
+                                            if (isset($_SERVER['HTTP_X_E2PDF_REQUEST'])) {
+                                                $response = array(
+                                                    'redirect_url' => $redirect_url,
+                                                    'redirect_error_message' => !empty($action['redirect_error_message']) ? str_replace('%s', $redirect_url, $action['redirect_error_message']) : 'Access denied. Please, click <a href="' . $redirect_url . '" target="_blank">here</a> for more details...',
+                                                );
+                                                $this->json_response_ajax($response, 303);
+                                            } else {
+                                                wp_redirect($redirect_url);
+                                                exit;
+                                            }
+                                        }
+                                        break;
+                                    default:
+                                        break;
                                 }
-                                wp_die($error_message, '', array('exit' => true));
                             }
                         }
                     }

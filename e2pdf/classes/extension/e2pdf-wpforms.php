@@ -314,7 +314,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                     $file = false;
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         $transient = isset($atts['dataset']) && substr($atts['dataset'], 0, 4) === 'tmp_' ? 'e2pdf_' . $atts['dataset'] : false;
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
@@ -380,7 +380,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
                         if (!isset($atts['dataset']) && isset($atts['id'])) {
                             $template = new Model_E2pdf_Template();
@@ -432,7 +432,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                 if (isset($data->entry_id) && $data->entry_id) {
                                     $atts['dataset'] = $data->entry_id;
                                     $shortcode[3] .= ' dataset="' . $data->entry_id . '"';
-                                } elseif (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                                } elseif ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                                     $dataset = 'tmp_' . $this->helper->load('encryption')->random_md5();
                                     $transient = 'e2pdf_' . $dataset;
                                     set_transient($transient, $data->fields, 1800);
@@ -447,7 +447,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                         if (!isset($atts['filter'])) {
                             $shortcode[3] .= ' filter="true"';
                         }
-                        if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                        if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                             if ($async) {
                                 $mail['message'] = str_replace($shortcode_value, '{{' . $shortcode[2] . $shortcode[3] . '}}', $mail['message']);
                             } else {

@@ -4,7 +4,6 @@ if (!defined('ABSPATH')) {
 }
 ?>
 <div id="taxonomy-category" class="categorydiv e2pdf-tabs-panel">
-
     <ul id="e2pdf-tabs" class="category-tabs e2pdf-tabs">
         <li class="active"><a data-tab="e2pdf-template-style" href="javascript:void(0);"><?php _e('Style', 'e2pdf'); ?></a>
         </li><li>
@@ -16,8 +15,8 @@ if (!defined('ABSPATH')) {
         </li><li>
             <a data-tab="e2pdf-template-security" href="javascript:void(0);"><?php _e('Security', 'e2pdf'); ?></a>
         </li>
+        <?php do_action('e2pdf_templates_settings_tabs', $this); ?>
     </ul>
-
     <div class="e2pdf-rel">
         <?php if (!get_option('e2pdf_email', '') && $this->helper->get('license')->get('type') == 'FREE') { ?>
             <div class="e2pdf-email-lock e2pdf-ib">
@@ -306,7 +305,6 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
             </div>
         </div>
         <div id="e2pdf-template-pdf" class="tabs-panel e2pdf-template-pdf" style="display: none;" >
@@ -328,7 +326,6 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper">
                     <label>
                         <?php _e('PDF Local Name', 'e2pdf'); ?>:
@@ -346,7 +343,6 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper">
                     <label>
                         <?php _e('PDF Flatten', 'e2pdf'); ?>:
@@ -368,7 +364,6 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper"></p>
                 <div>
                     <?php
@@ -459,7 +454,6 @@ if (!defined('ABSPATH')) {
                         ?>
                     </div>
                 </div>
-
                 <div>
                     <p class="post-attributes-label-wrapper">
                         <label>
@@ -484,7 +478,6 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
-
         <div id="e2pdf-template-meta" class="tabs-panel e2pdf-template-meta" style="display: none;" >
             <div class="e2pdf-options-panel">
                 <p class="post-attributes-label-wrapper">
@@ -540,7 +533,6 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
-
                 <p class="post-attributes-label-wrapper">
                     <label>
                         <?php _e('Keywords', 'e2pdf'); ?>:
@@ -581,7 +573,6 @@ if (!defined('ABSPATH')) {
         </div>
         <div id="e2pdf-template-security" class="tabs-panel e2pdf-template-security" style="display: none;" >
             <div class="e2pdf-options-panel">
-
                 <p class="post-attributes-label-wrapper">
                     <label>
                         <?php _e('PDF Open Password', 'e2pdf'); ?>:
@@ -702,7 +693,6 @@ if (!defined('ABSPATH')) {
 
             </div>
         </div>
+        <?php do_action('e2pdf_templates_settings_tabs_content', $this); ?>
     </div>
-
-
 </div>

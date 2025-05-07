@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 6.8
 Requires PHP: 5.4
-Stable tag: 1.28.00
+Stable tag: 1.28.04
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -137,6 +137,27 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 6. Settings Page.
 
 == Changelog ==
+
+= 1.28.04 =
+*Release Date - 07 May 2025*
+
+* Add: Additional actions and filters
+* Add: [e2pdf-acf-repeater] nested shortcodes support
+* Add: Fluent Forms hidden field default value support
+* Add: MemberPress custom thank you message shortcodes support
+* Add: User Registration & Membership – Custom Registration Form, Login Form, and User Profile mail support
+* Fix: Download PDF Ajax Loader redirect, error message
+* Fix: Fluent Forms checkbox, dropdown, country, repeater fields render
+* Fix: Fluent Forms [e2pdf-view] shortcode fails to load correctly
+* Fix: Elementor Forms Repeater Fields compatibility fix
+* Fix: Incorrect DB collation
+* Fix: PHP 8.x deprecation notice
+* Improvement: Backup import
+* Improvement: Actions can't have empty conditions
+* Improvement: Checkbox, Select and Multiline select render
+* Improvement: Everest Forms shortcodes process
+* Improvement: JetFormBuilder shortcodes process
+* Improvement: Elementor Widget shortcodes process
 
 = 1.28.00 =
 *Release Date - 08 April 2025*

@@ -411,16 +411,32 @@ class Helper_E2pdf_Field {
         return $value;
     }
 
-    public function render_checkbox($value, $extension, $field = array()) {
+    public function render_checkbox($value, $extension, $field = array(), $separator = ', ') {
         if (isset($field['type']) && $field['type'] === 'e2pdf-checkbox' && isset($field['properties']['option'])) {
             $option = $extension->render($field['properties']['option']);
-            $options = explode(', ', $value);
-            $option_options = explode(', ', $option);
-            if (is_array($options) && is_array($option_options) && !array_diff($option_options, $options)) {
+            $sub_options = explode($separator, $option);
+            $checked = explode($separator, $value);
+            if (!array_diff($sub_options, $checked)) {
                 $value = $option;
             } else {
                 $value = '';
             }
+        }
+        return $value;
+    }
+
+    public function render_select_multiline($value, $extension, $field = array(), $separator = ', ') {
+        if (isset($field['type']) && $field['type'] === 'e2pdf-select' && !empty($field['properties']['multiline']) && isset($field['properties']['options'])) {
+            $options = preg_split('/\r?\n/', $extension->render($field['properties']['options']));
+            $selected = array();
+            $checked = explode($separator, $value);
+            foreach ($options as $option) {
+                $sub_options = explode($separator, $option);
+                if (!array_diff($sub_options, $checked)) {
+                    $selected[] = $option;
+                }
+            }
+            $value = implode(', ', $selected);
         }
         return $value;
     }

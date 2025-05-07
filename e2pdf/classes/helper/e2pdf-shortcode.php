@@ -127,4 +127,11 @@ class Helper_E2pdf_Shortcode {
             return $image ? $image : '';
         }
     }
+
+    public function is_attachment($shortcode, $atts) {
+        if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+            return true;
+        }
+        return false;
+    }
 }

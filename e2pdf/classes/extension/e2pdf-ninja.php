@@ -467,7 +467,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                     if (!isset($atts['filter'])) {
                         $shortcode[3] .= ' filter="true"';
                     }
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
                             $tmp = false;
@@ -542,7 +542,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                     if (!isset($atts['filter'])) {
                         $shortcode[3] .= ' filter="true"';
                     }
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
@@ -1081,6 +1081,8 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                     case 'e2pdf-input':
                         $html .= '<div><input type="text" name="' . $element['properties']['value'] . '"></div>';
                         break;
+                    case 'e2pdf-image':
+                    case 'e2pdf-signature':
                     case 'e2pdf-textarea':
                         $html .= '<div><textarea name="' . $element['properties']['value'] . '"></textarea></div>';
                         break;

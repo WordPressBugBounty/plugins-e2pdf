@@ -232,11 +232,11 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
     // load shortcodes
     public function load_shortcodes() {
         add_shortcode('e2pdf-download', array(new Model_E2pdf_Shortcode(), 'e2pdf_download'));
-        add_shortcode('e2pdf-attachment', array(new Model_E2pdf_Shortcode(), 'e2pdf_attachment'));
-        add_shortcode('e2pdf-adobesign', array(new Model_E2pdf_Shortcode(), 'e2pdf_adobesign'));
-        add_shortcode('e2pdf-save', array(new Model_E2pdf_Shortcode(), 'e2pdf_save'));
         add_shortcode('e2pdf-view', array(new Model_E2pdf_Shortcode(), 'e2pdf_view'));
+        add_shortcode('e2pdf-save', array(new Model_E2pdf_Shortcode(), 'e2pdf_save'));
         add_shortcode('e2pdf-zapier', array(new Model_E2pdf_Shortcode(), 'e2pdf_zapier'));
+        add_shortcode('e2pdf-adobesign', array(new Model_E2pdf_Shortcode(), 'e2pdf_adobesign'));
+        add_shortcode('e2pdf-attachment', array(new Model_E2pdf_Shortcode(), 'e2pdf_attachment'));
         add_shortcode('e2pdf-format-number', array(new Model_E2pdf_Shortcode(), 'e2pdf_format_number'));
         add_shortcode('e2pdf-format-date', array(new Model_E2pdf_Shortcode(), 'e2pdf_format_date'));
         add_shortcode('e2pdf-format-output', array(new Model_E2pdf_Shortcode(), 'e2pdf_format_output'));
@@ -456,11 +456,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
 
     // admin javascript
     public function action_admin_enqueue_scripts($page) {
-        if (get_option('e2pdf_debug') === '1') {
-            $version = strtotime('now');
-        } else {
-            $version = $this->helper->get('version');
-        }
+        $version = get_option('e2pdf_debug', '0') === '1' ? strtotime('now') : $this->helper->get('version');
         wp_register_style('e2pdf.backend.global', plugins_url('css/e2pdf.backend.global.css', $this->helper->get('plugin_file_path')), array(), $version);
         wp_enqueue_style('e2pdf.backend.global');
         if (!in_array($page, $this->e2pdf_admin_pages, false)) {
@@ -477,11 +473,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
 
     // frontend javascript
     public function action_wp_enqueue_scripts() {
-        if (get_option('e2pdf_debug', '0') === '1') {
-            $version = strtotime('now');
-        } else {
-            $version = $this->helper->get('version');
-        }
+        $version = get_option('e2pdf_debug', '0') === '1' ? strtotime('now') : $this->helper->get('version');
         wp_enqueue_style('css/e2pdf.frontend.global', plugins_url('css/e2pdf.frontend.global.css', $this->helper->get('plugin_file_path')), array(), $version, 'all');
         wp_register_script(
                 'js/e2pdf.frontend', plugins_url('js/e2pdf.frontend.js', $this->helper->get('plugin_file_path')), array('jquery'), $version, false
@@ -566,7 +558,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Dynamic Height' => __('Dynamic Height', 'e2pdf'),
                     'Multipage' => __('Multipage', 'e2pdf'),
                     'Text Align' => __('Text Align', 'e2pdf'),
-                    'Read-only' => __('Read-only', 'e2pdf'),
+                    'Read-Only' => __('Read-Only', 'e2pdf'),
                     'Multiline' => __('Multiline', 'e2pdf'),
                     'Required' => __('Required', 'e2pdf'),
                     'Page Options' => __('Page Options', 'e2pdf'),
@@ -639,13 +631,13 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'CSS Priority' => __('CSS Priority', 'e2pdf'),
                     'CSS Style' => __('CSS Style', 'e2pdf'),
                     'Enabling WYSIWYG can affect "HTML" Source' => __('Enabling WYSIWYG can affect "HTML" Source', 'e2pdf'),
-                    'HTML Worker' => __('HTML Worker', 'e2pdf'),
                     'Hidden Fields' => __('Hidden Fields', 'e2pdf'),
-                    'Allow PDF Access By URL' => __('Allow PDF Access By URL', 'e2pdf'),
-                    'Restrict PDF Access By URL' => __('Restrict PDF Access By URL', 'e2pdf'),
-                    'Process Shortcodes' => __('Process Shortcodes', 'e2pdf'),
-                    'Restrict Process Shortcodes' => __('Restrict Process Shortcodes', 'e2pdf'),
+                    'Enable PDF Access By URL' => __('Enable PDF Access By URL', 'e2pdf'),
+                    'Disable PDF Access By URL' => __('Disable PDF Access By URL', 'e2pdf'),
+                    'Enable Shortcodes' => __('Enable Shortcodes', 'e2pdf'),
+                    'Disable Shortcodes' => __('Disable Shortcodes', 'e2pdf'),
                     'Error Message' => __('Error Message', 'e2pdf'),
+                    'Redirect URL' => __('Redirect URL', 'e2pdf'),
                     'Element' => __('Element', 'e2pdf'),
                     'Elements' => __('Elements', 'e2pdf'),
                     'Position Top' => __('Position Top', 'e2pdf'),
@@ -794,7 +786,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Adjust Page Total' => __('Adjust Page Total', 'e2pdf'),
                     'Preload Images' => __('Preload Images', 'e2pdf'),
                     'Hooks' => __('Hooks', 'e2pdf'),
-                    'PDF Download Hooks' => __('PDF Download Hooks', 'e2pdf'),
+                    'Display PDF download at' => __('Display PDF download at', 'e2pdf'),
                     'Optimization' => __('Optimization', 'e2pdf'),
                     'Inherit' => __('Inherit', 'e2pdf'),
                     'Not Optimized' => __('Not Optimized', 'e2pdf'),
@@ -803,6 +795,10 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Good Quality' => __('Good Quality', 'e2pdf'),
                     'Best Quality' => __('Best Quality', 'e2pdf'),
                     'Ultra Quality' => __('Ultra Quality', 'e2pdf'),
+                    'Error: Empty "if" and "value" detected in action condition' => __('Error: Empty "if" and "value" detected in action condition', 'e2pdf'),
+                    'No Read-Only' => __('No Read-Only', 'e2pdf'),
+                    'No Border' => __('No Border', 'e2pdf'),
+                    'Quick Props' => __('Quick Props', 'e2pdf'),
                 );
                 break;
             case 'params':
@@ -822,6 +818,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'extensions' => $model_e2pdf_extension->extensions(),
                     'template_sizes' => $controller_e2pdf_templates->get_sizes_list(),
                     'css_styles' => array_keys($this->helper->load('properties')->css_styles()),
+                    'undo_limit' => get_option('e2pdf_undo_limit', '20'),
                 );
                 break;
             case 'frontend_params':
@@ -961,7 +958,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         foreach ($dirs as $dir) {
             if ($this->helper->create_dir($dir)) {
                 if ($dir == $this->helper->get('fonts_dir')) {
-                    if (!file_exists($this->helper->get('fonts_dir') . 'NotoSans-Regular.ttf') || get_option('e2pdf_version') < '1.10.05') {
+                    if (!file_exists($this->helper->get('fonts_dir') . 'NotoSans-Regular.ttf') || version_compare(get_option('e2pdf_version'), '1.10.05', '<')) {
                         copy($this->helper->get('plugin_dir') . 'data/fonts/NotoSans-Regular.ttf', $this->helper->get('fonts_dir') . 'NotoSans-Regular.ttf');
                     }
                 } elseif ($dir == $this->helper->get('viewer_dir')) {
@@ -1012,7 +1009,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         if (get_option('e2pdf_wc_cart_template_id_order') !== false) {
             update_option('e2pdf_wc_cart_template_id_priority', get_option('e2pdf_wc_cart_template_id_order'));
         }
-        if (get_option('e2pdf_version') && get_option('e2pdf_version') < '1.16.14' && get_option('e2pdf_wc_cart_template_id') && get_option('e2pdf_wc_cart_template_id_priority') === false) {
+        if (get_option('e2pdf_version') && version_compare(get_option('e2pdf_version'), '1.16.14', '<') && get_option('e2pdf_wc_cart_template_id') && get_option('e2pdf_wc_cart_template_id_priority') === false) {
             update_option('e2pdf_wc_cart_template_id_priority', '99');
         }
 

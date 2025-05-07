@@ -278,6 +278,58 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
      */
     public function load_actions() {
         add_action('fluentform/integration_notify_notifications', array($this, 'action_integration_notify_notifications'), 99, 0);
+        add_action('fluentform/notify_on_form_submit', array($this, 'action_fluentform_before_form_actions_processing'), 99, 3);
+    }
+
+    public function action_fluentform_before_form_actions_processing($insertId, $formData, $form) {
+        if ($insertId) {
+            $entry = wpFluent()->table('fluentform_submissions')
+                    ->where('id', $insertId)
+                    ->first();
+            if ($entry && $form && !empty($form->form_fields)) {
+                $shortcode_tags = array(
+                    'e2pdf-download',
+                    'e2pdf-save',
+                    'e2pdf-attachment',
+                    'e2pdf-view',
+                    'e2pdf-adobesign',
+                    'e2pdf-zapier',
+                );
+                preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $form->form_fields, $matches);
+                $tagnames = array_intersect($shortcode_tags, $matches[1]);
+                if (!empty($tagnames)) {
+                    $data = json_decode($form->form_fields, true);
+                    $form_fields = isset($data['fields']) ? $data['fields'] : array();
+                    $response = array();
+                    foreach ($form_fields as $field) {
+                        $field_type = !empty($field['attributes']['type']) ? $field['attributes']['type'] : '';
+                        $field_value = !empty($field['attributes']['value']) ? $field['attributes']['value'] : '';
+                        if ($field_type == 'hidden' && false !== strpos($field_value, '[')) {
+                            $value = $this->filter_submission_message_parse($field_value, $insertId);
+                            if ($value != $field_value) {
+                                $field_name = !empty($field['attributes']['name']) ? $field['attributes']['name'] : '';
+                                if ($field_name) {
+                                    $response[$field_name] = $value;
+                                }
+                            }
+                        }
+                    }
+                    if (!empty($response)) {
+                        $origianlResponse = json_decode($entry->response, true);
+                        foreach ($response as $resKey => $resvalue) {
+                            if (!isset($origianlResponse[$resKey]) || $origianlResponse[$resKey] != $resvalue) {
+                                $origianlResponse[$resKey] = $resvalue;
+                            }
+                        }
+                        wpFluent()->table('fluentform_submissions')
+                                ->where('id', $insertId)
+                                ->update([
+                                    'response' => json_encode($origianlResponse, JSON_UNESCAPED_UNICODE),
+                        ]);
+                    }
+                }
+            }
+        }
     }
 
     public function action_integration_notify_notifications() {
@@ -297,6 +349,31 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
         add_filter('fluentform/submission_message_parse', array($this, 'filter_submission_message_parse'), 10, 2);
         add_filter('fluentform/filter_email_attachments', array($this, 'filter_email_attachments'), 10, 4);
         add_filter('fluentform/integration_data_trello', array($this, 'filter_integration_data_trello'), 10, 3);
+        add_filter('fluentform/insert_response_data', array($this, 'filter_fluentform_insert_response_data'), 99, 3);
+    }
+
+    public function filter_fluentform_insert_response_data($formData, $formId, $inputConfigs) {
+        if (!empty($formData) && is_array($formData)) {
+            $jsonData = json_encode($formData, JSON_UNESCAPED_UNICODE);
+            $shortcode_tags = array(
+                'e2pdf-download',
+                'e2pdf-save',
+                'e2pdf-attachment',
+                'e2pdf-view',
+                'e2pdf-adobesign',
+                'e2pdf-zapier',
+            );
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $jsonData, $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $jsonData, $shortcodes);
+                foreach ($shortcodes[0] as $key => $shortcode_value) {
+                    $jsonData = str_replace($shortcode_value, '', $jsonData);
+                }
+                $formData = json_decode($jsonData, true);
+            }
+        }
+        return $formData;
     }
 
     public function filter_submission_message_parse($message, $dataset) {
@@ -331,7 +408,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                         $shortcode[3] .= ' filter="true"';
                     }
 
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
                             $tmp = false;
@@ -349,7 +426,12 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                         }
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
-                        $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
+                        // Iframe onload attribute bug
+                        if ($shortcode[2] === 'e2pdf-view') {
+                            $message = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $message);
+                        } else {
+                            $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
+                        }
                     }
                 }
             }
@@ -394,7 +476,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                         $shortcode[3] .= ' filter="true"';
                     }
 
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
@@ -425,7 +507,8 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
             'repeater_field',
         );
         foreach ($fields as $field) {
-            add_filter('fluentform/response_render_' . $field, array($this, 'filter_response_render_list'), 99, 4);
+            add_filter('fluentform/response_render_' . $field, array($this, 'filter_response_pre_render'), 0, 4);
+            add_filter('fluentform/response_render_' . $field, array($this, 'filter_response_after_render'), 99, 4);
         }
     }
 
@@ -438,61 +521,106 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
             'repeater_field',
         );
         foreach ($fields as $field) {
-            remove_filter('fluentform/response_render_' . $field, array($this, 'filter_response_render_list'), 99, 4);
+            remove_filter('fluentform/response_render_' . $field, array($this, 'filter_response_pre_render'), 0);
+            remove_filter('fluentform/response_render_' . $field, array($this, 'filter_response_after_render'), 99);
         }
     }
 
-    public function filter_response_render_list($value, $field, $form_id, $is_html) {
-        if ($value) {
-            if ($is_html) {
-                if ($field['element'] == 'select_country') {
-                    return $value;
-                } elseif ($field['element'] == 'select' && (!isset($field['attributes']['multiple']) || (isset($field['attributes']['multiple']) && !$field['attributes']['multiple']))) {
-                    return $value;
-                } else {
-                    $dom = new DOMDocument();
-                    if (function_exists('mb_convert_encoding')) {
-                        $dom->loadHTML(mb_convert_encoding($value, 'HTML-ENTITIES', 'UTF-8'));
-                    } else {
-                        $dom->loadHTML('<?xml encoding="UTF-8">' . $value);
-                    }
-                    $lis = $dom->getElementsByTagName('li');
-                    $data = array();
-                    foreach ($lis as $li) {
-                        $data[] = $li->textContent;
-                    }
-                    return empty($data) ? '' : implode(', ', $data);
-                }
-            } else {
-                if ($field['element'] == 'select_country') {
-                    if (function_exists('getFluentFormCountryList')) {
-                        return array_search($value, getFluentFormCountryList(), true);
-                    } else {
-                        return '';
-                    }
-                } elseif ($field['element'] == 'repeater_field' && apply_filters('e2pdf_for_do_shortcode_data_process', false)) {
-                    $dom = new DOMDocument();
-                    if (function_exists('mb_convert_encoding')) {
-                        $dom->loadHTML(mb_convert_encoding($value, 'HTML-ENTITIES', 'UTF-8'));
-                    } else {
-                        $dom->loadHTML('<?xml encoding="UTF-8">' . $value);
-                    }
-                    $trs = $dom->getElementsByTagName('tr');
-                    $data = array();
-                    foreach ($trs as $tr) {
-                        $tds = array();
-                        foreach ($tr->getElementsByTagName('td') as $td) {
-                            $tds[] = $td->textContent;
-                        }
-                        if (!empty($tds)) {
-                            $data[] = $tds;
+    public function filter_response_pre_render($values, $field, $form_id, $is_html) {
+        $cached = $this->get('cached');
+        if (!$cached) {
+            $cached = array();
+        }
+        $field_key = isset($field['attributes']['name']) ? $field['attributes']['name'] : '';
+        if ($field_key) {
+            switch ($field['element']) {
+                case 'select_country':
+                    if (!$is_html) {
+                        if (function_exists('getFluentFormCountryList')) {
+                            $cached[$field_key] = $values;
+                        } else {
+                            $cached[$field_key] = '';
                         }
                     }
-                    return empty($data) ? '' : str_replace(array('{', '}'), array('&#123;', '&#125;'), serialize($data)); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
-                }
+                    break;
+                case 'select':
+                case 'input_checkbox':
+                case 'chained_select':
+                    if ($is_html) {
+                        if ($field['element'] == 'select' && (!isset($field['attributes']['multiple']) || (isset($field['attributes']['multiple']) && !$field['attributes']['multiple']))) {
+                            
+                        } else {
+                            if (is_array($values)) {
+                                if (!isset($field['options'])) {
+                                    $field['options'] = [];
+                                    foreach (\FluentForm\Framework\Helpers\ArrayHelper::get($field, 'raw.settings.advanced_options', []) as $option) {
+                                        $field['options'][$option['value']] = $option['label'];
+                                    }
+                                }
+                                $labels = array();
+                                foreach ($values as $value) {
+                                    if ($label = \FluentForm\Framework\Helpers\ArrayHelper::get($field, 'options.' . $value)) {
+                                        $labels[] = $label;
+                                    } else {
+                                        $labels[] = $value;
+                                    }
+                                }
+                                $cached[$field_key] = implode(', ', $labels);
+                            }
+                        }
+                    }
+                    break;
+                case 'repeater_field':
+                    if (apply_filters('e2pdf_for_do_shortcode_data_process', false)) {
+                        if (is_array($values)) {
+                            $cached[$field_key] = serialize($values);
+                        } else {
+                            $cached[$field_key] = '';
+                        }
+                    }
+                    break;
+                default:
+                    break;
             }
         }
-        return $value;
+        $this->set('cached', $cached);
+        return $values;
+    }
+
+    public function filter_response_after_render($values, $field, $form_id, $is_html) {
+        $cached = $this->get('cached');
+        if (!$cached) {
+            $cached = array();
+        }
+        $field_key = isset($field['attributes']['name']) ? $field['attributes']['name'] : '';
+        if ($field_key) {
+            switch ($field['element']) {
+                case 'select_country':
+                    if (!$is_html) {
+                        return isset($cached[$field_key]) ? $cached[$field_key] : '';
+                    }
+                    break;
+                case 'select':
+                case 'input_checkbox':
+                case 'chained_select':
+                    if ($is_html) {
+                        if ($field['element'] == 'select' && (!isset($field['attributes']['multiple']) || (isset($field['attributes']['multiple']) && !$field['attributes']['multiple']))) {
+                            
+                        } else {
+                            return isset($cached[$field_key]) ? $cached[$field_key] : '';
+                        }
+                    }
+                    break;
+                case 'repeater_field':
+                    if (apply_filters('e2pdf_for_do_shortcode_data_process', false)) {
+                        return isset($cached[$field_key]) ? $cached[$field_key] : '';
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        return $values;
     }
 
     /**

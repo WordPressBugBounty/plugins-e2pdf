@@ -272,7 +272,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'prefield' => __('TTL (sec)', 'e2pdf') . ':',
                     ),
                     array(
-                        'name' => __('Download PDF Ajax Loader', 'e2pdf'),
+                        'name' => __('PDF Ajax Loader', 'e2pdf'),
                         'key' => 'e2pdf_download_loader',
                         'value' => get_option('e2pdf_download_loader', '0'),
                         'default_value' => '0',

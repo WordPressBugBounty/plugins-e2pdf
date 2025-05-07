@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) {
 class Model_E2pdf_Font extends Model_E2pdf_Model {
 
     protected $text;
+    protected $ntOffset;
 
     public function get_font_info($font = false, $key = false, $font_path = false) {
 

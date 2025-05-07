@@ -199,6 +199,19 @@ if (!defined('ABSPATH')) {
                             </form>
                         </div>
                     </li>
+                    <?php if (!$this->view->db_check_collate) { ?>
+                        <li>
+                            <div class="e2pdf-name">
+                                <?php _e('Repair DB Collate', 'e2pdf'); ?>:
+                            </div><div class="e2pdf-value">
+                                <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-debug', 'action' => 'db')); ?>">
+                                    <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_debug'); ?>">
+                                    <input type="hidden" name="e2pdf_db_repair_collate" value="1">
+                                    <input type="submit" name="submit" id="submit" class="button button-primary" value="»">
+                                </form>
+                            </div>
+                        </li>
+                    <?php } ?>
                     <li>
                         <div class="e2pdf-name">
                             <?php _e('Reinitialize DB Hooks', 'e2pdf'); ?>:
@@ -220,7 +233,8 @@ if (!defined('ABSPATH')) {
                     <li><h2><?php _e('Structure', 'e2pdf') ?></h2></li>
                     <?php foreach ($this->view->db_structure as $table_key => $table) { ?>
                         <li><span class="e2pdf-bold <?php echo $table['check'] ? 'e2pdf-color-green' : 'e2pdf-color-red' ?>"><?php echo $table_key; ?></span></li>
-                        <li style="font-size: 8px;"><span>Row Format: <?php echo strtoupper($table['format']); ?></span></li>
+                        <li style="font-size: 8px;"><span>Table Format: <?php echo strtoupper($table['format']); ?></span></li>
+                        <li style="font-size: 8px;"><span>Table Collate: <?php echo strtoupper($table['collation']); ?></span></li>
                         <li>
                             <?php foreach ($table['columns'] as $column_key => $column) { ?>
                                 <span class="<?php echo isset($column['check']) && $column['check'] ? 'e2pdf-color-green' : 'e2pdf-color-red' ?>"><?php echo $column_key; ?></span>
@@ -228,8 +242,6 @@ if (!defined('ABSPATH')) {
                             <br><br>
 
                         </li>
-
-
                     <?php } ?>
                 </ul>
             </div>

@@ -150,16 +150,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
             if (method_exists($action, 'get_id') && $action->get_id() == 'send_email') {
                 if (!empty($action->settings['content'])) {
                     $content = $action->settings['content'];
-                    if (
-                            is_string($content) && (
-                            false !== strpos($content, '[e2pdf-download') ||
-                            false !== strpos($content, '[e2pdf-save') ||
-                            false !== strpos($content, '[e2pdf-view') ||
-                            false !== strpos($content, '[e2pdf-adobesign') ||
-                            false !== strpos($content, '[e2pdf-zapier') ||
-                            false !== strpos($content, '[e2pdf-attachment')
-                            )
-                    ) {
+                    if (is_string($content) && false !== strpos($content, '[e2pdf-')) {
                         foreach (jet_fb_action_handler()->get_all() as $sub_action) {
                             if (is_a($sub_action, '\JFB_Modules\Form_Record\Action_Types\Save_Record')) {
                                 $this->set('save_record', true);
@@ -214,16 +205,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
 
         $messages = jet_form_builder()->msg_router->get_manager()->get_messages();
         foreach ($messages as $message_key => $success_message) {
-            if (
-                    is_string($success_message) &&
-                    (false !== strpos($success_message, '[e2pdf-download') ||
-                    false !== strpos($success_message, '[e2pdf-save') ||
-                    false !== strpos($success_message, '[e2pdf-view') ||
-                    false !== strpos($success_message, '[e2pdf-adobesign') ||
-                    false !== strpos($success_message, '[e2pdf-zapier') ||
-                    false !== strpos($success_message, '[e2pdf-attachment')
-                    )
-            ) {
+            if (is_string($success_message) && false !== strpos($success_message, '[e2pdf-')) {
                 $dataset = jet_fb_action_handler()->get_context('save_record', 'id');
                 if ($dataset) {
                     $hash_id = $this->helper->load('encryption')->random_md5();
@@ -261,7 +243,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
                     $file = false;
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         $transient = isset($atts['dataset']) && substr($atts['dataset'], 0, 4) === 'tmp_' ? 'e2pdf_' . $atts['dataset'] : false;
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
@@ -319,7 +301,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                             if ($dataset) {
                                 $atts['dataset'] = $dataset;
                                 $shortcode[3] .= ' dataset="' . $dataset . '"';
-                            } elseif (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                            } elseif ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                 $dataset = 'tmp_' . $this->helper->load('encryption')->random_md5();
                                 set_transient('e2pdf_' . $dataset, jet_fb_context()->get_request(), 1800);
                                 $atts['dataset'] = $dataset;
@@ -368,7 +350,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                             foreach ($shortcodes[0] as $key => $shortcode_value) {
                                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                                 $atts = shortcode_parse_atts($shortcode[3]);
-                                if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                                if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                 } else {
                                     if (!isset($atts['dataset']) && isset($atts['id'])) {
                                         $template = new Model_E2pdf_Template();

@@ -30,3 +30,8 @@
     height: 100%;
 }
 
+.e2pdf-dialog .elementor-field-repeater-end,
+.e2pdf-dialog .elementor-field-repeater-end input {
+    width: 100%;
+}
+

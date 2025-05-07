@@ -120,7 +120,7 @@ class Helper_E2pdf_Convert {
             while (count($needle) > 0) {
                 $positions = array();
                 foreach ($needle as $from => $to) {
-                    if (( $pos2 = stripos($result, $from, $pos1) ) === FALSE) {
+                    if (($pos2 = stripos($result, $from, $pos1)) === FALSE) {
                         unset($needle[$from]);
                     } else {
                         $positions[$from] = $pos2;
@@ -132,8 +132,8 @@ class Helper_E2pdf_Convert {
 
                 $winner = min($positions);
                 $key = array_search($winner, $positions);
-                $result = ( substr($result, 0, $winner) . $needle[$key] . substr($result, ( $winner + strlen($key))) );
-                $pos1 = ( $winner + strlen($needle[$key]) );
+                $result = (substr($result, 0, $winner) . $needle[$key] . substr($result, ($winner + strlen($key))));
+                $pos1 = ($winner + strlen($needle[$key]));
             }
             return $result;
         } else {
@@ -206,5 +206,16 @@ class Helper_E2pdf_Convert {
             $field_value = [$key => $field_value];
         }
         return $field_value;
+    }
+
+    public function to_array($value) {
+        if (!is_array($value)) {
+            if (!empty($value)) {
+                $value = (array) $value;
+            } else {
+                $value = array();
+            }
+        }
+        return $value;
     }
 }

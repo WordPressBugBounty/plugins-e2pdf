@@ -418,54 +418,61 @@ var e2pdf = {
             switch (e2pdf.pdf.settings.get('extension')) {
                 case 'formidable':
                     hooks = {
-                        'hook_formidable_entry_view': e2pdf.lang.get('Admin View Entry'),
-                        'hook_formidable_entry_edit': e2pdf.lang.get('Admin Edit Entry'),
-                        'hook_formidable_row_actions': e2pdf.lang.get('Admin Row Actions')
+                        'hook_formidable_entry_view': e2pdf.lang.get('WP Admin Entry View'),
+                        'hook_formidable_entry_edit': e2pdf.lang.get('WP Admin Entry Edit'),
+                        'hook_formidable_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions')
                     };
                     break;
                 case 'gravity':
                     hooks = {
-                        'hook_gravity_entry_view': e2pdf.lang.get('Admin View Entry'),
-                        'hook_gravity_row_actions': e2pdf.lang.get('Admin Row Actions')
+                        'hook_gravity_entry_view': e2pdf.lang.get('WP Admin Entry View'),
+                        'hook_gravity_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions')
                     };
                     break;
                 case 'jetformbuilder':
                     hooks = {
-                        'hook_jetformbuilder_entry_view': e2pdf.lang.get('Admin View Entry')
+                        'hook_jetformbuilder_entry_view': e2pdf.lang.get('WP Admin Entry View')
                     };
                     break;
                 case 'woocommerce':
                     if (e2pdf.pdf.settings.get('item') == 'shop_order') {
                         hooks = {
-                            'hook_woocommerce_order_edit': e2pdf.lang.get('Admin Order Details'),
-                            'hook_woocommerce_order_row_actions': e2pdf.lang.get('Admin Order List Actions'),
-                            'hook_woocommerce_order_row_column': e2pdf.lang.get('Admin Order List Column')
+                            'hook_woocommerce_order_edit': e2pdf.lang.get('WP Admin Order Details'),
+                            'hook_woocommerce_order_row_actions': e2pdf.lang.get('WP Admin Order List Actions'),
+                            'hook_woocommerce_order_row_column': e2pdf.lang.get('WP Admin Order List Column')
                         };
                     }
                     break;
                 case 'wordpress':
                     if (e2pdf.pdf.settings.get('item') == '-3') {
                         hooks = {
-                            'hook_wordpress_row_actions': e2pdf.lang.get('Admin Row Actions')
+                            'hook_wordpress_row_actions': e2pdf.lang.get('WP Admin User Row Actions')
                         };
                     } else {
                         hooks = {
-                            'hook_wordpress_page_edit': e2pdf.lang.get('Admin Edit Page'),
-                            'hook_wordpress_row_actions': e2pdf.lang.get('Admin Row Actions')
+                            'hook_wordpress_page_edit': e2pdf.lang.get('WP Admin Page Edit'),
+                            'hook_wordpress_row_actions': e2pdf.lang.get('WP Admin Page Row Actions')
                         };
                     }
                     break;
                 case 'wpforms':
                     hooks = {
-                        'hook_wpforms_entry_view': e2pdf.lang.get('Admin View Entry'),
-                        'hook_wpforms_entry_edit': e2pdf.lang.get('Admin Edit Entry'),
-                        'hook_wpforms_row_actions': e2pdf.lang.get('Admin Row Actions')
+                        'hook_wpforms_entry_view': e2pdf.lang.get('WP Admin Entry View'),
+                        'hook_wpforms_entry_edit': e2pdf.lang.get('WP Admin Entry Edit'),
+                        'hook_wpforms_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions')
                     };
                     break;
                 case 'everest':
                     hooks = {
-                        'hook_everest_entry_view': e2pdf.lang.get('Admin View Entry'),
-                        'hook_everest_row_actions': e2pdf.lang.get('Admin Row Actions')
+                        'hook_everest_entry_view': e2pdf.lang.get('WP Admin Entry View'),
+                        'hook_everest_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions')
+                    };
+                    break;
+                case 'metform':
+                    hooks = {
+                        'hook_metform_entry_view': e2pdf.lang.get('WP Admin Entry View'),
+                        'hook_metform_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions'),
+                        'hook_metform_entry_row_column': e2pdf.lang.get('WP Admin Entry List Column')
                     };
                     break;
                 default:
@@ -1135,6 +1142,23 @@ var e2pdf = {
             var data = e2pdf.form.serializeObject(form);
             switch (form_id) {
                 case 'e2pdf-page-options':
+                    jQuery('.e2pdf-action').removeClass('e2pdf-action-error');
+                    var action_error = false;
+                    for (var action in data['actions']) {
+                        for (var condition in data['actions'][action]['conditions']) {
+                            if (data['actions'][action]['conditions'][condition]['if'].trim() === '' && data['actions'][action]['conditions'][condition]['value'].trim() == '') {
+                                let action_element = jQuery(".e2pdf-action[data-action_id='" + action + "']").first();
+                                action_element.addClass('e2pdf-action-error');
+                                action_error = true;
+                            }
+                        }
+                    }
+                    if (action_error) {
+                        setTimeout(function () {
+                            alert(e2pdf.lang.get('Error: Empty "if" and "value" detected in action condition'));
+                        }, 0);
+                        return;
+                    }
                     var width = data['width'];
                     var height = data['height'];
                     var page = jQuery('.e2pdf-page[data-page_id="' + data['page_id'] + '"]');
@@ -1144,6 +1168,23 @@ var e2pdf = {
                     e2pdf.event.fire('after.request.submitLocal', false, page);
                     break;
                 case 'e2pdf-tpl-actions':
+                    jQuery('.e2pdf-action').removeClass('e2pdf-action-error');
+                    var action_error = false;
+                    for (var action in data['actions']) {
+                        for (var condition in data['actions'][action]['conditions']) {
+                            if (data['actions'][action]['conditions'][condition]['if'].trim() === '' && data['actions'][action]['conditions'][condition]['value'].trim() == '') {
+                                let action_element = jQuery(".e2pdf-action[data-action_id='" + action + "']").first();
+                                action_element.addClass('e2pdf-action-error');
+                                action_error = true;
+                            }
+                        }
+                    }
+                    if (action_error) {
+                        setTimeout(function () {
+                            alert(e2pdf.lang.get('Error: Empty "if" and "value" detected in action condition'));
+                        }, 0);
+                        return;
+                    }
                     e2pdf.actions.apply(jQuery('.e2pdf-tpl'), data['actions']);
                     break;
                 case 'e2pdf-tpl-properties':
@@ -1160,6 +1201,23 @@ var e2pdf = {
                     break;
                 default:
                     var element = jQuery(".e2pdf-element[data-element_id='" + data.element_id + "']").first();
+                    jQuery('.e2pdf-action').removeClass('e2pdf-action-error');
+                    var action_error = false;
+                    for (var action in data['actions']) {
+                        for (var condition in data['actions'][action]['conditions']) {
+                            if (data['actions'][action]['conditions'][condition]['if'].trim() === '' && data['actions'][action]['conditions'][condition]['value'].trim() == '') {
+                                let action_element = jQuery(".e2pdf-action[data-action_id='" + action + "']").first();
+                                action_element.addClass('e2pdf-action-error');
+                                action_error = true;
+                            }
+                        }
+                    }
+                    if (action_error) {
+                        setTimeout(function () {
+                            alert(e2pdf.lang.get('Error: Empty "if" and "value" detected in action condition'));
+                        }, 0);
+                        return;
+                    }
                     e2pdf.actions.apply(element, data['actions']);
                     delete data['actions'];
                     e2pdf.properties.apply(element, data);
@@ -1747,7 +1805,6 @@ var e2pdf = {
                 if (e2pdf.pdf.settings.get('pdf')) {
                     readonly_size = true;
                 }
-
                 var sizes = jQuery('<select>', {'name': 'preset', 'class': 'e2pdf-preset e2pdf-w100', 'disabled': readonly_size ? 'disabled' : false}).append(
                         jQuery('<option>',
                                 {
@@ -1917,11 +1974,11 @@ var e2pdf = {
 
             } else if (modal === 'tpl-hooks') {
                 width = '600';
-                var title = e2pdf.lang.get('Hooks');
+                var title = e2pdf.lang.get('Integration Hooks');
                 var hooks = e2pdf.hooks.get();
                 var checked = e2pdf.hooks.getChecked();
                 var fields = jQuery('<div>');
-                fields.append(jQuery('<p>', {'class': 'e2pdf-bold'}).html(e2pdf.lang.get('PDF Download Hooks') + ':'));
+                fields.append(jQuery('<p>', {'class': 'e2pdf-bold'}).html(e2pdf.lang.get('Display PDF Download') + ':'));
                 for (var hook in hooks) {
                     var option = jQuery('<label>', {'class': 'e2pdf-label e2pdf-w50'}).append(
                             jQuery(
@@ -2317,7 +2374,6 @@ var e2pdf = {
                         e2pdf.dialog.center = false;
                     },
                     resizeStart: function (event, ui) {
-
                     },
                     resize: function (event, ui) {
                         var max_height = jQuery('.e2pdf-dialog').height();
@@ -2724,7 +2780,6 @@ var e2pdf = {
                             {'change': e2pdf.lang.get('Change Property')}
                         ];
                     }
-
                     obj = {
                         'name': e2pdf.lang.get('Action'),
                         'key': 'actions[' + action_id + '][action]',
@@ -2957,6 +3012,7 @@ var e2pdf = {
                         var field = '';
                         var label = '';
                         var wrap = '';
+                        var placeholder = group_field.placeholder ? group_field.placeholder : '';
                         if (group_field.type === 'text') {
                             label = jQuery('<div>', {'class': 'e2pdf-small e2pdf-label'}).html(group_field.name + ":");
                             field = jQuery('<input>', {'type': 'text', 'class': 'e2pdf-w100', 'name': group_field.key, 'value': group_field.value});
@@ -2964,7 +3020,7 @@ var e2pdf = {
                             field = jQuery('<input>', {'type': 'hidden', 'name': group_field.key, 'value': group_field.value});
                         } else if (group_field.type === 'textarea') {
                             label = jQuery('<div>', {'class': 'e2pdf-small e2pdf-label'}).html(group_field.name + ":");
-                            field = jQuery('<textarea>', {'name': group_field.key, 'class': 'e2pdf-w100', 'rows': '5'}).val(group_field.value);
+                            field = jQuery('<textarea>', {'name': group_field.key, 'class': 'e2pdf-w100', 'rows': '5', 'placeholder': placeholder}).val(group_field.value);
                         } else if (group_field.type === 'checkbox') {
                             wrap = jQuery('<label>', {'class': 'e2pdf-label e2pdf-small e2pdf-mt10'}).html(group_field.name);
                             field = jQuery('<input>', {'type': 'checkbox', 'class': 'e2pdf-ib', 'name': group_field.key, 'value': group_field.option});
@@ -3475,7 +3531,7 @@ var e2pdf = {
                     break;
                 case 'readonly':
                     obj = {
-                        'name': e2pdf.lang.get('Read-only'),
+                        'name': e2pdf.lang.get('Read-Only'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -4026,7 +4082,7 @@ var e2pdf = {
                     break;
                 case 'html_worker':
                     obj = {
-                        'name': e2pdf.lang.get('HTML Worker'),
+                        'name': 'HTML Worker',
                         'type': 'select',
                         'value': e2pdf.helper.getString(properties[field], ''),
                         'options': [
@@ -5620,7 +5676,6 @@ var e2pdf = {
                             e2pdf.properties.getField('vertical', el),
                             e2pdf.properties.getField('rtl', el),
                             e2pdf.properties.getField('multipage', el),
-                            e2pdf.properties.getField('dynamic_height', el),
                             e2pdf.properties.getField('nl2br', el),
                             e2pdf.properties.getField('preload_img', el),
                             e2pdf.properties.getField('hide_if_empty', el),
@@ -5641,10 +5696,15 @@ var e2pdf = {
                             'e2pdf-pr10',
                             'e2pdf-pr10',
                             'e2pdf-pr10',
-                            'e2pdf-pr10',
                             'e2pdf-pr10'
                         ]
                     };
+                    
+                    if (e2pdf.properties.getValue(el, 'dynamic_height', 'checkbox')) {
+                        obj['field'].fields.push(e2pdf.properties.getField('dynamic_height', el));
+                        obj['field'].classes.push('e2pdf-pr10');
+                    }
+
                     obj['style'] = {
                         'name': e2pdf.lang.get('Style'),
                         'fields': [
@@ -7125,7 +7185,6 @@ var e2pdf = {
                     item = false;
                 }
             }
-
             if (item && item.id == '-2') {
                 var option1 = el.closest('form').find('.e2pdf-item1 option:selected');
                 if (option1 && typeof option1.data('data-item') !== 'undefined') {
@@ -7143,7 +7202,6 @@ var e2pdf = {
                     }
                 }
             }
-
             e2pdf.pages.changeTplSize(width, height);
             e2pdf.pages.createPage();
             jQuery('.ui-dialog-content').dialog('close');
@@ -7156,7 +7214,6 @@ var e2pdf = {
                     item = false;
                 }
             }
-
             if (item && item.id == '-2') {
                 var option1 = el.closest('form').find('.e2pdf-item1 option:selected');
                 if (option1 && typeof option1.data('data-item') !== 'undefined') {
@@ -7165,7 +7222,6 @@ var e2pdf = {
                         item1 = false;
                     }
                 }
-
                 var option2 = el.closest('form').find('.e2pdf-item2 option:selected');
                 if (option2 && typeof option2.data('data-item') !== 'undefined') {
                     item2 = option2.data('data-item');
@@ -7174,7 +7230,6 @@ var e2pdf = {
                     }
                 }
             }
-
             var data = {};
             data['extension'] = extension;
             data['item'] = item ? item.id : '';
@@ -7191,7 +7246,6 @@ var e2pdf = {
             }
             jQuery('.e2pdf-upload-pdf').click();
         }
-
         if (action === 'apply' || action === 'empty' || action === 'auto') {
             var link = jQuery('<a>', {
                 'href': 'javascript:void(0);',
@@ -7325,7 +7379,6 @@ var e2pdf = {
             e2pdf.actions.apply(page, actions);
             page.droppable({
                 over: function (ev, ui) {
-
                     e2pdf.static.drag.page = jQuery(this);
                     e2pdf.static.guide.guides = [];
                     if ((jQuery(ui.draggable).attr('data-type') == 'e2pdf-qrcode' || jQuery(ui.draggable).attr('data-type') == 'e2pdf-barcode' || jQuery(ui.draggable).attr('data-type') == 'e2pdf-graph' || jQuery(ui.draggable).attr('data-type') == 'e2pdf-signature' || jQuery(ui.draggable).attr('data-type') == 'e2pdf-image') && !jQuery(ui.helper).data('original-width') && (jQuery(ui.helper).width() > e2pdf.static.drag.page.width() || jQuery(ui.helper).height() > e2pdf.static.drag.page.height())) {
@@ -7342,12 +7395,12 @@ var e2pdf = {
                     }
 
                     if (ui.draggable.hasClass('e2pdf-clone')) {
-                        jQuery(this).find(".e2pdf-element").each(function () {
+                        jQuery(this).find('.e2pdf-element').each(function () {
                             e2pdf.static.guide.guides = jQuery.merge(e2pdf.static.guide.guides, e2pdf.guide.calc(jQuery(this), null, null, null, true));
                         });
                         e2pdf.static.guide.guides = jQuery.merge(e2pdf.static.guide.guides, e2pdf.guide.calc(e2pdf.static.drag.page, null, null, null, true));
                     } else {
-                        e2pdf.static.guide.guides = jQuery.map(jQuery(this).find(".e2pdf-element").not('.e2pdf-selected'), e2pdf.guide.calc);
+                        e2pdf.static.guide.guides = jQuery.map(jQuery(this).find('.e2pdf-element').not('.e2pdf-selected'), e2pdf.guide.calc);
                         e2pdf.static.guide.guides = jQuery.merge(e2pdf.static.guide.guides, e2pdf.guide.calc(e2pdf.static.drag.page, null, null, null, false));
                     }
                 },
@@ -7430,7 +7483,6 @@ var e2pdf = {
         },
         // e2pdf.pages.movePage
         movePage: function (el, direction) {
-
             if (e2pdf.pdf.settings.get('pdf')) {
                 return false;
             }
@@ -7679,7 +7731,6 @@ var e2pdf = {
             if (!properties) {
                 properties = {};
             }
-
             if (!actions) {
                 actions = {};
             }
@@ -8107,7 +8158,6 @@ var e2pdf = {
                     });
                     element_id = parseInt(last_id + 1);
                 }
-
                 element.addClass('e2pdf-element');
                 element.attr('data-element_id', element_id);
                 element.data('data-type', type);
@@ -9962,7 +10012,6 @@ jQuery(document).ready(function () {
         } else {
             jQuery('.e2pdf-vm-content').find('.e2pdf-vm-item, h3').show();
         }
-
         e2pdf.visual.mapper.rebuild();
     });
     jQuery(document).on('change', 'input[name="vm_replace"]', function (e) {
@@ -10155,7 +10204,7 @@ jQuery(document).ready(function () {
                 page.removeClass('e2pdf-load-page');
                 e2pdf.pages.createPage(page, properties, actions, true);
             });
-            jQuery(".e2pdf-be").draggable({
+            jQuery('.e2pdf-be').draggable({
                 helper: function () {
                     var element = jQuery(this).clone();
                     var type = element.attr('data-type');
@@ -10182,9 +10231,7 @@ jQuery(document).ready(function () {
                     jQuery(".e2pdf-guide-v, .e2pdf-guide-h").hide();
                 },
                 drag: function (ev, ui) {
-
                     if (e2pdf.static.drag.page !== null) {
-
                         var pos = {left: ev.originalEvent.pageX - e2pdf.static.guide.x, top: ev.originalEvent.pageY - e2pdf.static.guide.y};
                         var guides = {top: {dist: e2pdf.static.guide.distance + 1}, left: {dist: e2pdf.static.guide.distance + 1}};
                         var w = parseFloat(jQuery(ui.helper).css('width')) * e2pdf.zoom.zoom;
@@ -10208,15 +10255,14 @@ jQuery(document).ready(function () {
                             var snap_top = guides.top.guide.top - guides.top.offset - jQuery(this).offset().top;
                             ui.position.top = snap_top;
                         } else {
-                            jQuery(".e2pdf-guide-h").hide();
+                            jQuery('.e2pdf-guide-h').hide();
                         }
-
                         if (guides.left.dist <= e2pdf.static.guide.distance) {
                             e2pdf.static.drag.page.find('.e2pdf-guide-v').css("left", guides.left.guide.left / e2pdf.zoom.zoom - e2pdf.static.drag.page.offset().left / e2pdf.zoom.zoom - 1).show();
                             var snap_left = guides.left.guide.left - guides.left.offset - jQuery(this).offset().left + 5;
                             ui.position.left = snap_left;
                         } else {
-                            jQuery(".e2pdf-guide-v").hide();
+                            jQuery('.e2pdf-guide-v').hide();
                         }
                     }
                 }

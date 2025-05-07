@@ -1911,6 +1911,10 @@ a.e2pdf-vm-element:hover {
     box-shadow: 1px 1px 4px #999;
 }
 
+.e2pdf-action-error {
+    border: 1px solid #d63638;
+}
+
 .e2pdf-action input[type=radio] {
     margin-top: 5px;
 }
@@ -2030,8 +2034,7 @@ input[type='radio'].e2pdf-input-height {
     width: 30px;
 }
 
-.e2pdf-condition textarea,
-.e2pdf-action-message textarea {
+.e2pdf-condition textarea {
     height: 30px;
     line-height: 24px;
 }
@@ -2291,6 +2294,43 @@ ul.add-menu-item-tabs li, ul.category-tabs li, ul.wp-tab-bar li {
     position: absolute;
     top: 5px;
     right: 0;
+}
+
+.e2pdf-element-column  {
+    width: 200px !important;
+    height: 60px !important;
+    border: 1px solid #ddd !important;
+    background: #fafafa !important;
+
+}
+
+.e2pdf-tpl .e2pdf-element-column {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    border: 1px dashed #ddd !important;
+    padding: 20px !important;
+}
+
+
+
+.e2pdf-column-indicator {
+    border-radius: 1px;
+    background: #008ec2;
+    display: none;
+}
+
+.e2pdf-column-indicator-h {
+    width: calc(100% - 40px);
+    height: 5px;
+    margin: 20px auto;
+}
+
+.e2pdf-column-indicator-v {
+    width: 5px;
+    height: 50px;
 }
 
 @media screen and (max-width: 1024px) {

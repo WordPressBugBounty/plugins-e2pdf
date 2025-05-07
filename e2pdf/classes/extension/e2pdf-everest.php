@@ -355,8 +355,10 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         $fields = $form['form_fields'];
 
         foreach ($fields as $field) {
-            $width = '100';
+
             $field_value = '{field_id="' . $this->get_field_id_for_smarttags($field) . '"}';
+            $field_label = isset($field['label']) ? $field['label'] : '';
+
             switch ($field['type']) {
                 case 'text':
                 case 'email':
@@ -379,9 +381,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -409,9 +411,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -446,9 +448,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -512,9 +514,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -559,9 +561,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -579,7 +581,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'float' => true,
                                     'block' => true,
                                     'properties' => array(
-                                        'top' => '20',
+                                        'top' => '5',
                                         'left' => '20',
                                         'right' => '0',
                                         'width' => '170',
@@ -605,9 +607,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -636,9 +638,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -682,7 +684,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
                                     'value' => isset($field['settings']['label']) ? $field['settings']['label'] : '',
                                 ),
@@ -715,9 +717,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -746,7 +748,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
                                     'value' => isset($field['code']) ? $field['code'] : '',
                                 ),
@@ -764,9 +766,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -781,7 +783,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                         'top' => '5',
                                         'left' => '20',
                                         'right' => '20',
-                                        'width' => $width . '%',
+                                        'width' => '100%',
                                         'height' => 'auto',
                                         'value' => isset($field['description']) ? $field['description'] : '',
                                     ),
@@ -800,9 +802,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -817,7 +819,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                         'top' => '5',
                                         'left' => '20',
                                         'right' => '20',
-                                        'width' => $width . '%',
+                                        'width' => '100%',
                                         'height' => 'auto',
                                         'value' => isset($field['description']) ? $field['description'] : '',
                                     ),
@@ -850,9 +852,9 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                                     'top' => '20',
                                     'left' => '20',
                                     'right' => '20',
-                                    'width' => $width . '%',
+                                    'width' => '100%',
                                     'height' => 'auto',
-                                    'value' => isset($field['label']) ? $field['label'] : '',
+                                    'value' => $field_label,
                                 ),
                             )
                     );
@@ -869,7 +871,6 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                             )
                     );
                     break;
-
                 case 'divider':
                 case 'hidden':
                 case 'repeater-fields':
@@ -1011,7 +1012,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
     public function filter_everest_forms_email_attachments($attachments, $mail) {
         $files = $this->helper->get('everest_attachments');
         if (is_array($files) && !empty($files)) {
-            $attachments = !is_array($attachments) ? (array) $attachments : $attachments;
+            $attachments = $this->helper->load('convert')->to_array($attachments);
             foreach ($files as $key => $file) {
                 $attachments[] = $file;
             }
@@ -1025,16 +1026,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
     }
 
     public function filter_everest_forms_add_success($message) {
-        if (
-                is_string($message) &&
-                (false !== strpos($message, '[e2pdf-download') ||
-                false !== strpos($message, '[e2pdf-save') ||
-                false !== strpos($message, '[e2pdf-view') ||
-                false !== strpos($message, '[e2pdf-adobesign') ||
-                false !== strpos($message, '[e2pdf-zapier') ||
-                false !== strpos($message, '[e2pdf-attachment')
-                )
-        ) {
+        if (is_string($message) && false !== strpos($message, '[e2pdf-')) {
             add_action('everest_forms_before_template_part', array($this, 'action_everest_forms_before_template_part'), 99);
             add_action('everest_forms_after_template_part', array($this, 'action_everest_forms_after_template_part'), 99);
         }
@@ -1158,7 +1150,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                         $shortcode[3] .= ' iframe_download="true"';
                     }
                     $file = false;
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         if ($type == 'mail') {
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {

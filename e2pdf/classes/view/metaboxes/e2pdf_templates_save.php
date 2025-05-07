@@ -96,17 +96,17 @@ if (!defined('ABSPATH')) {
             <?php } ?>
             <div class="misc-pub-section misc-pub-e2pdf-tpl-hooks">
                 <span id="e2pdf-post-tpl-hooks">
-                    <a class="e2pdf-modal e2pdf-link" data-modal="tpl-hooks" href="javascript:void(0);"><?php _e('Hooks', 'e2pdf'); ?></a>
-                </span>
-            </div>
-            <div class="misc-pub-section misc-pub-e2pdf-tpl-properties">
-                <span id="e2pdf-post-tpl-properties">
-                    <a class="e2pdf-modal e2pdf-link" data-modal="tpl-properties" href="javascript:void(0);"><?php _e('Global Properties', 'e2pdf'); ?></a>
+                    <a class="e2pdf-modal e2pdf-link" data-modal="tpl-hooks" href="javascript:void(0);"><?php _e('Integration Hooks', 'e2pdf'); ?></a>
                 </span>
             </div>
             <div class="misc-pub-section misc-pub-e2pdf-tpl-actions">
                 <span id="e2pdf-post-tpl-actions">
                     <a class="e2pdf-modal e2pdf-link" data-modal="tpl-actions" href="javascript:void(0);"><?php _e('Global Actions', 'e2pdf'); ?></a>
+                </span>
+            </div>
+            <div class="misc-pub-section misc-pub-e2pdf-tpl-properties">
+                <span id="e2pdf-post-tpl-properties">
+                    <a class="e2pdf-modal e2pdf-link" data-modal="tpl-properties" href="javascript:void(0);"><?php _e('Global Properties', 'e2pdf'); ?></a>
                 </span>
             </div>
             <div class="misc-pub-section misc-pub-e2pdf-item">

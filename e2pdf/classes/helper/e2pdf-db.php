@@ -108,9 +108,9 @@ class Helper_E2pdf_Db {
     public function db_init($db_prefix, $maybe_row_format = true) {
         global $wpdb;
 
-        $row_format = '';
+        $collate = $this->db_collate();
         if ($this->db_test_row_format($db_prefix)) {
-            $row_format = ' ROW_FORMAT=DYNAMIC';
+            $collate .= ' ROW_FORMAT=DYNAMIC';
         }
 
         $srpk = $wpdb->get_row("SHOW VARIABLES LIKE 'sql_require_primary_key'", ARRAY_A);
@@ -171,7 +171,7 @@ class Helper_E2pdf_Db {
         `properties` longtext NOT NULL,
         `actions` longtext NOT NULL,
             PRIMARY KEY (`ID`)
-        ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
+        ) " . $collate . "");
 
         if ($wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'blank';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` DROP COLUMN `blank`;");
@@ -286,7 +286,7 @@ class Helper_E2pdf_Db {
         `entry` longtext,
         `pdf_num` int(11) NOT NULL DEFAULT '0',
             PRIMARY KEY (`ID`)
-        ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
+        ) " . $collate . "");
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_entries` LIKE 'pdf_num';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_entries` ADD COLUMN `pdf_num` int(11) NOT NULL DEFAULT '0';");
@@ -308,7 +308,7 @@ class Helper_E2pdf_Db {
         `entry` longtext,
         `created_at` datetime NOT NULL,
             PRIMARY KEY (`ID`)
-        ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
+        ) " . $collate . "");
 
         if ($wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_datasets` WHERE Field = 'ID' and Type LIKE 'int(11)';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_datasets` CHANGE `ID` `ID` bigint(20) NOT NULL AUTO_INCREMENT;");
@@ -326,7 +326,7 @@ class Helper_E2pdf_Db {
         `actions` longtext NOT NULL,
         `revision_id` int(11) NOT NULL DEFAULT '0',
             PRIMARY KEY (`PID`)
-        ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
+        ) " . $collate . "");
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_pages` LIKE 'actions';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_pages` ADD COLUMN `actions` longtext NOT NULL;");
@@ -371,7 +371,7 @@ class Helper_E2pdf_Db {
         `actions` longtext NOT NULL,
         `revision_id` int(11) NOT NULL DEFAULT '0',
             PRIMARY KEY (`PID`)
-        ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
+        ) " . $collate . "");
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_elements` LIKE 'actions';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_elements` ADD COLUMN `actions` longtext NOT NULL;");
@@ -461,7 +461,7 @@ class Helper_E2pdf_Db {
         `properties` longtext NOT NULL,
         `actions` longtext NOT NULL,
             PRIMARY KEY (`PID`)
-        ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
+        ) " . $collate . "");
 
         $index = $wpdb->get_row("SHOW INDEX FROM `" . $db_prefix . "e2pdf_revisions` WHERE key_name = 'revision_id';");
         if (is_null($index)) {
@@ -576,7 +576,7 @@ class Helper_E2pdf_Db {
         `status` varchar(255) NOT NULL DEFAULT 'pending',
         `created_at` datetime NOT NULL,
             PRIMARY KEY (`ID`)
-        ) CHARSET=utf8 COLLATE=utf8_general_ci" . $row_format . "");
+        ) " . $collate . "");
 
         if (!$this->db_check($db_prefix) && $maybe_row_format) {
             $this->db_row_format($db_prefix);
@@ -591,10 +591,12 @@ class Helper_E2pdf_Db {
     public function db_test_row_format($db_prefix) {
         global $wpdb;
 
+        $collate = $this->db_collate() . ' ROW_FORMAT=DYNAMIC';
+
         $wpdb->query("CREATE TABLE IF NOT EXISTS `" . $db_prefix . "e2pdf_test_db` (
         `ID` int(11) NOT NULL AUTO_INCREMENT,
             PRIMARY KEY (`ID`)
-        ) CHARSET=utf8 COLLATE=utf8_general_ci ROW_FORMAT=DYNAMIC");
+        ) " . $collate . "");
 
         $pass = $wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_test_db` LIKE 'ID';");
         $wpdb->query("DROP TABLE IF EXISTS `" . $db_prefix . "e2pdf_test_db`;");
@@ -608,12 +610,11 @@ class Helper_E2pdf_Db {
 
     public function db_row_format($db_prefix) {
         global $wpdb;
-
         if ($this->db_test_row_format($db_prefix)) {
             $db_structure = $this->db_structure($db_prefix);
             foreach ($db_structure as $table => $columns) {
-                $wpdb->query("ALTER TABLE `" . $db_prefix . $table . "` ROW_FORMAT=DYNAMIC;");
-                $wpdb->query("OPTIMIZE TABLE `" . $db_prefix . $table . "`;");
+                $wpdb->query('ALTER TABLE `' . $db_prefix . $table . '` ROW_FORMAT=DYNAMIC;');
+                $wpdb->query('OPTIMIZE TABLE `' . $db_prefix . $table . '`;');
             }
             $this->db_init($db_prefix, false);
         }
@@ -622,7 +623,6 @@ class Helper_E2pdf_Db {
 
     public function db_optimize($db_prefix) {
         global $wpdb;
-
         $db_structure = $this->db_structure($db_prefix);
         foreach ($db_structure as $table => $columns) {
             $wpdb->query("OPTIMIZE TABLE `" . $db_prefix . $table . "`;");
@@ -632,7 +632,6 @@ class Helper_E2pdf_Db {
 
     public function db_repair($db_prefix) {
         global $wpdb;
-
         $db_structure = $this->db_structure($db_prefix);
         foreach ($db_structure as $table => $columns) {
             $wpdb->query("REPAIR TABLE `" . $db_prefix . $table . "`;");
@@ -640,11 +639,70 @@ class Helper_E2pdf_Db {
         return true;
     }
 
+    public function db_repair_collate($db_prefix) {
+        global $wpdb;
+
+        $db_structure = $this->db_structure($db_prefix);
+
+        $collate = '';
+        if (!empty($wpdb->charset)) {
+            $collate = 'CONVERT TO CHARACTER SET ' . $wpdb->charset;
+        }
+        if (!empty($wpdb->collate)) {
+            $collate .= ' COLLATE ' . $wpdb->collate;
+        }
+
+        if (!empty($collate)) {
+            foreach ($db_structure as $table => $columns) {
+                $wpdb->query('ALTER TABLE `' . $db_prefix . $table . '` ' . $collate . ';');
+                $wpdb->query('OPTIMIZE TABLE `' . $db_prefix . $table . '`;');
+            }
+            $this->db_init($db_prefix, false);
+        }
+    }
+
+    public function db_collate() {
+        global $wpdb;
+        return $wpdb->has_cap('collation') ? $wpdb->get_charset_collate() : 'CHARSET=utf8 COLLATE=utf8_general_ci';
+    }
+
     public function db_check($db_prefix) {
         $db_structure = $this->db_structure($db_prefix, true);
         foreach ($db_structure as $table) {
             foreach ($table['columns'] as $column) {
                 if (!isset($column['check']) || (isset($column['check']) && !$column['check'])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public function db_check_collate($db_prefix) {
+        global $wpdb;
+        $db_structure = $this->db_structure($db_prefix);
+        if (!empty($wpdb->collate)) {
+            foreach ($db_structure as $table => $columns) {
+                $condition = array(
+                    'TABLE_SCHEMA' => array(
+                        'condition' => '=',
+                        'value' => DB_NAME,
+                        'type' => '%s'
+                    ),
+                    'TABLE_NAME' => array(
+                        'condition' => '=',
+                        'value' => $db_prefix . $table,
+                        'type' => '%s'
+                    ),
+                    'TABLE_COLLATION' => array(
+                        'condition' => '=',
+                        'value' => $wpdb->collate,
+                        'type' => '%s'
+                    ),
+                );
+                $where = $this->prepare_where($condition);
+                $check = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` ' . $where['sql'] . '', $where['filter']));
+                if (!$check) {
                     return false;
                 }
             }
@@ -840,14 +898,15 @@ class Helper_E2pdf_Db {
                     ),
                 );
                 $where = $this->prepare_where($condition);
-
                 $table_exists = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM `INFORMATION_SCHEMA`.`TABLES` ' . $where['sql'] . '', $where['filter']));
                 if ($table_exists) {
 
                     $db_structure[$table_key]['check'] = true;
                     $table_columns = $wpdb->get_results($wpdb->prepare('SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` ' . $where['sql'] . '', $where['filter']), ARRAY_A);
-                    $table_format = $wpdb->get_var($wpdb->prepare('SELECT row_format FROM `INFORMATION_SCHEMA`.`TABLES` ' . $where['sql'] . '', $where['filter']));
-                    $db_structure[$table_key]['format'] = $table_format;
+                    $table_data = $wpdb->get_row($wpdb->prepare('SELECT `ROW_FORMAT`, `TABLE_COLLATION` FROM `INFORMATION_SCHEMA`.`TABLES` ' . $where['sql'] . '', $where['filter']), ARRAY_A);
+
+                    $db_structure[$table_key]['format'] = !empty($table_data['ROW_FORMAT']) ? $table_data['ROW_FORMAT'] : '';
+                    $db_structure[$table_key]['collation'] = !empty($table_data['TABLE_COLLATION']) ? $table_data['TABLE_COLLATION'] : '';
 
                     foreach ($table_columns as $table_column) {
                         $table_column_name = isset($table_column['COLUMN_NAME']) ? $table_column['COLUMN_NAME'] : false;

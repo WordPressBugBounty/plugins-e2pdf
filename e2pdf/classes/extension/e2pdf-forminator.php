@@ -452,7 +452,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                         $value = Forminator_Field::forminator_number_formatting($field, $data[$element_id]);
                     } elseif (
                             false !== stripos($element_id, 'time') &&
-                            ( false !== stripos($element_id, '-hours') || false !== stripos($element_id, '-minutes') )
+                            (false !== stripos($element_id, '-hours') || false !== stripos($element_id, '-minutes'))
                     ) {
                         $value = str_pad($data[$element_id], 2, '0', STR_PAD_LEFT);
                     } elseif (!empty($entry->draft_id) &&
@@ -2793,6 +2793,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                                         'width' => '100%',
                                         'height' => 'auto',
                                         'value' => '{' . $field['element_id'] . $repeater . '}',
+                                        'text_auto_font_size' => '1'
                                     ),
                                 )
                         );
@@ -3411,7 +3412,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                         $shortcode[3] .= ' filter="true"';
                     }
 
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
                             $tmp = false;
@@ -3470,7 +3471,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
                         if (!isset($atts['dataset']) && isset($atts['id'])) {
                             $template = new Model_E2pdf_Template();

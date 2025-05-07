@@ -2,10 +2,9 @@ var e2pdfViewer = {
     updateViewArea: function (pdfIframe, listener) {
         if (pdfIframe.hasClass('e2pdf-pages-loaded') && pdfIframe.hasClass('e2pdf-responsive')) {
             var pdfIframeContents = pdfIframe.contents();
+            var viewerHeight = parseInt(pdfIframeContents.find('#viewer').outerHeight());
             if (pdfIframe.hasClass('e2pdf-responsive-page')) {
-                var viewerHeight = parseInt(pdfIframeContents.find('#viewer .page').first().outerHeight());
-            } else {
-                var viewerHeight = parseInt(pdfIframeContents.find('#viewer').outerHeight());
+                viewerHeight = parseInt(pdfIframeContents.find('#viewer .page').first().outerHeight());
             }
             var viewerContainerTop = parseInt(pdfIframeContents.find('#viewerContainer').offset().top);
             pdfIframe.innerHeight(viewerHeight + viewerContainerTop + 2);
@@ -51,13 +50,13 @@ var e2pdfViewer = {
                     }
                 }
                 PDFViewerApplication.initializedPromise.then(function () {
-                    PDFViewerApplication.eventBus.on("pagesloaded", function (event) {
+                    PDFViewerApplication.eventBus.on('pagesloaded', function (event) {
                         pdfIframe.addClass('e2pdf-pages-loaded');
                         pdfIframeContents.find('html').addClass('e2pdf-pages-loaded');
                         e2pdfViewer.viewSinglePageSwitch(pdfIframe, 1);
                         e2pdfViewer.updateViewArea(pdfIframe, 'pagesloaded');
                     });
-                    PDFViewerApplication.eventBus.on("pagechanging", function (event) {
+                    PDFViewerApplication.eventBus.on('pagechanging', function (event) {
                         if (event && event.pageNumber) {
                             e2pdfViewer.viewSinglePageSwitch(pdfIframe, event.pageNumber);
                             e2pdfViewer.updateViewArea(pdfIframe, 'pagechanging');
@@ -211,21 +210,38 @@ jQuery(document).ready(function () {
         var linkURL = link.attr('href');
         if (!link.hasClass('e2pdf-download-progress')) {
             link.addClass('e2pdf-download-progress');
-            fetch(link.attr('href')).then(resp => {
+            fetch(link.attr('href'), {
+                method: 'GET',
+                headers: {
+                    'X-E2PDF-REQUEST': 'true'
+                }
+            }).then(resp => {
                 if (resp.ok) {
-                    resp.blob().then((blob) => {
+                    return resp.blob().then((blob) => {
                         const blobURL = URL.createObjectURL(blob);
                         link.attr('href', blobURL).addClass('e2pdf-download-ready');
                         link[0].click();
                         link.attr('href', linkURL).removeClass('e2pdf-download-ready e2pdf-download-progress');
                     });
                 } else {
-                    throw new Error("Not 2xx response", {cause: resp});
+                    var errorMessage = 'Something went wrong!';
+                    return resp.json().then((json) => {
+                        if (json && json.redirect_url) {
+                            link.attr('href', linkURL).removeClass('e2pdf-download-ready e2pdf-download-progress');
+                            window.location.href = json.redirect_url;
+                        } else {
+                            if (json && json.error) {
+                                errorMessage = json.error;
+                            }
+                            throw new Error(errorMessage);
+                        }
+                    }).catch(() => {
+                        throw new Error(errorMessage);
+                    });
                 }
             }).catch((error) => {
                 link.attr('href', linkURL).removeClass('e2pdf-download-ready e2pdf-download-progress');
-                console.log(error);
-                alert('Something went wrong');
+                alert(error.message || 'Something went wrong!');
             });
         }
     });
@@ -238,7 +254,12 @@ jQuery(document).ready(function () {
         var linkURL = link.attr('href');
         if (!link.hasClass('e2pdf-download-progress')) {
             link.addClass('e2pdf-download-progress');
-            fetch(link.attr('href')).then(resp => {
+            fetch(link.attr('href'), {
+                method: 'GET',
+                headers: {
+                    'X-E2PDF-REQUEST': 'true'
+                }
+            }).then(resp => {
                 if (resp.ok) {
                     resp.blob().then((blob) => {
                         const blobURL = URL.createObjectURL(new Blob([blob], {type: 'application/pdf'}));
@@ -247,12 +268,24 @@ jQuery(document).ready(function () {
                         link.removeClass('e2pdf-download-ready e2pdf-download-progress');
                     });
                 } else {
-                    throw new Error("Not 2xx response", {cause: resp});
+                    var errorMessage = 'Something went wrong!';
+                    return resp.json().then((json) => {
+                        if (json && json.redirect_url) {
+                            link.attr('href', linkURL).removeClass('e2pdf-download-ready e2pdf-download-progress');
+                            window.location.href = json.redirect_url;
+                        } else {
+                            if (json && json.error) {
+                                errorMessage = json.error;
+                            }
+                            throw new Error(errorMessage);
+                        }
+                    }).catch(() => {
+                        throw new Error(errorMessage);
+                    });
                 }
             }).catch((error) => {
                 link.attr('href', linkURL).removeClass('e2pdf-download-ready e2pdf-download-progress');
-                console.log(error);
-                alert('Something went wrong');
+                alert(error.message || 'Something went wrong!');
             });
         }
     });

@@ -1025,7 +1025,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                             $shortcode[3] .= ' filter="true"';
                         }
                         $file = false;
-                        if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                        if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {
                                 $tmp = false;
@@ -1183,7 +1183,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         $fields_data_json = str_replace('\\', '', $current_form_fields);
                         $fields_data_array = json_decode($fields_data_json, true);
                         /* Check whether captcha field is not empty */
-                        if ('on' === $captcha && 'off' === $use_spam_service && (!isset($data['et_pb_contact_captcha_' . $et_pb_contact_form_num]) || empty($data['et_pb_contact_captcha_' . $et_pb_contact_form_num]) )) {
+                        if ('on' === $captcha && 'off' === $use_spam_service && (!isset($data['et_pb_contact_captcha_' . $et_pb_contact_form_num]) || empty($data['et_pb_contact_captcha_' . $et_pb_contact_form_num]))) {
                             $et_contact_error = true;
                         } elseif ('on' === $use_spam_service) {
                             if (class_exists('ET_Builder_Element')) {
@@ -1249,7 +1249,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                 $item = false;
                                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                                 $atts = shortcode_parse_atts($shortcode[3]);
-                                if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                                if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                 } else {
                                     if (!isset($atts['dataset']) && isset($atts['id'])) {
                                         $template = new Model_E2pdf_Template();

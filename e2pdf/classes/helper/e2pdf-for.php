@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2pdf Shortcode For Helper
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.22.00
+ * File: /helper/e2pdf-for.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -36,14 +35,14 @@ class Helper_E2pdf_For {
         $tags = array(
             'e2pdf-for-data' => 'e2pdf-for-data',
             'e2pdf-for-do' => 'e2pdf-for-do',
-            'e2pdf-for-else' => 'e2pdf-for-else'
+            'e2pdf-for-else' => 'e2pdf-for-else',
         );
         /* Backward compatibility */
         if (false === strpos($value, '[e2pdf-for-data')) {
             $tags = array(
                 'e2pdf-for-data' => 'e2pdf-data',
                 'e2pdf-for-do' => 'e2pdf-do',
-                'e2pdf-for-else' => 'e2pdf-else'
+                'e2pdf-for-else' => 'e2pdf-else',
             );
         }
 
@@ -123,13 +122,13 @@ class Helper_E2pdf_For {
                                 }
                                 $response = implode($implode, $post_meta);
                             } else {
-                                $response = serialize($post_meta);
+                                $response = serialize($post_meta); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
                             }
                         } else {
-                            $response = serialize($post_meta);
+                            $response = serialize($post_meta); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
                         }
                     } elseif (is_object($post_meta)) {
-                        $response = serialize($post_meta);
+                        $response = serialize($post_meta); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
                     } else {
                         $response = $post_meta;
                     }
@@ -146,13 +145,7 @@ class Helper_E2pdf_For {
             if (!empty($sub_tagnames)) {
                 preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($sub_tagnames) . '/', $value, $sub_shortcodes);
                 foreach ($sub_shortcodes[0] as $key => $sub_shortcode_value) {
-                    $sub_shortcode = array();
-                    $sub_shortcode[1] = $sub_shortcodes[1][$key];
-                    $sub_shortcode[2] = $sub_shortcodes[2][$key];
-                    $sub_shortcode[3] = $sub_shortcodes[3][$key];
-                    $sub_shortcode[4] = $sub_shortcodes[4][$key];
-                    $sub_shortcode[5] = $sub_shortcodes[5][$key];
-                    $sub_shortcode[6] = $sub_shortcodes[6][$key];
+                    $sub_shortcode = $this->helper->load('shortcode')->get_shortcode($sub_shortcodes, $key);
                     $atts = shortcode_parse_atts($sub_shortcode[3]);
                     $value = str_replace($sub_shortcode_value, $this->do_shortcode(is_array($atts) ? $atts : array(), $sub_shortcode[5], $for + 1, $extension), $value);
                 }

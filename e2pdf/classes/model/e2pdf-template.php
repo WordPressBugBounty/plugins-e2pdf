@@ -51,6 +51,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
         }
 
         if ($template) {
+            $template = apply_filters('e2pdf_load_template', $template, $this);
             $this->template = $template;
             $extension = new Model_E2pdf_Extension();
             if ($this->get('extension')) {
@@ -66,8 +67,8 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             if ($this->get('ID')) {
                 $extension->set('template_id', $this->get('ID'));
             }
+            $extension = apply_filters('e2pdf_load_template_extension', $extension, $this);
             $this->extension = $extension;
-
             if ($full) {
                 $this->set('fonts', $this->helper->load('convert')->unserialize($template['fonts']));
                 $this->set('permissions', $this->helper->load('convert')->unserialize($template['permissions']));
@@ -538,7 +539,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                                 case 'e2pdf-checkbox':
                                 case 'e2pdf-radio':
                                     $pages[$page_key]['elements'][$element_key]['properties']['option'] = $this->extension()->render(
-                                            isset($element['properties']['option']) ? $element['properties']['option'] : '', $element
+                                            isset($element['properties']['option']) ? $element['properties']['option'] : ''
                                     );
                                     $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
                                             $element['value'], $element
@@ -546,7 +547,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                                     break;
                                 case 'e2pdf-select':
                                     $pages[$page_key]['elements'][$element_key]['properties']['options'] = $this->extension()->render(
-                                            isset($element['properties']['options']) ? $element['properties']['options'] : '', $element
+                                            isset($element['properties']['options']) ? $element['properties']['options'] : ''
                                     );
                                     $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
                                             $element['value'], $element

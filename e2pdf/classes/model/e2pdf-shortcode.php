@@ -128,7 +128,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 $template->extension()->set($option_key, $option_value);
             }
 
-            if ($template->extension()->verify() && $this->process_shortcode($template)) {
+            if ($template->extension()->verify() && $this->process_shortcode($template, 'e2pdf_attachment')) {
 
                 if (array_key_exists('inline', $atts)) {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
@@ -590,7 +590,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 $template->extension()->set($option_key, $option_value);
             }
 
-            if ($template->extension()->verify() && $this->process_shortcode($template)) {
+            if ($template->extension()->verify() && $this->process_shortcode($template, 'e2pdf_download')) {
 
                 if (array_key_exists('inline', $atts)) {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
@@ -922,7 +922,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 $template->extension()->set($option_key, $option_value);
             }
 
-            if ($template->extension()->verify() && $this->process_shortcode($template)) {
+            if ($template->extension()->verify() && $this->process_shortcode($template, 'e2pdf_save')) {
 
                 if (array_key_exists('inline', $atts)) {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
@@ -1627,7 +1627,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 $template->extension()->set($option_key, $option_value);
             }
 
-            if ($template->extension()->verify() && $this->process_shortcode($template)) {
+            if ($template->extension()->verify() && $this->process_shortcode($template, 'e2pdf_zapier')) {
 
                 if (array_key_exists('inline', $atts)) {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
@@ -2346,7 +2346,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 $template->extension()->set($option_key, $option_value);
             }
 
-            if ($template->extension()->verify() && $this->process_shortcode($template)) {
+            if ($template->extension()->verify() && $this->process_shortcode($template, 'e2pdf_view')) {
 
                 if (array_key_exists('inline', $atts)) {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
@@ -2640,7 +2640,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 $template->extension()->set($option_key, $option_value);
             }
 
-            if ($template->extension()->verify() && $this->process_shortcode($template)) {
+            if ($template->extension()->verify() && $this->process_shortcode($template, 'e2pdf_adobesign')) {
 
                 if (array_key_exists('inline', $atts)) {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
@@ -3236,7 +3236,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         }
 
         $closed_tags = array(
-            'style', 'script', 'title', 'head', 'a'
+            'style', 'script', 'title', 'head', 'a',
         );
         if (isset($atts['closed_tags']) && $atts['closed_tags']) {
             $closed_tags = array_merge($closed_tags, explode(',', $atts['closed_tags']));
@@ -3396,6 +3396,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 break;
                             case 'html_entity_decode':
                                 $n = html_entity_decode($n);
+                                break;
+                            case 'urlencode':
+                                $n = urlencode($n);  // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
+                                break;
+                            case 'urldecode':
+                                $n = urldecode($n);
                                 break;
                             case 'strip_shortcodes':
                                 if (false !== strpos($n, '&#091;')) {
@@ -3648,7 +3654,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             } else {
                 $user_meta = 'false';
             }
-        } elseif ($key && in_array($key, $data_fields) && !$meta) {
+        } elseif ($key && in_array($key, $data_fields, true) && !$meta) {
             $user = get_userdata($id);
             if (isset($user->$key)) {
                 $user_meta = $user->$key;
@@ -7357,52 +7363,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     }
 
     public function e2pdf_acf_repeater($atts, $content = '') {
-
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_acf_repeater', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
         }
-
-        $response = '';
-        $field = isset($atts['field']) ? $atts['field'] : null;
-        $post_id = isset($atts['post_id']) ? $atts['post_id'] : null;
-        $i = 0;
-        if (function_exists('have_rows') && have_rows($field, $post_id)) {
-            while (have_rows($field, $post_id)) {
-                the_row();
-                $r_content = $content;
-                $r_content = str_replace('[e2pdf-acf-repeater-index]', $i, $r_content);
-                $shortcode_tags = array(
-                    'acf',
-                );
-                preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $r_content, $matches);
-                $tagnames = array_intersect($shortcode_tags, $matches[1]);
-                if (!empty($tagnames)) {
-                    preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $r_content, $shortcodes);
-                    foreach ($shortcodes[0] as $key => $shortcode_value) {
-                        $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
-                        $atts = shortcode_parse_atts($shortcode[3]);
-                        if ($shortcode[2] === 'acf') {
-                            if (!isset($atts['post_id']) && $post_id) {
-                                $shortcode[3] .= ' post_id="' . $post_id . '"';
-                            }
-                            if ($field && isset($atts['field'])) {
-                                if (isset($atts['repeater']) && $atts['repeater'] == 'false') {
-                                    $r_content = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $r_content);
-                                } else {
-                                    $shortcode[3] .= ' field="' . $field . '_' . $i . '_' . $atts['field'] . '"';
-                                    $r_content = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $r_content);
-                                }
-                            } else {
-                                $r_content = str_replace($shortcode_value, '', $r_content);
-                            }
-                        }
-                    }
-                }
-                $response .= $r_content;
-                $i++;
-            }
-        }
-        return $response;
+        return $this->helper->load('acfrepeater')->do_shortcode($atts, $content);
     }
 
     /**
@@ -7421,7 +7385,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $value;
     }
 
-    public function process_shortcode($template) {
+    public function process_shortcode($template, $shortcode = false) {
         if ($template->get('actions')) {
             $model_e2pdf_action = new Model_E2pdf_Action();
             $model_e2pdf_action->load($template->extension());
@@ -7433,6 +7397,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 if (isset($action['action']) && $action['action'] == 'restrict_process_shortcodes' && isset($action['success'])) {
                     return false;
                 } elseif (isset($action['action']) && $action['action'] == 'process_shortcodes' && !isset($action['success'])) {
+                    return false;
+                } elseif ($shortcode && isset($action['action']) && $action['action'] == 'restrict_process_shortcode_' . $shortcode && isset($action['success'])) {
+                    return false;
+                } elseif ($shortcode && isset($action['action']) && $action['action'] == 'process_shortcode_' . $shortcode && !isset($action['success'])) {
                     return false;
                 }
             }

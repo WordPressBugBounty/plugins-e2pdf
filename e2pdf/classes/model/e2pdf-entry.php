@@ -46,6 +46,7 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
             }
         }
         if ($entry) {
+            $entry = apply_filters('e2pdf_load_entry_by_uid', $entry, $this);
             $this->entry = $entry;
             $this->set('entry', $this->helper->load('convert')->unserialize($entry['entry']));
             return true;

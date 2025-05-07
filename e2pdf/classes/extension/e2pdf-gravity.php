@@ -2401,7 +2401,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     $shortcode[3] .= ' filter="true"';
                 }
                 $file = false;
-                if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                     if (class_exists('GFCommon')) {
                         add_filter('gform_merge_tag_filter', array($this, 'filter_gform_merge_tag_filter_attributes'), 30, 5);
                         $shortcode[3] = GFCommon::replace_variables($shortcode[3], $form, $entry, false, false, false, 'text');
@@ -2421,7 +2421,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                         } else {
                             $this->helper->add('gravity_attachments', $file);
                         }
-                        $notification['attachments'] = ( is_array(rgget('attachments', $notification)) ) ? rgget('attachments', $notification) : array();
+                        $notification['attachments'] = (is_array(rgget('attachments', $notification))) ? rgget('attachments', $notification) : array();
                         $notification['attachments'][] = $file;
                     }
                     $notification['message'] = str_replace($shortcode_value, '', $notification['message']);
@@ -2451,7 +2451,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
             foreach ($shortcodes[0] as $key => $shortcode_value) {
                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                 $atts = shortcode_parse_atts($shortcode[3]);
-                if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                 } else {
                     if (!isset($atts['dataset']) && isset($atts['id'])) {
                         $template = new Model_E2pdf_Template();

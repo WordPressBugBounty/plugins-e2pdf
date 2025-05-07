@@ -49,32 +49,29 @@ class Controller_E2pdf_Debug extends Helper_E2pdf_View {
                     $db_prefix = $wpdb->prefix;
                     $this->helper->load('db')->db_repair($db_prefix);
                     $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Repair DB', 'e2pdf')));
-                    $this->redirect(
-                            $this->helper->get_url(
-                                    array(
-                                        'page' => 'e2pdf-debug',
-                                        'action' => 'db',
-                                    )
-                            )
-                    );
+                } elseif ($this->post->get('e2pdf_db_repair_collate')) {
+                    $db_prefix = $wpdb->prefix;
+                    $this->helper->load('db')->db_repair_collate($db_prefix);
+                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Repair DB Collate', 'e2pdf')));
                 } elseif ($this->post->get('e2pdf_db')) {
                     $db_prefix = $wpdb->prefix;
                     $this->helper->load('db')->db_init($db_prefix);
                     $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Reinitialize DB Hooks', 'e2pdf')));
-                    $this->redirect(
-                            $this->helper->get_url(
-                                    array(
-                                        'page' => 'e2pdf-debug',
-                                        'action' => 'db',
-                                    )
-                            )
-                    );
                 }
+                $this->redirect(
+                        $this->helper->get_url(
+                                array(
+                                    'page' => 'e2pdf-debug',
+                                    'action' => 'db',
+                                )
+                        )
+                );
             } else {
                 wp_die($this->message('wp_verify_nonce_error'));
             }
         }
         $this->view('db_structure', $this->helper->load('db')->db_structure($wpdb->prefix, true));
+        $this->view('db_check_collate', $this->helper->load('db')->db_check_collate($wpdb->prefix));
     }
 
     /**

@@ -795,7 +795,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         $float = false;
                         $columns = explode(':', $row);
                         foreach ($columns as $column_num => $column) {
-                            $column_fields = array_keys($sub_form['layout_grid']['fields'], ( $row_num + 1) . ':' . ( $column_num + 1));
+                            $column_fields = array_keys($sub_form['layout_grid']['fields'], ($row_num + 1) . ':' . ($column_num + 1));
                             $width = 100 / (12 / $column) . '%';
                             foreach ($column_fields as $column_field_key) {
                                 if (isset($fields[$column_field_key])) {
@@ -1404,7 +1404,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                    if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
                         if (!isset($atts['dataset']) && isset($atts['id'])) {
                             $template = new Model_E2pdf_Template();
@@ -1512,7 +1512,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                             $shortcode[3] .= ' filter="true"';
                         }
                         $file = false;
-                        if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                        if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {
                                 $tmp = false;

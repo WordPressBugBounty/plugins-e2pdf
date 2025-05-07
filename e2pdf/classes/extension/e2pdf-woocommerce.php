@@ -477,14 +477,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
     public function action_elementor_widget_before_render_content($widget) {
         if ($widget && ($widget->get_name() == 'shortcode' || $widget->get_name() == 'text-editor')) {
             $content = $widget->get_name() == 'shortcode' ? $widget->get_settings('shortcode') : $widget->get_settings('editor');
-            if ($content && (
-                    false !== strpos($content, '[e2pdf-download') ||
-                    false !== strpos($content, '[e2pdf-save') ||
-                    false !== strpos($content, '[e2pdf-view') ||
-                    false !== strpos($content, '[e2pdf-adobesign') ||
-                    false !== strpos($content, '[e2pdf-zapier')
-                    )
-            ) {
+            if ($content && false !== strpos($content, '[e2pdf-')) {
                 $wp_reset_postdata = true;
                 if (class_exists('\ElementorPro\Plugin') && class_exists('\ElementorPro\Modules\LoopBuilder\Documents\Loop')) {
                     $document = \ElementorPro\Plugin::elementor()->documents->get_current();
@@ -1344,7 +1337,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             $shortcode[3] .= ' filter="true"';
                                         }
                                         $shortcode[3] .= ' dataset="' . $order->get_id() . '"';
-                                        if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+                                        if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                                             $file = do_shortcode_tag($shortcode);
                                             if ($file) {
                                                 $tmp = false;
@@ -2315,7 +2308,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 if ($wp_reset_postdata) {
                     wp_reset_postdata();
                 }
-                if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                 } else {
                     if (isset($atts['id'])) {
                         $template = new Model_E2pdf_Template();

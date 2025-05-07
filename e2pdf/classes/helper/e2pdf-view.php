@@ -213,6 +213,21 @@ class Helper_E2pdf_View {
         wp_die();
     }
 
+    public function json_response_ajax($data = array(), $status = 200) {
+        if (ob_get_length() > 0) {
+            while (@ob_end_clean());
+        }
+        status_header($status);
+        header('X-Robots-Tag: noindex, nofollow');
+        @header('Content-Type: application/json; charset=' . get_option('blog_charset'));
+        if (function_exists('wp_json_encode')) {
+            echo wp_json_encode($data, JSON_FORCE_OBJECT);
+        } else {
+            echo json_encode($data, JSON_FORCE_OBJECT);
+        }
+        exit;
+    }
+
     /**
      * Force close browser tab from PHP
      */
