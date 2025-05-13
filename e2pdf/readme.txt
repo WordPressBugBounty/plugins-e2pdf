@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 6.8
 Requires PHP: 5.4
-Stable tag: 1.28.04
+Stable tag: 1.28.05
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -137,6 +137,11 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 6. Settings Page.
 
 == Changelog ==
+
+= 1.28.05 =
+*Release Date - 13 May 2025*
+
+* Fix: Backward compatibility with Formidable Forms 5.x
 
 = 1.28.04 =
 *Release Date - 07 May 2025*

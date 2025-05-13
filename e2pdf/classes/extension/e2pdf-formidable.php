@@ -170,7 +170,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             $entries = FrmEntry::getAll($where, ' ORDER BY id DESC');
             if ($entries) {
                 $this->set('item', $item_id);
-                if (class_exists('FrmFieldsHelper')) {
+                if (class_exists('FrmFieldsHelper') && class_exists('FrmFormsController') && method_exists('FrmFormsController', 'replace_form_name_shortcodes')) {
                     $this->set('cached_shortcodes', FrmFieldsHelper::get_shortcodes($name, $item_id));
                 }
                 foreach ($entries as $key => $entry) {
