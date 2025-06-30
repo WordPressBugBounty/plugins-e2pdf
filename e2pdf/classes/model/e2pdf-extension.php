@@ -118,43 +118,9 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     // render
     public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         if ($this->extension() && method_exists($this->extension(), 'render')) {
-
-            add_filter('e2pdf_pdf_render', array($this, '__return_true'), 999);
-
-            if (class_exists('ACF')) {
-                if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
-                    add_filter('acf/settings/enable_shortcode', array($this, '__return_true'), 999);
-                }
-                if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
-                    add_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, '__return_true'), 999);
-                }
-                if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
-                    add_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
-                }
-                if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
-                    add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this, '__return_false'), 999);
-                }
-            }
-
+            $this->pre_render();
             $content = $this->extension()->render($value, $field, $convert_shortcodes, $raw);
-
-            if (class_exists('ACF')) {
-                if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
-                    remove_filter('acf/settings/enable_shortcode', array($this, '__return_true'), 999);
-                }
-                if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
-                    remove_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, '__return_true'), 999);
-                }
-                if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
-                    remove_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
-                }
-                if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
-                    remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this, '__return_false'), 999);
-                }
-            }
-
-            remove_filter('e2pdf_pdf_render', array($this, '__return_true'), 999);
-
+            $this->after_render();
             $type = isset($field['type']) ? $field['type'] : false;
             if ($type == 'e2pdf-image' || $type == 'e2pdf-signature' || $type == 'e2pdf-qrcode' || $type == 'e2pdf-barcode' || $type == 'e2pdf-graph') {
                 return $content;
@@ -165,18 +131,57 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return '';
     }
 
-    // convert shortcodes
-    public function convert_shortcodes($value, $to = false, $html = false) {
-        if ($this->extension() && method_exists($this->extension(), 'convert_shortcodes')) {
-            return $this->extension()->convert_shortcodes($value, $to, $html);
+    // datasets
+    public function datasets($item = false, $name = false) {
+        if ($this->extension() && method_exists($this->extension(), 'datasets')) {
+            $this->pre_render();
+            $content = $this->extension()->datasets($item, $name);
+            $this->after_render();
+            return $content;
         }
         return false;
     }
 
-    // datasets
-    public function datasets($item = false, $name = false) {
-        if ($this->extension() && method_exists($this->extension(), 'datasets')) {
-            return $this->extension()->datasets($item, $name);
+    public function pre_render() {
+        add_filter('e2pdf_pdf_render', array($this, '__return_true'), 999);
+        if (class_exists('ACF')) {
+            if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
+                add_filter('acf/settings/enable_shortcode', array($this, '__return_true'), 999);
+            }
+            if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
+                add_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, '__return_true'), 999);
+            }
+            if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
+                add_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
+            }
+            if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
+                add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this, '__return_false'), 999);
+            }
+        }
+    }
+
+    public function after_render() {
+        if (class_exists('ACF')) {
+            if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
+                remove_filter('acf/settings/enable_shortcode', array($this, '__return_true'), 999);
+            }
+            if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
+                remove_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, '__return_true'), 999);
+            }
+            if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
+                remove_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
+            }
+            if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
+                remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this, '__return_false'), 999);
+            }
+        }
+        remove_filter('e2pdf_pdf_render', array($this, '__return_true'), 999);
+    }
+
+    // convert shortcodes
+    public function convert_shortcodes($value, $to = false, $html = false) {
+        if ($this->extension() && method_exists($this->extension(), 'convert_shortcodes')) {
+            return $this->extension()->convert_shortcodes($value, $to, $html);
         }
         return false;
     }
