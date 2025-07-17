@@ -1175,7 +1175,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 );
                                 $attachment_id = wp_insert_attachment($attachment_args, $file['file']);
                                 if (!is_wp_error($attachment_id) && $attachment_id) {
-                                    require_onceABSPATH . 'wp-admin/includes/image.php';
+                                    require_once ABSPATH . 'wp-admin/includes/image.php';
                                     $attachment_metadata = wp_generate_attachment_metadata($attachment_id, $file['file']);
                                     wp_update_attachment_metadata($attachment_id, $attachment_metadata);
                                     $file_path = get_attached_file($attachment_id);
