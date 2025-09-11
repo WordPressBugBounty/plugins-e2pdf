@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) {
 class Model_E2pdf_Bulk extends Model_E2pdf_Model {
 
     private $table;
+    private $key;
     private $bulk = array();
 
     public function __construct() {
