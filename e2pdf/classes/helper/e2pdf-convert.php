@@ -218,4 +218,42 @@ class Helper_E2pdf_Convert {
         }
         return $value;
     }
+
+    public function load_html($source, $dom, $form = false) {
+        libxml_use_internal_errors(true);
+        $options = defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD') ? LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD : 0;
+        if ($form && $options) {
+            $source = '<html>' . $source . '</html>';
+        }
+        if (function_exists('mb_encode_numericentity')) {
+            $html = $dom->loadHTML($this->html_entities($source), $options);
+        } else {
+            $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source, $options);
+        }
+        libxml_clear_errors();
+        return $html;
+    }
+
+    public function html_entities($source) {
+        if (!function_exists('mb_encode_numericentity')) {
+            return $source;
+        }
+        $map = [
+            0x80, 0xFFFF, 0, 0xFFFF
+        ];
+        try {
+            return mb_encode_numericentity($source, $map, 'UTF-8');
+        } catch (Exception $e) {
+            if (function_exists('mb_detect_encoding') && function_exists('mb_detect_order') && function_exists('iconv')) {
+                $charset = mb_detect_encoding($source, mb_detect_order(), true);
+                $source = iconv($charset, 'UTF-8//IGNORE', $source);
+                return mb_encode_numericentity($source, $map, 'UTF-8');
+            }
+            return $source;
+        }
+    }
+
+    public function html_entities_decode($source) {
+        return html_entity_decode($source, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
 }

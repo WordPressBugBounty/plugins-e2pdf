@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 6.8
 Requires PHP: 5.4
-Stable tag: 1.28.08
+Stable tag: 1.28.09
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -137,6 +137,21 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 6. Settings Page.
 
 == Changelog ==
+
+= 1.28.09 =
+*Release Date - 13 September 2025*
+
+* Add: JetFormBuilder revision form entries
+* Add: WPForms Likert Scale support
+* Add: Gravity Forms repeater fields support
+* Add: Gravity Forms json value format support
+* Add: [e2pdf-format-output] sreplace filter
+* Add: [e2pdf-math] modulo operator
+* Fix: Gravity Forms signature and hidden fields Visual Mapper
+* Fix: Fatal error on JetFormBuilder no entries
+* Fix: PHP 8.x deprecation notice
+* Improvement: truncate_html, truncate_ishtml, extract_by_tag, extract_by_id, extract_by_class, remove_by_tag, remove_by_id, remove_by_class html entities
+* Improvement: Visual Mapper
 
 = 1.28.08 =
 *Release Date - 11 September 2025*

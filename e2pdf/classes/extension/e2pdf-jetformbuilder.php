@@ -47,6 +47,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
         switch ($key) {
             case 'item':
                 $this->set('cached_form', false);
+                $this->set('cached_forms', array());
                 $form = get_post($this->get('item'));
                 if ($form) {
                     $this->set('cached_form', jet_fb_handler()->set_form_id($this->get('item')));
@@ -55,15 +56,17 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
             case 'dataset':
                 $this->set('cached_entry', false);
                 if ($this->get('cached_form') && $this->get('dataset')) {
+                    $forms = $this->get_all_forms($this->get('cached_form')->get_form_id());
                     if (substr($this->get('dataset'), 0, 4) === 'tmp_') {
                         $transient = get_transient('e2pdf_' . $this->get('dataset'));
-                        if (isset($transient['__form_id']) && ($transient['__form_id'] == $this->get('cached_form')->get_form_id())) {
+                        if (isset($transient['__form_id']) && (in_array($transient['__form_id'], $forms, false))) {
                             $this->set('cached_entry', $transient);
                         }
                     } else {
                         global $wpdb;
+                        $placeholders = implode(',', array_fill(0, count($forms), '%d'));
                         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-                        $record = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . \JFB_Modules\Form_Record\Models\Record_Model::table() . '` WHERE id = %d AND form_id = %d', $this->get('dataset'), $this->get('cached_form')->get_form_id()), ARRAY_A);
+                        $record = $wpdb->get_row($wpdb->prepare('SELECT * FROM `' . \JFB_Modules\Form_Record\Models\Record_Model::table() . '` WHERE id = %d AND form_id IN (' . $placeholders . ')', array_merge([$this->get('dataset')], $forms)), ARRAY_A);
                         if ($record) {
                             \JFB_Modules\Form_Record\Tools::apply_context($record);
                             $this->set('cached_entry', $record);
@@ -141,8 +144,24 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
             $html['iframe']['cursor'] = true;
             $html['iframe']['scroll'] = true;
             $html['iframe']['spread'] = true;
+            $html['img']['onload'] = true;
+            $html['img']['style'] = true;
+            $html['img']['preload'] = true;
+            $html['img']['class'] = true;
+            $html['a']['lid'] = true;
+            $html['a']['download'] = true;
+            $html['a']['class'] = true;
         }
         return $html;
+    }
+
+    public function filter_safe_style_css($styles) {
+        $styles[] = 'display';
+        $styles[] = 'width';
+        $styles[] = 'height';
+        $styles[] = 'border-width';
+        $styles[] = 'border';
+        return $styles;
     }
 
     public function action_jet_form_builder_form_handler_before_send() {
@@ -346,6 +365,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                         $tagnames = array_intersect($shortcode_tags, $matches[1]);
                         if (!empty($tagnames)) {
                             add_filter('wp_kses_allowed_html', array($this, 'filter_wp_kses_allowed_html'), 10, 2);
+                            add_filter('safe_style_css', array($this, 'filter_safe_style_css'));
                             preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $success_message, $shortcodes);
                             foreach ($shortcodes[0] as $key => $shortcode_value) {
                                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
@@ -426,28 +446,34 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
 
         $datasets = array();
         if ($item_id) {
-            $record_view = (new \JFB_Modules\Form_Record\Query_Views\Record_View())->set_filters(// phpcs:ignore WordPress.Security
+            $forms = $this->get_all_forms($item_id);
+            $record_view = (new \JFB_Modules\Form_Record\Query_Views\Record_View())->add_conditions(
                     array(
-                        'form' => $item_id,
+                        array(
+                            'type' => 'in',
+                            'values' => array('form_id', $forms),
+                        ),
                     )
             );
             $columns['id'] = true;
             $record_view->set_select(array_keys($columns));
-            $entries = $record_view->query()->generate_all(ARRAY_A);
-
-            if ($entries) {
-                $this->set('item', $item_id);
-                foreach ($entries as $key => $entry) {
-                    $this->set('dataset', $entry['id']);
-                    $entry_title = $this->render($name);
-                    if (!$entry_title) {
-                        $entry_title = $entry['id'];
+            try {
+                $entries = $record_view->query()->generate_all(ARRAY_A);
+                if ($entries) {
+                    $this->set('item', $item_id);
+                    foreach ($entries as $key => $entry) {
+                        $this->set('dataset', $entry['id']);
+                        $entry_title = $this->render($name);
+                        if (!$entry_title) {
+                            $entry_title = $entry['id'];
+                        }
+                        $datasets[] = array(
+                            'key' => $entry['id'],
+                            'value' => $entry_title,
+                        );
                     }
-                    $datasets[] = array(
-                        'key' => $entry['id'],
-                        'value' => $entry_title,
-                    );
                 }
+            } catch (Exception $ex) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
             }
         }
         return $datasets;
@@ -571,23 +597,15 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
         if (function_exists('jet_fb_render_form')) {
             $source = jet_fb_render_form(array('form_id' => $this->get('item')));
             if ($source) {
-                libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
-                if (function_exists('mb_convert_encoding')) {
-                    $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
-                } else {
-                    $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
-                }
-                libxml_clear_errors();
+                $html = $this->helper->load('convert')->load_html($source, $dom, true);
             }
         }
-
         if (!$source) {
             return '<div class="e2pdf-vm-error">' . __("The form source is empty or doesn't exist", 'e2pdf') . '</div>';
         } elseif (!$html) {
             return '<div class="e2pdf-vm-error">' . __('The form could not be parsed due the incorrect HTML', 'e2pdf') . '</div>';
         } else {
-
             $xml = $this->helper->load('xml');
             $xml->set('dom', $dom);
             $xpath = new DomXPath($dom);
@@ -596,7 +614,6 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                 'jet-form-builder-repeater__initial',
                 'jet-form-builder-page--hidden',
             );
-
             foreach ($remove_classes as $key => $class) {
                 $elements = $xpath->query("//*[contains(@class, '{$class}')]");
                 foreach ($elements as $element) {
@@ -604,6 +621,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                 }
             }
 
+            // remove by class
             $remove_by_class = array(
                 'jet-form-builder__next-page-wrap',
                 'jet-form-builder-repeater__actions',
@@ -611,6 +629,20 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
             );
             foreach ($remove_by_class as $key => $class) {
                 $elements = $xpath->query("//*[contains(@class, '{$class}')]");
+                foreach ($elements as $element) {
+                    $element->parentNode->removeChild($element);
+                }
+            }
+
+            // remove by name
+            $remove_by_name = array(
+                '_jfb_current_render_states[]',
+                '_jet_engine_booking_form_id',
+                '_jet_engine_refer',
+                '__queried_post_id'
+            );
+            foreach ($remove_by_name as $key => $name) {
+                $elements = $xpath->query('//*[@name="' . $name . '"]');
                 foreach ($elements as $element) {
                     $element->parentNode->removeChild($element);
                 }
@@ -639,7 +671,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                 $xml->set_node_value($element, 'name', '%' . $xml->get_node_value($element, 'name') . '%');
             }
 
-            // Repeaters
+            // repeaters
             $elements = $xpath->query("//*[contains(@class, 'field-type-repeater-field')]");
             foreach ($elements as $element) {
                 $sub_elements = $xpath->query('.//input|.//textarea|.//select', $element);
@@ -656,7 +688,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                 }
             }
 
-            // Remove unecessary elements
+            // remove unecessary elements
             $submit_buttons = $xpath->query("//button[@type='submit']");
             foreach ($submit_buttons as $element) {
                 $element->parentNode->removeChild($element);
@@ -1196,6 +1228,25 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
         return $styles;
     }
 
+    // get all forms
+    public function get_all_forms($item_id) {
+
+        // phpcs:disable WordPress.Arrays.ArrayIndentation.ItemNotAligned
+        $forms = new WP_Query(
+                [
+            'post_parent' => $item_id,
+            'post_type' => ['any', 'revision'],
+            'post_status' => ['any'],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+                ]
+        );
+        // phpcs:enable WordPress.Arrays.ArrayIndentation.ItemNotAligned
+
+        return array_merge([$item_id], $forms->posts);
+    }
+
+    // entry view hook
     public function hook_jetformbuilder_entry_view($containers) {
         if (class_exists('\JFB_Modules\Form_Record\Models\Record_Model') && !empty($containers[1]) && is_a($containers[1], '\Jet_Form_Builder\Admin\Single_Pages\Meta_Containers\Side_Meta_Container')) {
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -1345,12 +1396,10 @@ function hook_e2pdf_jetformbuilder_content_filter($hooks = array()) {
                 if (empty($value)) {
                     return '';
                 }
-
                 $sub_args = array();
                 if (!empty($args[0])) {
                     $sub_args = explode(':', $args[0]);
                 }
-
                 $filter = isset($sub_args[0]) ? $sub_args[0] : '';
                 if ($filter == 'glossary_labels') {
                     if (function_exists('jet_engine_label_by_glossary') && !empty($sub_args[1])) {

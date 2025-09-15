@@ -1398,7 +1398,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         ) {
 
             $tmp = tempnam($this->helper->get('tmp_dir'), 'e2pdf');
-            file_put_contents($tmp, base64_decode((string) $xml->item->formidable));
+            file_put_contents($tmp, base64_decode((string) $xml->item->formidable), LOCK_EX);
             $dom = new DOMDocument();
             $success = $dom->loadXML(file_get_contents($tmp));
             $old_ids = array();
@@ -1504,7 +1504,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         ) {
 
             $tmp = tempnam($this->helper->get('tmp_dir'), 'e2pdf');
-            file_put_contents($tmp, base64_decode((string) $xml->item->formidable));
+            file_put_contents($tmp, base64_decode((string) $xml->item->formidable), LOCK_EX);
 
             $dom = new DOMDocument();
             $success = $dom->loadXML(file_get_contents($tmp));
@@ -1518,7 +1518,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 foreach ($item_xml->form as $form_key => $form) {
                     if (($template->get('item') != '-2' && (string) $form->id == (string) $xml->template->item) || ($template->get('item') == '-2' && ((string) $form->id == (string) $xml->template->item1 || (string) $form->id == (string) $xml->template->item2))) {
                         foreach ($form->field as $field_key => $field) {
-                            $field_options = @json_decode((string) $field->field_options, true);
+                            $field_options = @json_decode((string) $field->field_options, true); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                             if (isset($field_options['form_select']) && $field_options['form_select']) {
                                 foreach ($item_xml->form as $sub_form_key => $sub_form) {
                                     if ((string) $sub_form->id == $field_options['form_select']) {
@@ -1614,7 +1614,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         ) {
 
             $tmp = tempnam($this->helper->get('tmp_dir'), 'e2pdf');
-            file_put_contents($tmp, base64_decode((string) $xml->item->formidable));
+            file_put_contents($tmp, base64_decode((string) $xml->item->formidable), LOCK_EX);
 
             $dom = new DOMDocument();
             $success = $dom->loadXML(file_get_contents($tmp));
@@ -3348,7 +3348,8 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 ),
             );
 
-            if ($item = FrmForm::create($form)) {
+            $item = FrmForm::create($form);
+            if ($item) {
                 $template->set('item', $item);
 
                 $checkboxes = array();
@@ -3401,7 +3402,8 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                                 }
                             }
 
-                            if (!empty($field_values) && $field_id = FrmField::create($field_values)) {
+                            $field_id = !empty($field_values) ? FrmField::create($field_values) : false;
+                            if ($field_id) {
                                 $field = FrmField::getOne($field_id);
                                 $labels = array();
 
@@ -3501,26 +3503,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             }
             remove_filter('frm_show_new_entry_page', array($this, 'filter_frm_show_new_entry_page'), 99);
             remove_filter('frm_pre_display_form', array($this, 'filter_frm_pre_display_form'));
-
             if ($source) {
-                libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
-                if (function_exists('mb_convert_encoding')) {
-                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    } else {
-                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
-                    }
-                } else {
-                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    } else {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
-                    }
-                }
-                libxml_clear_errors();
+                $html = $this->helper->load('convert')->load_html($source, $dom, true);
             }
-
             if (!$source) {
                 return '<div class="e2pdf-vm-error">' . __("The form source is empty or doesn't exist", 'e2pdf') . '</div>';
             } elseif (!$html) {
@@ -3531,6 +3517,26 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
 
+                // remove by name
+                $remove_by_name = array(
+                    'frm_action',
+                    'form_id',
+                    'frm_hide_fields_' . $this->get('item'),
+                    'form_key',
+                    '0',
+                    'frm_submit_entry_' . $this->get('item'),
+                    '_wp_http_referer',
+                    'item_key',
+                    'frm_state',
+                );
+                foreach ($remove_by_name as $key => $name) {
+                    $elements = $xpath->query('//*[@name="' . $name . '"]');
+                    foreach ($elements as $element) {
+                        $element->parentNode->removeChild($element);
+                    }
+                }
+
+                // remove by class
                 $remove_by_class = array(
                     'frm_ajax_loading',
                     'wp-editor-tools',
@@ -3550,6 +3556,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     }
                 }
 
+                // remove by tag
                 $remove_by_tag = array(
                     'link',
                     'style',
@@ -3562,12 +3569,12 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     }
                 }
 
+                // remove classes
                 $remove_classes = array(
                     'wp-editor-container',
                     'frm_logic_form',
                     'frm_pos_none',
                 );
-
                 foreach ($remove_classes as $key => $class) {
                     $elements = $xpath->query("//*[contains(@class, '{$class}')]");
                     foreach ($elements as $element) {
@@ -3575,10 +3582,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     }
                 }
 
+                // remove styles
                 $remove_styles = array(
                     'frm_toggle_container',
                 );
-
                 foreach ($remove_styles as $key => $class) {
                     $elements = $xpath->query("//*[contains(@class, '{$class}')]");
                     foreach ($elements as $element) {
@@ -3595,7 +3602,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     '/item_meta\[(.*?)\](\[\])?/i' => '$1',
                 );
 
-                /* Replace names */
+                // replace names
                 $metas = $xpath->query("//*[contains(@name, 'item_meta')]");
                 foreach ($metas as $element) {
                     $field_id = preg_replace(array_keys($metas_pattern), $metas_pattern, $xml->get_node_value($element, 'name'));
@@ -3664,7 +3671,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     }
                 }
 
-                /* Replace signature */
+                // replace signature
                 $sigpad = $xpath->query("//*[contains(@class, 'sigPad')]");
                 foreach ($sigpad as $element) {
                     $input = $xpath->query('.//input', $element)->item(0);
@@ -3685,7 +3692,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     }
                 }
 
-                /* Replace names */
+                // replace names
                 $fields = $xpath->query('//input');
                 foreach ($fields as $element) {
 
@@ -3797,13 +3804,13 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     $xml->set_node_value($element, 'name', '[' . $name . ']');
                 }
 
-                /* Replace names */
+                // replace names
                 $textareas = $xpath->query('//textarea');
                 foreach ($textareas as $element) {
                     $xml->set_node_value($element, 'name', '[' . $xml->get_node_value($element, 'name') . ' wpautop=0]');
                 }
 
-                /* Replace names */
+                // replace names
                 $selects = $xpath->query('//select');
                 foreach ($selects as $element) {
 
@@ -3873,11 +3880,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                             }
                         }
                     }
-
                     $xml->set_node_value($element, 'name', '[' . $xml->get_node_value($element, 'name') . ']');
                 }
 
-                /* Show Total Formatted Fields */
+                // show total formatted fields
                 $total_formatted = $xpath->query("//*[contains(@class, 'frm_total_formatted')]/parent::*");
                 foreach ($total_formatted as $element) {
                     $elements = $xpath->query("//*[contains(@class, 'frm_hidden')]");

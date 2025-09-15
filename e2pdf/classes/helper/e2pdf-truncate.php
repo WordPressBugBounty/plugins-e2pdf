@@ -34,31 +34,27 @@ class Helper_E2pdf_Truncate {
             $this->length = 0;
             $this->limit = false;
             $this->elements = array();
-
             $this->max_length = $max_length;
             $this->read_more = $read_more;
             $this->break_words = $break_words;
             $text = '<div>' . $text . '</div>';
             $dom = new DOMDocument();
-            if (function_exists('mb_convert_encoding')) {
-                $dom->loadHTML(mb_convert_encoding($text, 'HTML-ENTITIES', 'UTF-8'));
-            } else {
-                $dom->loadHTML('<?xml encoding="UTF-8">' . $text);
+            $html = $this->helper->load('convert')->load_html($text, $dom);
+            if ($html) {
+                $remove = $this->truncate_html($dom);
+                foreach ($remove as $child) {
+                    $child->parentNode->removeChild($child);
+                }
+                $container = $dom->getElementsByTagName('div')->item(0);
+                $container = $container->parentNode->removeChild($container);
+                while ($dom->firstChild) {
+                    $dom->removeChild($dom->firstChild);
+                }
+                while ($container->firstChild) {
+                    $dom->appendChild($container->firstChild);
+                }
+                $text = $this->helper->load('convert')->html_entities_decode($dom->saveHTML());
             }
-            libxml_clear_errors();
-            $remove = $this->truncate_html($dom);
-            foreach ($remove as $child) {
-                $child->parentNode->removeChild($child);
-            }
-            $container = $dom->getElementsByTagName('div')->item(0);
-            $container = $container->parentNode->removeChild($container);
-            while ($dom->firstChild) {
-                $dom->removeChild($dom->firstChild);
-            }
-            while ($container->firstChild) {
-                $dom->appendChild($container->firstChild);
-            }
-            $text = $dom->saveHTML();
         } else {
             if (!$break_words) {
                 $text = rtrim($text) . ' ';

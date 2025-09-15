@@ -5699,7 +5699,7 @@ var e2pdf = {
                             'e2pdf-pr10'
                         ]
                     };
-                    
+
                     if (e2pdf.properties.getValue(el, 'dynamic_height', 'checkbox')) {
                         obj['field'].fields.push(e2pdf.properties.getField('dynamic_height', el));
                         obj['field'].classes.push('e2pdf-pr10');
@@ -8984,10 +8984,10 @@ var e2pdf = {
                     if (jQuery('.e2pdf-vm-wrapper').length > 0) {
                         jQuery('.e2pdf-vm-wrapper').remove();
                     }
-
                     vc_content.find('input[type="hidden"]').each(function () {
                         if (jQuery(this).attr('e2pdf-vm-hidden') != 'true') {
                             jQuery(this).attr('e2pdf-vm-hidden', 'true');
+                            jQuery(this).attr('value', jQuery(this).attr('name'));
                         }
                     });
                     if (e2pdf.static.vm.hidden) {

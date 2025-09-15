@@ -133,7 +133,7 @@ class Helper_E2pdf_Math {
     }
 
     protected function tokenize($string) {
-        $parts = preg_split('((\b\d[\d.]*\b|\+|-|\(|\)|\*|/)|\s+)', $string, null, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+        $parts = preg_split('((\b\d[\d.]*\b|\+|-|\(|\)|\*|¦|/)|\s+)', $string, null, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
         $parts = array_map('trim', $parts);
         return $parts;
     }
@@ -159,6 +159,10 @@ class Helper_E2pdf_Math {
         } elseif ($value == '*') {
             $expression->operator = true;
             $expression->type = 'multiplication';
+            $expression->precidence = 5;
+        } elseif ($value === '¦') {
+            $expression->operator = true;
+            $expression->type = 'modulus';
             $expression->precidence = 5;
         } elseif ($value == '/') {
             $expression->operator = true;
@@ -204,6 +208,11 @@ class Helper_E2pdf_Math {
                     $left = $this->operate(array_pop($this->stack));
                     $right = $this->operate(array_pop($this->stack));
                     $value = pow($right, $left);
+                    break;
+                case 'modulus':
+                    $left = $this->operate(array_pop($this->stack));
+                    $right = $this->operate(array_pop($this->stack));
+                    $value = ($left == 0) ? 0 : ($right % $left);
                     break;
                 default:
                     break;

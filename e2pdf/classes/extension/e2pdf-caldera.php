@@ -421,7 +421,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                                 }
                             }
                         } elseif ($element['type'] == 'e2pdf-checkbox') {
-                            $field_key = array_search($element['name'], array_column($checkboxes, 'name'));
+                            $field_key = array_search($element['name'], array_column($checkboxes, 'name'), false);
                             if ($field_key !== false) {
                                 $option_id = 'opt' . $this->random();
                                 $checkboxes[$field_key]['options'][$option_id] = array(
@@ -440,7 +440,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                             } else {
                                 $element['name'] = $element['element_id'];
                             }
-                            $field_key = array_search($element['name'], array_column($radios, 'name'));
+                            $field_key = array_search($element['name'], array_column($radios, 'name'), false);
                             if ($field_key !== false) {
                                 $option_id = 'opt' . $this->random();
                                 $radios[$field_key]['options'][$option_id] = array(
@@ -590,22 +590,8 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
             }
             remove_filter('caldera_forms_render_get_form', array($this, 'filter_caldera_forms_render_get_form'));
             if ($source) {
-                libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
-                if (function_exists('mb_convert_encoding')) {
-                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    } else {
-                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
-                    }
-                } else {
-                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    } else {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
-                    }
-                }
-                libxml_clear_errors();
+                $html = $this->helper->load('convert')->load_html($source, $dom, true);
             }
             if (!$source) {
                 return '<div class="e2pdf-vm-error">' . __("The form source is empty or doesn't exist", 'e2pdf') . '</div>';
@@ -615,6 +601,38 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                 $xml = $this->helper->load('xml');
                 $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
+
+                $conditional_fields = $xpath->query("//*[contains(@class, 'caldera-forms-conditional-field')]");
+                foreach ($conditional_fields as $element) {
+                    $conditional_field_id = $xml->get_node_value($element, 'data-field-id');
+                    if ($conditional_field_id) {
+                        preg_match('/<script type="text\/html" id="conditional-' . $conditional_field_id . '-tmpl">(.*?)<\/script>/s', $source, $matches);
+                        if (isset($matches[1])) {
+                            $conditional_dom = new DOMDocument();
+                            $conditional_dom_html = $this->helper->load('convert')->load_html($matches[1], $dom);
+                            if ($conditional_dom_html) {
+                                $element->appendChild($dom->importNode($conditional_dom->documentElement, true));
+                            }
+                        }
+                    }
+                }
+
+                // remove by name
+                $remove_by_name = array(
+                    '_cf_verify',
+                    '_wp_http_referer',
+                    '_cf_frm_id',
+                    '_cf_frm_ct',
+                    'cfajax',
+                );
+                foreach ($remove_by_name as $key => $name) {
+                    $elements = $xpath->query('//*[@name="' . $name . '"]');
+                    foreach ($elements as $element) {
+                        $element->parentNode->removeChild($element);
+                    }
+                }
+
+                // remove by class
                 $remove_by_class = array(
                     'live-gravatar',
                 );
@@ -624,24 +642,8 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         $element->parentNode->removeChild($element);
                     }
                 }
-                /* Convert Conditional Fields */
-                $conditional_fields = $xpath->query("//*[contains(@class, 'caldera-forms-conditional-field')]");
-                foreach ($conditional_fields as $element) {
-                    $conditional_field_id = $xml->get_node_value($element, 'data-field-id');
-                    if ($conditional_field_id) {
-                        preg_match('/<script type="text\/html" id="conditional-' . $conditional_field_id . '-tmpl">(.*?)<\/script>/s', $source, $matches);
-                        if (isset($matches[1])) {
-                            $conditional_dom = new DOMDocument();
-                            if (function_exists('mb_convert_encoding')) {
-                                $conditional_dom->loadHTML(mb_convert_encoding($matches[1], 'HTML-ENTITIES', 'UTF-8'));
-                            } else {
-                                $conditional_dom->loadHTML('<?xml encoding="UTF-8">' . $matches[1]);
-                            }
-                            $element->appendChild($dom->importNode($conditional_dom->documentElement, true));
-                        }
-                    }
-                }
-                /* Remove scripts */
+
+                // remove by tag
                 $remove_by_tag = array(
                     'script',
                 );
@@ -651,7 +653,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         $element->parentNode->removeChild($element);
                     }
                 }
-                /* Replace names */
+
                 $fields = $xpath->query("//*[contains(@name, 'fld_')]");
                 foreach ($fields as $element) {
                     $field_id = false;
@@ -663,21 +665,22 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                     } else {
                         $field_id = $xml->get_node_value($element, 'name');
                     }
-                    /* Modify Star fields */
+
+                    // modify rating field
                     if ($xml->get_node_value($element, 'data-type') == 'star') {
                         $xml->set_node_value($element, 'style', '');
                     }
-                    /* Modify Range fields */
-                    if ($xml->get_node_value($element, 'type') == 'range') {
 
+                    // modify range field
+                    if ($xml->get_node_value($element, 'type') == 'range') {
                         $xml->set_node_value($element, 'style', '', true);
                         $xml->set_node_value($element, 'class', 'col-xs-12', true);
-
                         $next_element = $xpath->query('.//following-sibling::div[1]', $element->parentNode)->item(0);
                         if ($next_element) {
                             $next_element->parentNode->removeChild($next_element);
                         }
                     }
+
                     if ($field_id) {
                         if (!empty($form['is_connected_form'])) {
                             foreach ($forms as $sub_form) {
@@ -695,7 +698,8 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         }
                     }
                 }
-                /* Convert Calculation Fields */
+
+                // calculation
                 $calculation_fields = $xpath->query("//input[@data-type='calculation']");
                 foreach ($calculation_fields as $element) {
                     $xml->set_node_value($element, 'type', 'text');
@@ -705,12 +709,14 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         $element->parentNode->removeChild($calculation_text);
                     }
                 }
-                /* Modify File Upload */
+
+                // file upload
                 $file_uploads = $xpath->query("//input[@type='file']");
                 foreach ($file_uploads as $element) {
                     $xml->set_node_value($element, 'class', $xml->get_node_value($element, 'type') . ' form-control');
                 }
-                /* Modify Toggle Fields */
+
+                // toggle
                 $toggle_gorups = $xpath->query("//*[contains(@class, 'cf-toggle-switch')]");
                 foreach ($toggle_gorups as $element) {
                     $toggle_elements = $xpath->query(".//*[contains(@class, 'cf-toggle-group-buttons')]//a", $element);
@@ -726,7 +732,8 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         }
                     }
                 }
-                /* Modify Advanced File Upload */
+
+                // ajax uploader
                 $advanced_uploaders = $xpath->query("//*[contains(@class, 'cf-uploader-trigger')]");
                 foreach ($advanced_uploaders as $element) {
                     $input = $xpath->query(".//input[@type='hidden']", $element->parentNode)->item(0);
@@ -740,12 +747,12 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         $element->appendChild($input_cloned);
                     }
                 }
-                /* Modify Text Area same size */
+
                 $textareas = $xpath->query('//textarea');
                 foreach ($textareas as $element) {
                     $xml->set_node_value($element, 'rows', '4');
                 }
-                /* Remove unecessary elements */
+
                 $submit_buttons = $xpath->query("//input[@type='submit']");
                 foreach ($submit_buttons as $element) {
                     $element->parentNode->removeChild($element);
@@ -1161,11 +1168,11 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
             if (Caldera_Forms_Field_Util::get_type($field_id, $form) == 'checkbox' && $entry && is_array($entry)) {
                 $last = array_pop($entry);
                 if ($last && is_array($last) && isset($last['value'])) {
-                    $is_json = @json_decode($last['value'], ARRAY_A);
-                    if (!empty($is_json)) {
+                    $json = @json_decode($last['value'], ARRAY_A); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    if (!empty($json)) {
                         $entry = array(
                             '0' => array(
-                                'value' => $is_json,
+                                'value' => $json,
                             ),
                         );
                     } else {
@@ -1255,7 +1262,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                     }
                     if (is_string($entry)) {
                         if (!empty($field) && !empty($part_tags[1]) && $part_tags[1] == 'label') {
-                            $_entry = @json_decode($entry);
+                            $_entry = @json_decode($entry); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                             if (is_object($_entry)) {
                                 $entry = $_entry;
                             }
@@ -1304,7 +1311,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
      */
     public function maybe_implode_opts($value) {
         if (is_string($value) && '{"opt' == substr($value, 0, 5)) {
-            $_value = @json_decode($value);
+            $_value = @json_decode($value); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
             if (is_object($_value)) {
                 $value = implode(', ', (array) $_value);
             }

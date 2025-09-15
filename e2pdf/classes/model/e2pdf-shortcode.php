@@ -3001,6 +3001,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $output = isset($atts['output']) ? $atts['output'] : false;
         $filter = isset($atts['filter']) ? $atts['filter'] : false;
         $search = isset($atts['search']) ? explode('|||', $atts['search']) : array();
+        $sreplace = isset($atts['sreplace']) ? explode('|||', $atts['sreplace']) : array();
         $ireplace = isset($atts['ireplace']) ? explode('|||', $atts['ireplace']) : array();
         $replace = isset($atts['replace']) ? explode('|||', $atts['replace']) : array();
         $substr = isset($atts['substr']) ? $atts['substr'] : false;
@@ -3023,6 +3024,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $remove_by_class = isset($atts['remove_by_class']) ? explode(',', $atts['remove_by_class']) : array();
         $transliterate = isset($atts['transliterate']) ? $atts['transliterate'] : false;
         $truncate = isset($atts['truncate']) ? intval($atts['truncate']) : false;
+        $truncate_html = isset($atts['truncate_html']) ? intval($atts['truncate_html']) : false;
         $truncate_ishtml = isset($atts['truncate_ishtml']) && $atts['truncate_ishtml'] == 'true' ? true : false;
         $truncate_breakwords = isset($atts['truncate_breakwords']) && $atts['truncate_breakwords'] == 'true' ? true : false;
         $truncate_readmore = isset($atts['truncate_readmore']) ? $atts['truncate_readmore'] : '...';
@@ -3036,115 +3038,106 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         }
 
         if ((!empty($extract_by_id) || !empty($extract_by_class) || !empty($extract_by_tag)) && $value) {
-            $extracted = array();
-            libxml_use_internal_errors(true);
+            $extracted = [];
             $dom = new DOMDocument();
-            if (function_exists('mb_convert_encoding')) {
-                $html = $dom->loadHTML(mb_convert_encoding($value, 'HTML-ENTITIES', 'UTF-8'));
-            } else {
-                $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $value);
-            }
-            libxml_clear_errors();
-            $xpath = new DomXPath($dom);
-            if (!empty($extract_by_tag)) {
-                foreach ($extract_by_tag as $by_tag) {
-                    $query = '//' . $by_tag;
-                    $elements = $xpath->query($query);
-                    foreach ($elements as $element) {
-                        $extracted[] = $dom->saveHTML($element);
-                    }
-                }
-            }
+            $html = $this->helper->load('convert')->load_html($value, $dom);
+            if ($html) {
+                $xpath = new DomXPath($dom);
 
-            if (!empty($extract_by_id)) {
-                foreach ($extract_by_id as $by_id) {
-                    $query = "//*[contains(concat(' ', @id, ' '), ' {$by_id} ')]";
-                    $elements = $xpath->query($query);
-                    foreach ($elements as $element) {
-                        $extracted[] = $dom->saveHTML($element);
-                    }
-                }
-            }
-
-            if (!empty($extract_by_class)) {
-                foreach ($extract_by_class as $by_class) {
-                    $query = '//*[';
-                    $by_sub_classes = explode(' ', $by_class);
-                    foreach ($by_sub_classes as $index => $by_sub_class) {
-                        if ($index !== 0) {
-                            $query .= ' and ';
+                if (!empty($extract_by_tag)) {
+                    foreach ($extract_by_tag as $by_tag) {
+                        $query = '//' . $by_tag;
+                        $elements = $xpath->query($query);
+                        foreach ($elements as $element) {
+                            $extracted[] = $this->helper->load('convert')->html_entities_decode($dom->saveHTML($element));
                         }
-                        $query .= "contains(concat(' ', normalize-space(@class), ' '), ' {$by_sub_class} ')";
                     }
-                    $query .= ']';
-                    $elements = $xpath->query($query);
-                    foreach ($elements as $element) {
-                        $extracted[] = $dom->saveHTML($element);
+                }
+
+                if (!empty($extract_by_id)) {
+                    foreach ($extract_by_id as $by_id) {
+                        $query = "//*[contains(concat(' ', @id, ' '), ' {$by_id} ')]";
+                        $elements = $xpath->query($query);
+                        foreach ($elements as $element) {
+                            $extracted[] = $this->helper->load('convert')->html_entities_decode($dom->saveHTML($element));
+                        }
+                    }
+                }
+
+                if (!empty($extract_by_class)) {
+                    foreach ($extract_by_class as $by_class) {
+                        $query = '//*[';
+                        $by_sub_classes = explode(' ', $by_class);
+                        foreach ($by_sub_classes as $index => $by_sub_class) {
+                            if ($index !== 0) {
+                                $query .= ' and ';
+                            }
+                            $query .= "contains(concat(' ', normalize-space(@class), ' '), ' {$by_sub_class} ')";
+                        }
+                        $query .= ']';
+                        $elements = $xpath->query($query);
+                        foreach ($elements as $element) {
+                            $extracted[] = $this->helper->load('convert')->html_entities_decode($dom->saveHTML($element));
+                        }
                     }
                 }
             }
-
             $response = implode($extract_implode, $extracted);
         }
 
         if ((!empty($remove_by_tag) || !empty($remove_by_id) || !empty($remove_by_class)) && $response) {
-
-            libxml_use_internal_errors(true);
             $dom = new DOMDocument();
-            if (function_exists('mb_convert_encoding')) {
-                $html = $dom->loadHTML(mb_convert_encoding($response, 'HTML-ENTITIES', 'UTF-8'));
-            } else {
-                $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $response);
-            }
-            libxml_clear_errors();
-            $xpath = new DomXPath($dom);
+            $html = $this->helper->load('convert')->load_html($response, $dom);
+            if ($html) {
+                $xpath = new DomXPath($dom);
 
-            if (!empty($remove_by_tag)) {
-                foreach ($remove_by_tag as $by_tag) {
-                    $query = '//' . $by_tag;
-                    $elements = $xpath->query($query);
-                    foreach ($elements as $element) {
-                        $element->parentNode->removeChild($element);
-                    }
-                }
-            }
-
-            if (!empty($remove_by_id)) {
-                foreach ($remove_by_id as $by_id) {
-                    $query = "//*[contains(concat(' ', @id, ' '), ' {$by_id} ')]";
-                    $elements = $xpath->query($query);
-                    foreach ($elements as $element) {
-                        $element->parentNode->removeChild($element);
-                    }
-                }
-            }
-
-            if (!empty($remove_by_class)) {
-                foreach ($remove_by_class as $by_class) {
-                    $query = '//*[';
-                    $by_sub_classes = explode(' ', $by_class);
-                    foreach ($by_sub_classes as $index => $by_sub_class) {
-                        if ($index !== 0) {
-                            $query .= ' and ';
+                if (!empty($remove_by_tag)) {
+                    foreach ($remove_by_tag as $by_tag) {
+                        $query = '//' . $by_tag;
+                        $elements = $xpath->query($query);
+                        foreach ($elements as $element) {
+                            $element->parentNode->removeChild($element);
                         }
-                        $query .= "contains(concat(' ', normalize-space(@class), ' '), ' {$by_sub_class} ')";
-                    }
-                    $query .= ']';
-                    $elements = $xpath->query($query);
-                    foreach ($elements as $element) {
-                        $element->parentNode->removeChild($element);
                     }
                 }
-            }
 
-            $dom2 = new DOMDocument();
-            $body = $dom->getElementsByTagName('body')->item(0);
-            if ($body) {
-                foreach ($body->childNodes as $child) {
-                    $dom2->appendChild($dom2->importNode($child, true));
+                if (!empty($remove_by_id)) {
+                    foreach ($remove_by_id as $by_id) {
+                        $query = "//*[contains(concat(' ', @id, ' '), ' {$by_id} ')]";
+                        $elements = $xpath->query($query);
+                        foreach ($elements as $element) {
+                            $element->parentNode->removeChild($element);
+                        }
+                    }
                 }
+
+                if (!empty($remove_by_class)) {
+                    foreach ($remove_by_class as $by_class) {
+                        $query = '//*[';
+                        $by_sub_classes = explode(' ', $by_class);
+                        foreach ($by_sub_classes as $index => $by_sub_class) {
+                            if ($index !== 0) {
+                                $query .= ' and ';
+                            }
+                            $query .= "contains(concat(' ', normalize-space(@class), ' '), ' {$by_sub_class} ')";
+                        }
+                        $query .= ']';
+                        $elements = $xpath->query($query);
+                        foreach ($elements as $element) {
+                            $element->parentNode->removeChild($element);
+                        }
+                    }
+                }
+
+                $dom2 = new DOMDocument();
+                $body = $dom->getElementsByTagName('body')->item(0);
+                if ($body) {
+                    foreach ($body->childNodes as $child) {
+                        $dom2->appendChild($dom2->importNode($child, true));
+                    }
+                }
+                $response = $this->helper->load('convert')->html_entities_decode($dom2->saveHTML());
             }
-            $response = $dom2->saveHTML();
         }
 
         $filters = array();
@@ -3166,8 +3159,15 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         }
 
         $response = apply_filters('e2pdf_model_shortcode_e2pdf_format_output_pre_filter', $response, $atts, $value);
-        if (!in_array('ireplace', $filters, true) && !in_array('replace', $filters, true)) {
-            if (!empty($ireplace)) {
+        if (!in_array('ireplace', $filters, true) && !in_array('replace', $filters, true) && !in_array('sreplace', $filters, true)) {
+            if (!empty($sreplace)) {
+                if (!empty($search) && count($search) === count($sreplace)) {
+                    $replacements = array_combine($search, $sreplace);
+                    if (is_array($replacements)) {
+                        $response = strtr($response, $replacements);
+                    }
+                }
+            } elseif (!empty($ireplace)) {
                 $response = str_ireplace($search, $ireplace, $response);
             } elseif (!empty($replace)) {
                 $response = str_replace($search, $replace, $response);
@@ -3232,6 +3232,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             if ($truncate !== false) {
                 $max_length = $truncate && intval($truncate) > 0 ? intval($truncate) : 100;
                 $response = $this->helper->load('truncate')->truncate($response, $max_length, $truncate_readmore, $truncate_breakwords, $truncate_ishtml);
+            }
+        }
+
+        if (!in_array('truncate_html', $filters, true)) {
+            if ($truncate_html !== false) {
+                $max_length = $truncate_html && intval($truncate_html) > 0 ? intval($truncate_html) : 100;
+                $response = $this->helper->load('truncate')->truncate($response, $max_length, $truncate_readmore, $truncate_breakwords, true);
             }
         }
 
@@ -3473,6 +3480,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     }
                                 }
                                 break;
+                            case 'sreplace':
+                                if (!empty($sreplace)) {
+                                    if (!empty($search) && count($search) === count($sreplace)) {
+                                        $replacements = array_combine($search, $sreplace);
+                                        if (is_array($replacements)) {
+                                            $n = strtr($n, $replacements);
+                                        }
+                                    }
+                                }
+                                break;
                             case 'ireplace':
                                 if (!empty($ireplace)) {
                                     $n = str_ireplace($search, $ireplace, $n);
@@ -3509,6 +3526,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             case 'truncate':
                                 $max_length = $truncate && intval($truncate) > 0 ? intval($truncate) : 100;
                                 $n = $this->helper->load('truncate')->truncate($n, $max_length, $truncate_readmore, $truncate_breakwords, $truncate_ishtml);
+                                break;
+                            case 'truncate_html':
+                                $max_length = $truncate_html && intval($truncate_html) > 0 ? intval($truncate_html) : 100;
+                                $n = $this->helper->load('truncate')->truncate($n, $max_length, $truncate_readmore, $truncate_breakwords, true);
                                 break;
                             default:
                                 $n = apply_filters('e2pdf_model_shortcode_e2pdf_format_output_filter', $n, $sub_filter, $atts, $value);
@@ -3565,9 +3586,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 array(
                     $thousands_sep_split => '',
                     $dec_point_split => '.',
+                    '%%' => '¦',
                 )
         );
-        $value = preg_replace('/[^0-9\-\+\*\/\^\(\)\.]/', '', $value);
+        $value = preg_replace('/[^0-9\-\+\*\¦\/\^\(\)\.]/', '', $value);
         if (!$value) {
             $value = $default;
         } else {

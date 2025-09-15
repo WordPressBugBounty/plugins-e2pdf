@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Elementor Forms Extension
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.21.07
+ * File: /extension/e2pdf-elementor.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -20,11 +19,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         'title' => 'Elementor Forms',
     );
 
-    /**
-     * Get info about extension
-     * @param string $key - Key to get assigned extension info value
-     * @return array|string - Extension Key and Title or Assigned extension info value
-     */
+    // info
     public function info($key = false) {
         if ($key && isset($this->info[$key])) {
             return $this->info[$key];
@@ -35,10 +30,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Check if needed plugin active
-     * @return bool - Activated/Not Activated plugin
-     */
+    // active
     public function active() {
         if (defined('E2PDF_ELEMENTOR_EXTENSION') || $this->helper->load('extension')->is_plugin_active('elementor-pro/elementor-pro.php') || $this->helper->load('extension')->is_plugin_active('pro-elements/pro-elements.php')) {
             return true;
@@ -46,12 +38,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Set option
-     * @param string $key - Key of option
-     * @param string $value - Value of option
-     * @return bool - Status of setting option
-     */
+    // set
     public function set($key, $value) {
         if (!isset($this->options)) {
             $this->options = new stdClass();
@@ -86,11 +73,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return true;
     }
 
-    /**
-     * Get option by key
-     * @param string $key - Key to get assigned option value
-     * @return mixed
-     */
+    // get
     public function get($key) {
         if (isset($this->options->$key)) {
             $value = $this->options->$key;
@@ -108,25 +91,21 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Load actions for this extension
-     */
+    // load actions
     public function load_actions() {
         add_action('elementor_pro/forms/new_record', array($this, 'action_elementor_pro_forms_new_record'), 10, 2);
         add_action('elementor_pro/forms/actions/after_run', array($this, 'action_elementor_pro_forms_actions_after_run'));
         add_action('elementor_pro/forms/mail_sent', array($this, 'action_elementor_pro_forms_mail_sent'), 10, 2);
     }
 
+    // load filters
     public function load_filters() {
         add_filter('elementor_pro/forms/wp_mail_message', array($this, 'filter_elementor_pro_forms_wp_mail_message'));
         add_filter('elementor_pro/forms/record/actions_before', array($this, 'filter_elementor_pro_forms_record_actions_before'));
         add_filter('wpnotif_filter_elementor_message', array($this, 'filter_wpnotif_filter_elementor_message'), 10, 2);
     }
 
-    /**
-     * Get items to work with
-     * @return array() - List of available items
-     */
+    // items
     public function items() {
         $listed = array();
         $content = array();
@@ -146,6 +125,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $content;
     }
 
+    // get post forms
     public function get_post_forms() {
         global $wpdb;
 
@@ -172,6 +152,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $content;
     }
 
+    // parse forms meta
     public function parse_forms_meta($elements) {
         $forms = array();
         foreach ($elements as $element) {
@@ -188,6 +169,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $forms;
     }
 
+    // get form
     public function get_form($item_id = false) {
         if ($item_id) {
             $form = false;
@@ -246,11 +228,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Get item
-     * @param int $item_id - Item ID
-     * @return object - Item
-     */
+    // item
     public function item($item_id = false) {
         if (!$item_id && $this->get('item')) {
             $item_id = $this->get('item');
@@ -279,12 +257,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $item;
     }
 
-    /**
-     * Get entries for export
-     * @param string $item_id - Item ID
-     * @param string $name - Entries names
-     * @return array() - Entries list
-     */
+    // datasets
     public function datasets($item_id = false, $name = false) {
         $datasets = array();
         if ($item_id) {
@@ -321,11 +294,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $datasets;
     }
 
-    /**
-     * Get Dataset Actions
-     * @param int $dataset_id - Dataset ID
-     * @return object
-     */
+    // get dataset actions
     public function get_dataset_actions($dataset_id = false) {
         $dataset_id = (int) $dataset_id;
         if (!$dataset_id) {
@@ -337,11 +306,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $actions;
     }
 
-    /**
-     * Get Template Actions
-     * @param int $template - Template ID
-     * @return object
-     */
+    // get template actions
     public function get_template_actions($template = false) {
         $template = (int) $template;
         if (!$template) {
@@ -352,13 +317,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $actions;
     }
 
-    /**
-     * Render value according to content
-     * @param string $value - Content
-     * @param string $type - Type of rendering value
-     * @param array $field - Field details
-     * @return string - Fully rendered value
-     */
+    // render
     public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
         if (!$raw) {
@@ -369,13 +328,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Render shortcodes which available in this extension
-     * @param string $value - Content
-     * @param string $type - Type of rendering value
-     * @param array $field - Field details
-     * @return string - Value with rendered shortcodes
-     */
+    // render shortcodes
     public function render_shortcodes($value, $field = array()) {
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
         if ($this->verify()) {
@@ -429,12 +382,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         );
     }
 
-    /**
-     * Convert "shortcodes" inside value string
-     * @param string $value - Value string
-     * @param bool $to - Convert From/To
-     * @return string - Converted value
-     */
+    // convert shortcodes
     public function convert_shortcodes($value, $to = false, $html = false) {
         if ($value) {
             if ($to) {
@@ -449,20 +397,13 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Strip unused shortcodes
-     * @param string $value - Content
-     * @return string - Value with removed unused shortcodes
-     */
+    // strip shortcodes
     public function strip_shortcodes($value) {
         $value = preg_replace('~(?:\[/?)[^/\]]+/?\]~s', '', $value);
         return $value;
     }
 
-    /**
-     * Verify if item and dataset exists
-     * @return bool - item and dataset exists
-     */
+    // verify
     public function verify() {
         if (class_exists('ElementorPro\Modules\Forms\Submissions\Database\Query') && $this->get('cached_form') && $this->get('cached_meta')) {
             $post_id = isset($this->get('cached_meta')['data']['post']['id']) ? $this->get('cached_meta')['data']['post']['id'] : false;
@@ -474,10 +415,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Init Visual Mapper data
-     * @return bool|string - HTML data source for Visual Mapper
-     */
+    // visual mapper
     public function visual_mapper() {
 
         $item = $this->get('item');
@@ -499,22 +437,8 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 while (@ob_end_clean()); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
             }
             if ($source) {
-                libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
-                if (function_exists('mb_convert_encoding')) {
-                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    } else {
-                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
-                    }
-                } else {
-                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    } else {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
-                    }
-                }
-                libxml_clear_errors();
+                $html = $this->helper->load('convert')->load_html($source, $dom, true);
             }
             if (!$source) {
                 return '<div class="e2pdf-vm-error">' . __("The form source is empty or doesn't exist", 'e2pdf') . '</div>';
@@ -524,11 +448,26 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 $xml = $this->helper->load('xml');
                 $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
+
+                // remove by name
+                $remove_by_name = array(
+                    'post_id',
+                    'form_id',
+                    'referer_title',
+                );
+                foreach ($remove_by_name as $key => $name) {
+                    $elements = $xpath->query('//*[@name="' . $name . '"]');
+                    foreach ($elements as $element) {
+                        $element->parentNode->removeChild($element);
+                    }
+                }
+
+                // remove by class
                 $remove_by_class = array(
                     'dce-conditions-js-error-notice',
                     'repeater-field-button-add',
                     'elementor-field-type-submit',
-                    'select-caret-down-wrapper'
+                    'select-caret-down-wrapper',
                 );
                 foreach ($remove_by_class as $key => $class) {
                     $elements = $xpath->query("//*[contains(@class, '{$class}')]");
@@ -574,10 +513,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Auto Generate of Template for this extension
-     * @return array - List of elements
-     */
+    // auto
     public function auto() {
 
         $response = array();
@@ -909,12 +845,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * Element generation for Auto PDF
-     * @param array $field - Field options
-     * @param array $element - Element options
-     * @return array - Element with modified options
-     */
+    // auto field
     public function auto_field($field = false, $element = array()) {
         if (!$field) {
             return false;
@@ -933,10 +864,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $element;
     }
 
-    /**
-     * Get styles for generating Map Field function
-     * @return array - List of css files to load
-     */
+    // styles
     public function styles($item_id = false) {
         $styles = array();
         if (defined('ELEMENTOR_ASSETS_URL')) {
@@ -950,6 +878,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $styles;
     }
 
+    // replace meta shortcodes
     public function replace_meta_shortcodes($value, $submission) {
         $meta_keys = array(
             'id',
@@ -976,6 +905,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return str_replace(array_keys($meta), $meta, $value);
     }
 
+    // after run action
     public function action_elementor_pro_forms_actions_after_run($action) {
         if ($action->get_name() == 'save-to-database' && class_exists('ReflectionProperty')) {
             $reflection = new ReflectionProperty(get_class($action), 'submission_id');
@@ -985,6 +915,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         }
     }
 
+    // new record action
     public function action_elementor_pro_forms_new_record($record, $handler) {
         if ($handler->is_success && class_exists('ReflectionProperty')) {
             $form = $handler->get_current_form();
@@ -998,6 +929,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         }
     }
 
+    // forms mail sent action
     public function action_elementor_pro_forms_mail_sent($settings, $record) {
         remove_filter('wp_mail', array($this, 'filter_wp_mail'), 30);
         $files = $this->helper->get('elementor_attachments');
@@ -1009,6 +941,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         }
     }
 
+    // filter form record actions before
     public function filter_elementor_pro_forms_record_actions_before($record) {
         $form_settings = $record->get('form_settings');
         if (!empty($form_settings['email_content'])) {
@@ -1028,11 +961,13 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $record;
     }
 
+    // filter wpnotif message
     public function filter_wpnotif_filter_elementor_message($message, $settings) {
         $message = $this->filter_success_message($message);
         return $message;
     }
 
+    // filter elementor pro wp mail message
     public function filter_elementor_pro_forms_wp_mail_message($message) {
         $message = preg_replace('/(\{\{)((e2pdf-download|e2pdf-save|e2pdf-attachment|e2pdf-adobesign|e2pdf-zapier)[^\}]*?)(\}\})/', '[$2]', $message);
         if (false !== strpos($message, '[')) {
@@ -1100,6 +1035,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $message;
     }
 
+    // filter success message
     public function filter_success_message($message) {
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
@@ -1141,6 +1077,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $message;
     }
 
+    // filter wp mail
     public function filter_wp_mail($args = array()) {
         $files = $this->helper->get('elementor_attachments');
         if (is_array($files) && !empty($files)) {
@@ -1159,32 +1096,31 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         return $wp_mail;
     }
 
-    function repeater_field_value($value) {
-        $dom = new DOMDocument();
-        if (function_exists('mb_convert_encoding')) {
-            $dom->loadHTML(mb_convert_encoding($value, 'HTML-ENTITIES', 'UTF-8'));
-        } else {
-            $dom->loadHTML('<?xml encoding="UTF-8">' . $value);
-        }
-        $ol = $dom->getElementsByTagName('ol')->item(0);
+    // render field value
+    public function repeater_field_value($value) {
         $items = [];
-        if ($ol) {
-            foreach ($ol->getElementsByTagName('li') as $li) {
-                $nestedUl = $li->getElementsByTagName('ul')->item(0);
-                if ($nestedUl) {
-                    $data = [];
-                    foreach ($nestedUl->getElementsByTagName('li') as $innerLi) {
-                        $parts = explode(' : ', $innerLi->textContent, 2);
-                        if (count($parts) === 2) {
-                            $key = trim($parts[0]);
-                            $value = trim($parts[1]);
-                            $data[$key] = $value;
+        $dom = new DOMDocument();
+        $html = $this->helper->load('convert')->load_html($value, $dom);
+        if ($html) {
+            $ol = $dom->getElementsByTagName('ol')->item(0);
+            if ($ol) {
+                foreach ($ol->getElementsByTagName('li') as $li) {
+                    $nestedUl = $li->getElementsByTagName('ul')->item(0);
+                    if ($nestedUl) {
+                        $data = [];
+                        foreach ($nestedUl->getElementsByTagName('li') as $innerLi) {
+                            $parts = explode(' : ', $innerLi->textContent, 2);
+                            if (count($parts) === 2) {
+                                $key = trim($parts[0]);
+                                $value = trim($parts[1]);
+                                $data[$key] = $value;
+                            }
                         }
+                        $items[] = $data;
                     }
-                    $items[] = $data;
                 }
             }
         }
-        return serialize($items);
+        return serialize($items); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
     }
 }

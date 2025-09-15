@@ -1,7 +1,7 @@
 <?php
 
 /**
- * File: /extension/wpcf7.php
+ * File: /extension/e2pdf-wpcf7.php
  *
  * @package  E2Pdf
  * @license  GPLv3
@@ -630,25 +630,10 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             if ($form) {
                 $source = $form->form_html();
                 if ($source) {
-                    libxml_use_internal_errors(true);
                     $dom = new DOMDocument();
-                    if (function_exists('mb_convert_encoding')) {
-                        if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                            $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                        } else {
-                            $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
-                        }
-                    } else {
-                        if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                            $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                        } else {
-                            $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
-                        }
-                    }
-                    libxml_clear_errors();
+                    $html = $this->helper->load('convert')->load_html($source, $dom, true);
                 }
             }
-
             if (!$source) {
                 return '<div class="e2pdf-vm-error">' . __("The form source is empty or doesn't exist", 'e2pdf') . '</div>';
             } elseif (!$html) {
@@ -659,6 +644,23 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
 
+                // remove by name
+                $remove_by_name = array(
+                    '_wpcf7',
+                    '_wpcf7_version',
+                    '_wpcf7_locale',
+                    '_wpcf7_unit_tag',
+                    '_wpcf7_container_post',
+                    '_wpcf7_posted_data_hash',
+                );
+                foreach ($remove_by_name as $key => $name) {
+                    $elements = $xpath->query('//*[@name="' . $name . '"]');
+                    foreach ($elements as $element) {
+                        $element->parentNode->removeChild($element);
+                    }
+                }
+
+                // remove by class
                 $remove_by_class = array(
                     'dscf7_signature_inner',
                 );
@@ -704,7 +706,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                     $xml->set_node_value($element, 'name', '[' . $xml->get_node_value($element, 'name') . ']');
                 }
 
-                // Remove unecessary elements
+                // remove unecessary elements
                 $submit_buttons = $xpath->query("//input[@type='submit']");
                 foreach ($submit_buttons as $element) {
                     $element->parentNode->removeChild($element);
@@ -1164,6 +1166,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         }
     }
 
+    // Contact Form Entries – Contact Form 7, WPforms and more saving addons filter
     public function filter_vxcf_after_saving_addons($lead, $entry_id, $type, $form) {
         if ($this->get_storing_engine() == '1' && !empty($lead['__vx_entry']['form_id'])) {
             if (0 === strpos($lead['__vx_entry']['form_id'], 'cf_')) {
@@ -1173,22 +1176,26 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $lead;
     }
 
+    // Contact Form 7 Database Addon - CFDB7 after save data action
     public function action_cfdb7_after_save_data($entry_id) {
         if ($this->get_storing_engine() == '2' && $entry_id) {
             $this->set('cfdb7_entry_id', $entry_id);
         }
     }
 
+    // Advanced Contact form 7 DB after insert db action
     public function action_vsz_cf7_after_insert_db($form, $cf7_id, $data_id) {
         if ($this->get_storing_engine() == '3' && $data_id) {
             $this->set('vsz_cf7_entry_id', $data_id);
         }
     }
 
+    // before send mail abort action
     public function action_wpcf7_before_send_mail_abort($form, &$abort) {
         $abort = true;
     }
 
+    // before send mail action
     public function action_wpcf7_before_send_mail($form, &$abort) {
 
         if ($abort) {
@@ -1224,6 +1231,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         }
     }
 
+    // mail sent action
     public function action_wpcf7_mail_sent($form) {
         $submission = WPCF7_Submission::get_instance();
         if (!$submission) {
@@ -1264,6 +1272,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         }
     }
 
+    // filter success message
     public function filter_success_message($success_message) {
         if (false !== strpos($success_message, '[')) {
             $shortcode_tags = array(
@@ -1308,6 +1317,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $success_message;
     }
 
+    // filter mail body
     public function filter_mail_body($success_message, $tpl = 'mail') {
 
         if (false !== strpos($success_message, '[')) {
@@ -1382,6 +1392,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $success_message;
     }
 
+    // filter mail tag
     public function filter_wpcf7_file_mail_tag($replaced, $submitted, $html, $mail_tag) {
         $submission = WPCF7_Submission::get_instance();
         $uploaded_files = $submission->uploaded_files();
@@ -1409,6 +1420,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         return $replaced;
     }
 
+    // filter options
     public function filter_e2pdf_model_options_get_options_options($options = array()) {
         $engines = array(
             '0' => 'E2Pdf',

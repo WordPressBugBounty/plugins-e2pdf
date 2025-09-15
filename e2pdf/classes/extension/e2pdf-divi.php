@@ -91,7 +91,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                             $subdir = isset($cached_entry['_subdir']) ? $cached_entry['_subdir'] : '';
                                             if (isset($cached_entry['_save_files_to_media']) && $cached_entry['_save_files_to_media'] == 'on') {
                                                 if ($subdir && !file_exists(path_join(wp_upload_dir()['basedir'] . $subdir, $processed_fields_values[$field_value['original_id']]['value'])) && preg_match('/^\/\d{4}\/\d{2}$/', $subdir)) {
-                                                    $tmpsubdir = '/' . date('Y/m', strtotime(str_replace('/', '-', ltrim($subdir, '/')) . " -1 month"));
+                                                    $tmpsubdir = '/' . date('Y/m', strtotime(str_replace('/', '-', ltrim($subdir, '/')) . ' -1 month'));
                                                     if (file_exists(path_join(wp_upload_dir()['basedir'] . $tmpsubdir, $processed_fields_values[$field_value['original_id']]['value']))) {
                                                         $subdir = $tmpsubdir;
                                                     }
@@ -193,6 +193,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         );
         $where = $this->helper->load('db')->prepare_where($condition);
         $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
         $posts = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'posts`' . $where['sql'] . $orderby . '', $where['filter']));
 
         $content = array();
@@ -261,6 +262,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
             );
             $where = $this->helper->load('db')->prepare_where($condition);
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
             $entries = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'e2pdf_datasets`' . $where['sql'] . $orderby . '', $where['filter']));
 
             if ($entries) {
@@ -375,7 +377,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
 
         $where = $this->helper->load('db')->prepare_where($condition);
         $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
         $posts = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'posts`' . $where['sql'] . $orderby . '', $where['filter']));
         foreach ($posts as $key => $post) {
             if (in_array($item_id, $this->get_forms($post->post_content))) {
@@ -501,30 +503,12 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                 new ET_Builder_Module_Contact_Form_Item();
 
                                 $source = do_shortcode($shortcode_value);
-
-                                libxml_use_internal_errors(true);
                                 $dom = new DOMDocument();
-                                if (function_exists('mb_convert_encoding')) {
-                                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                                    } else {
-                                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
-                                    }
-                                } else {
-                                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                                    } else {
-                                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
-                                    }
-                                }
-                                libxml_clear_errors();
-
+                                $html = $this->helper->load('convert')->load_html($source, $dom, true);
                                 if ($html) {
-
                                     $xml = $this->helper->load('xml');
                                     $xml->set('dom', $dom);
                                     $xpath = new DomXPath($dom);
-
                                     $blocks = $xpath->query("//*[contains(@class, 'et_pb_contact_field')]");
                                     foreach ($blocks as $element) {
 
@@ -922,14 +906,8 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                 new ET_Builder_Module_Contact_Form_Item();
                                 $source = do_shortcode($shortcode_value);
                                 if ($source) {
-                                    libxml_use_internal_errors(true);
                                     $dom = new DOMDocument();
-                                    if (function_exists('mb_convert_encoding')) {
-                                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
-                                    } else {
-                                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
-                                    }
-                                    libxml_clear_errors();
+                                    $html = $this->helper->load('convert')->load_html($source, $dom, true);
                                 }
                                 if (!$source) {
                                     return '<div class="e2pdf-vm-error">' . __("The form source is empty or doesn't exist", 'e2pdf') . '</div>';
@@ -939,28 +917,44 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     $xml = $this->helper->load('xml');
                                     $xml->set('dom', $dom);
                                     $xpath = new DomXPath($dom);
-                                    /* Replace names */
+
+                                    // remove by name
+                                    $remove_by_name = array(
+                                        'et_pb_contactform_submit_0',
+                                        '_wpnonce-et-pb-contact-form-submitted-0',
+                                        '_wp_http_referer',
+                                    );
+                                    foreach ($remove_by_name as $key => $name) {
+                                        $elements = $xpath->query('//*[@name="' . $name . '"]');
+                                        foreach ($elements as $element) {
+                                            $element->parentNode->removeChild($element);
+                                        }
+                                    }
+
+                                    // replace names
                                     $fields = $xpath->query("//*[contains(@name, 'et_pb_contact_')]");
                                     foreach ($fields as $element) {
                                         $xml->set_node_value($element, 'name', '%%' . $xml->get_node_value($element, 'data-original_id') . '%%');
                                     }
+
                                     $checkboxes = $xpath->query("//*[contains(@class, 'et_pb_contact_field') and @data-type='checkbox']");
                                     foreach ($checkboxes as $element) {
                                         $check_handler = $xpath->query(".//input[contains(@class, 'et_pb_checkbox_handle')]", $element)->item(0);
-
                                         $name = '';
                                         if ($check_handler) {
                                             $name = '%%' . $xml->get_node_value($check_handler, 'data-original_id') . '%%';
                                         }
-
                                         $checks = $xpath->query(".//input[@type='checkbox']", $element);
                                         foreach ($checks as $check) {
                                             $xml->set_node_value($check, 'name', $name);
                                         }
                                     }
+
+                                    // remove by class
                                     $remove_by_class = array(
                                         'et_pb_contact_submit',
                                         'et_pb_contactform_validate_field',
+                                        'et_pb_checkbox_handle',
                                     );
                                     foreach ($remove_by_class as $key => $class) {
                                         $elements = $xpath->query("//*[contains(@class, '{$class}')]");
@@ -968,6 +962,8 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                             $element->parentNode->removeChild($element);
                                         }
                                     }
+
+                                    // remove parent by class
                                     $remove_parent_by_class = array(
                                         'et_pb_contact_captcha_question',
                                     );

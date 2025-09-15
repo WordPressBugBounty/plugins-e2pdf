@@ -19,6 +19,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         'title' => 'Everest Forms',
     );
 
+    // info
     public function info($key = false) {
         if ($key && isset($this->info[$key])) {
             return $this->info[$key];
@@ -29,6 +30,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         }
     }
 
+    // active
     public function active() {
         if (defined('E2PDF_EVEREST_EXTENSION') || $this->helper->load('extension')->is_plugin_active('everest-forms/everest-forms.php')) {
             return true;
@@ -36,6 +38,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return false;
     }
 
+    // set
     public function set($key, $value) {
         if (!isset($this->options)) {
             $this->options = new stdClass();
@@ -68,6 +71,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return true;
     }
 
+    // get
     public function get($key) {
         if (isset($this->options->$key)) {
             $value = $this->options->$key;
@@ -84,11 +88,13 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $value;
     }
 
+    // load actions
     public function load_actions() {
         add_action('everest_forms_email_send_after', array($this, 'action_everest_forms_email_send_after'));
         add_action('everest_forms_entry_details_sidebar_details', array($this, 'hook_everest_entry_view'), 10);
     }
 
+    // load filters
     public function load_filters() {
         add_filter('everest_forms_add_success', array($this, 'filter_everest_forms_add_success'));
         add_filter('everest_forms_email_attachments', array($this, 'filter_everest_forms_email_attachments'), 10, 2);
@@ -97,6 +103,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         add_filter('everest_forms_after_success_ajax_message', array($this, 'filter_everest_forms_after_success_ajax_message'), 99, 3);
     }
 
+    // items
     public function items() {
         $items = array();
         $forms = get_posts(
@@ -114,6 +121,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $items;
     }
 
+    // item
     public function item($item_id = false) {
         if (!$item_id && $this->get('item')) {
             $item_id = $this->get('item');
@@ -139,6 +147,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $item;
     }
 
+    // datasets
     public function datasets($item_id = false, $name = false) {
         $datasets = array();
         if (function_exists('evf_get_entries_ids')) {
@@ -159,6 +168,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $datasets;
     }
 
+    // get dataset actions
     public function get_dataset_actions($dataset_id = false) {
         $dataset_id = (int) $dataset_id;
         if (!$dataset_id) {
@@ -177,6 +187,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $actions;
     }
 
+    // render
     public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
         if (!$raw) {
@@ -187,6 +198,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $value;
     }
 
+    // render shortcodes
     public function render_shortcodes($value, $field = array()) {
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
         if ($this->verify()) {
@@ -212,12 +224,14 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         );
     }
 
+    // strip shortcodes
     public function strip_shortcodes($value) {
         $value = preg_replace('~(?:\[/?)[^/\]]+/?\]~s', '', $value);
         $value = preg_replace('~a\:\d+\:{[^}]*}(*SKIP)(*FAIL)|{[^}]*}~', '', $value);
         return $value;
     }
 
+    // convert shortcodes
     public function convert_shortcodes($value, $to = false, $html = false) {
         if ($value) {
             if ($to) {
@@ -233,6 +247,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $value;
     }
 
+    // verify
     public function verify() {
         if ($this->get('cached_entry')) {
             return true;
@@ -247,22 +262,8 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         if ($this->get('item')) {
             $source = do_shortcode('[everest_form id="' . $this->get('item') . '"]');
             if ($source) {
-                libxml_use_internal_errors(true);
                 $dom = new DOMDocument();
-                if (function_exists('mb_convert_encoding')) {
-                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                        $html = $dom->loadHTML(mb_convert_encoding('<html>' . $source . '</html>', 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    } else {
-                        $html = $dom->loadHTML(mb_convert_encoding($source, 'HTML-ENTITIES', 'UTF-8'));
-                    }
-                } else {
-                    if (defined('LIBXML_HTML_NOIMPLIED') && defined('LIBXML_HTML_NODEFDTD')) {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8"><html>' . $source . '</html>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    } else {
-                        $html = $dom->loadHTML('<?xml encoding="UTF-8">' . $source);
-                    }
-                }
-                libxml_clear_errors();
+                $html = $this->helper->load('convert')->load_html($source, $dom, true);
             }
             if (!$source) {
                 return '<div class="e2pdf-vm-error">' . __("The form source is empty or doesn't exist", 'e2pdf') . '</div>';
@@ -280,6 +281,20 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                 $xml = $this->helper->load('xml');
                 $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
+
+                // remove by name
+                $remove_by_name = array(
+                    'everest_forms[id]',
+                    'everest_forms[author]',
+                    '_wpnonce6090',
+                    '_wp_http_referer',
+                );
+                foreach ($remove_by_name as $key => $name) {
+                    $elements = $xpath->query('//*[@name="' . $name . '"]');
+                    foreach ($elements as $element) {
+                        $element->parentNode->removeChild($element);
+                    }
+                }
 
                 $elements = $xpath->query("//*[contains(@class, 'dropzone-input')]");
                 foreach ($elements as $element) {
@@ -341,6 +356,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return false;
     }
 
+    // auto
     public function auto() {
         $response = array();
         $elements = array();
@@ -888,6 +904,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $response;
     }
 
+    // auto field
     public function auto_field($field = false, $element = array()) {
         if (!$field) {
             return false;
@@ -901,6 +918,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $element;
     }
 
+    // styles
     public function styles($item_id = false) {
         $styles = array();
         if (function_exists('evf')) {
@@ -910,9 +928,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $styles;
     }
 
-    /**
-     * Functions
-     */
+    // get field id for smarttags
     public function get_field_id_for_smarttags($field) {
         $field_id = isset($field['id']) ? $field['id'] : '';
         $field_label = isset($field['label']) ? $field['label'] : '';
@@ -937,6 +953,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $field_id;
     }
 
+    // get merge tag value
     public function get_merge_tag_value($value) {
         if (isset($value['type'])) {
             switch ($value['type']) {
@@ -969,9 +986,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return '';
     }
 
-    /**
-     * Actions
-     */
+    // email send after action
     public function action_everest_forms_email_send_after() {
         $files = $this->helper->get('tmp_everest_attachments');
         if (is_array($files) && !empty($files)) {
@@ -983,12 +998,14 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         }
     }
 
+    // before template part action
     public function action_everest_forms_before_template_part($template_name) {
         if ($template_name == 'notices/success.php') {
             ob_start();
         }
     }
 
+    // after template part action
     public function action_everest_forms_after_template_part($template_name) {
         if ($template_name == 'notices/success.php') {
             $content = ob_get_clean();
@@ -999,9 +1016,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Filters
-     */
+    // after success ajax message filter
     public function filter_everest_forms_after_success_ajax_message($response_data, $form_data, $entry) {
         if (!empty($response_data['message'])) {
             $response_data['message'] = $this->filter_message($response_data['message']);
@@ -1009,6 +1024,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $response_data;
     }
 
+    // email attachments filter
     public function filter_everest_forms_email_attachments($attachments, $mail) {
         $files = $this->helper->get('everest_attachments');
         if (is_array($files) && !empty($files)) {
@@ -1020,11 +1036,13 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $attachments;
     }
 
+    // email message filter
     public function filter_everest_forms_email_message($message, $mail) {
         $message = $this->filter_message($message, 'mail');
         return $message;
     }
 
+    // add success filter
     public function filter_everest_forms_add_success($message) {
         if (is_string($message) && false !== strpos($message, '[e2pdf-')) {
             add_action('everest_forms_before_template_part', array($this, 'action_everest_forms_before_template_part'), 99);
@@ -1033,12 +1051,12 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $message;
     }
 
+    // process smart tags filter
     public function filter_everest_forms_process_smart_tags($content, $form_data, $fields = '') {
 
         preg_match_all('/\{field_id="(.+?)"\}/', $content, $ids);
 
         if (!empty($ids[1]) && !empty($fields)) {
-
             foreach ($ids[1] as $key => $field_id) {
                 $mixed_field_id = explode('_', $field_id);
                 $sub_field_id = isset($mixed_field_id[1]) ? $mixed_field_id['1'] : '';
@@ -1118,6 +1136,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $content;
     }
 
+    // message filter
     public function filter_message($message = '', $type = 'message') {
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
@@ -1179,9 +1198,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $message;
     }
 
-    /**
-     * Hooks
-     */
+    // row actions hook
     public function hook_everest_row_actions($actions, $entry) {
         if (!empty($entry->form_id)) {
             $hooks = $this->helper->load('hooks')->get('everest', 'hook_everest_row_actions', $entry->form_id);
@@ -1213,6 +1230,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         return $actions;
     }
 
+    // entry view hook
     public function hook_everest_entry_view($entry) {
         if (!empty($entry->form_id)) {
             $hooks = $this->helper->load('hooks')->get('everest', 'hook_everest_entry_view', $entry->form_id);
