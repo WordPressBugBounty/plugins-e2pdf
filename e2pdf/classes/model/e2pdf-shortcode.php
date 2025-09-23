@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Shortcode Model
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /model/e2pdf-shortcode.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -14,11 +13,12 @@ if (!defined('ABSPATH')) {
 
 class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
-    /**
-     * [e2pdf-attachment] shortcode
-     * @param array $atts - Attributes
-     */
-    public function e2pdf_attachment($atts = array()) {
+    private $entry;
+    private $template;
+    private $atts = [];
+
+    // e2pdf-attachment
+    public function e2pdf_attachment($atts = []) {
 
         $response = '';
 
@@ -33,7 +33,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $wc_order_id = isset($atts['wc_order_id']) ? $atts['wc_order_id'] : false;
         $wc_product_item_id = isset($atts['wc_product_item_id']) ? $atts['wc_product_item_id'] : false;
 
-        $args = array();
+        $args = [];
         foreach ($atts as $att_key => $att_value) {
             if (substr($att_key, 0, 3) === 'arg') {
                 $args[$att_key] = $att_value;
@@ -75,29 +75,25 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if ($template->load($template_id)) {
 
             $entry = new Model_E2pdf_Entry();
+
             $entry->set_data('template_id', $template_id);
             $template->extension()->set('template_id', $template_id);
-
             if ($dataset) {
                 $entry->set_data('dataset', $dataset);
                 $template->extension()->set('dataset', $dataset);
             }
-
             if ($dataset2) {
                 $entry->set_data('dataset2', $dataset2);
                 $template->extension()->set('dataset2', $dataset2);
             }
-
             if ($wc_order_id) {
                 $entry->set_data('wc_order_id', $wc_order_id);
                 $template->extension()->set('wc_order_id', $wc_order_id);
             }
-
             if ($wc_product_item_id) {
                 $entry->set_data('wc_product_item_id', $wc_product_item_id);
                 $template->extension()->set('wc_product_item_id', $wc_product_item_id);
             }
-
             if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf, WordPress.WP.CapitalPDangit.Misspelled
             } else {
                 if (array_key_exists('user_id', $atts)) {
@@ -110,18 +106,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $template->extension()->set('user_id', $user_id);
                 }
             }
-
             if (!empty($args)) {
                 $entry->set_data('args', $args);
                 $template->extension()->set('args', $args);
             }
-
             if ($template->extension()->get_storing_engine() !== false) {
                 $entry->set_data('storing_engine', $template->extension()->get_storing_engine());
                 $template->extension()->set('storing_engine', $template->extension()->get_storing_engine());
             }
 
-            $options = array();
+            $options = [];
             $options = apply_filters('e2pdf_model_shortcode_extension_options', $options, $template);
             $options = apply_filters('e2pdf_model_shortcode_e2pdf_attachment_extension_options', $options, $template);
             foreach ($options as $option_key => $option_value) {
@@ -134,20 +128,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
                     $entry->set_data('inline', $inline);
                 }
-
                 if (array_key_exists('flatten', $atts)) {
                     $flatten = strval((int) $atts['flatten']);
                     $entry->set_data('flatten', $flatten);
                     $template->set('flatten', $flatten);
                 }
-
                 if (array_key_exists('format', $atts)) {
                     $format = $atts['format'];
                     if ($template->set('format', $format)) {
                         $entry->set_data('format', $format);
                     }
                 }
-
                 if (array_key_exists('password', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $password = $template->extension()->render($atts['password']);
@@ -159,7 +150,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('password', $template->extension()->render($template->get('password')));
                 }
-
                 if (array_key_exists('dpdf', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $dpdf = $template->extension()->render($atts['dpdf']);
@@ -171,7 +161,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('dpdf', $template->extension()->render($template->get('dpdf')));
                 }
-
                 if (array_key_exists('meta_title', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_title = $template->extension()->render($atts['meta_title']);
@@ -183,7 +172,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('meta_title', $template->extension()->render($template->get('meta_title')));
                 }
-
                 if (array_key_exists('meta_subject', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_subject = $template->extension()->render($atts['meta_subject']);
@@ -195,7 +183,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('meta_subject', $template->extension()->render($template->get('meta_subject')));
                 }
-
                 if (array_key_exists('meta_author', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_author = $template->extension()->render($atts['meta_author']);
@@ -207,7 +194,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('meta_author', $template->extension()->render($template->get('meta_author')));
                 }
-
                 if (array_key_exists('meta_keywords', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_keywords = $template->extension()->render($atts['meta_keywords']);
@@ -219,7 +205,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('meta_keywords', $template->extension()->render($template->get('meta_keywords')));
                 }
-
                 if (array_key_exists('name', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $name = $template->extension()->render($atts['name']);
@@ -246,7 +231,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     } else {
                         $name = $template->extension()->render($template->get_name());
                     }
-
                     $file_name = $name . '.' . $template->get('format');
                     $file_name = $this->helper->load('convert')->to_file_name($file_name);
                     $file_path = $tmp_dir . $file_name;
@@ -268,11 +252,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * [e2pdf-download] shortcode
-     * @param array $atts - Attributes
-     */
-    public function e2pdf_download($atts = array()) {
+    // e2pdf-download
+    public function e2pdf_download($atts = []) {
 
         if (function_exists('vc_is_page_editable') && vc_is_page_editable()) {
             return '[e2pdf-download]';
@@ -295,7 +276,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $wc_product_item_id = isset($atts['wc_product_item_id']) ? $atts['wc_product_item_id'] : false;
         $local = isset($atts['local']) && $atts['local'] == 'true' ? true : false;
         $preload = isset($atts['preload']) && $atts['preload'] == 'true' ? true : false;
-        $style = isset($atts['style']) && $atts['style'] ? explode(';', $atts['style']) : array();
+        $style = isset($atts['style']) && $atts['style'] ? explode(';', $atts['style']) : [];
         $output = isset($atts['output']) ? $atts['output'] : '';
         $print = isset($atts['print']) && $atts['print'] == 'true' ? true : false;
         $iframe_download = false;
@@ -329,7 +310,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $atts['button_title'] = $atts['button-title'];
         }
 
-        $args = array();
+        $args = [];
         foreach ($atts as $att_key => $att_value) {
             if (substr($att_key, 0, 3) === 'arg') {
                 $args[$att_key] = $att_value;
@@ -353,7 +334,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 if (array_key_exists('class', $atts)) {
                     $classes = explode(' ', $atts['class']);
                 } else {
-                    $classes = array();
+                    $classes = [];
                 }
                 $classes[] = 'e2pdf-download';
                 $classes[] = 'e2pdf-format-pdf';
@@ -362,7 +343,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
                     $entry->set_data('inline', $inline);
                 }
-
                 if ($inline) {
                     $classes[] = 'e2pdf-inline';
                 }
@@ -416,11 +396,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 $download_name = basename($pdf, '.' . pathinfo($pdf, PATHINFO_EXTENSION));
                             }
                             $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $download_name, $entry->get('uid'), $entry->get('entry'));
-
                             $file_download = '';
                             if ($print && $this->helper->load('server')->isPrintingSupported()) {
                                 $classes[] = 'e2pdf-print-pdf';
-                                $url = add_query_arg(array('v' => $this->helper->get('version')), $url);
+                                $url = add_query_arg(['v' => $this->helper->get('version')], $url);
                             } elseif (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported()) {
                                 if ($inline) {
                                     $target = '_blank';
@@ -429,7 +408,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     $classes[] = 'e2pdf-download-loader';
                                 }
                             }
-
                             $response = '<a rel="nofollow" ' . $file_download . ' id="e2pdf-download" class="' . esc_attr(implode(' ', $classes)) . '" style="' . esc_attr(implode(';', $style)) . '" target="' . esc_attr($target) . '" href="' . esc_url($url) . '">' . $button_title . '</a>';
                             if ($iframe_download) {
                                 $url = add_query_arg(array('v' => $this->helper->get('version')), $url);
@@ -446,18 +424,20 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $entry->save();
                     }
                     if ($entry->get('ID')) {
-                        $url_data = array(
+                        $url_data = [
                             'page' => 'e2pdf-download',
                             'uid' => $entry->get('uid'),
-                        );
+                        ];
+
                         $url_data = apply_filters('e2pdf_model_shortcode_url_data', $url_data, $atts);
                         $url_data = apply_filters('e2pdf_model_shortcode_e2pdf_download_url_data', $url_data, $atts);
+
                         $url = $this->helper->get_frontend_pdf_url(
                                 $url_data, $site_url,
-                                array(
+                                [
                                     'e2pdf_model_shortcode_site_url',
                                     'e2pdf_model_shortcode_e2pdf_download_site_url',
-                                )
+                                ]
                         );
                         switch ($output) {
                             case 'url':
@@ -485,7 +465,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 $file_download = '';
                                 if ($print && $this->helper->load('server')->isPrintingSupported()) {
                                     $classes[] = 'e2pdf-print-pdf';
-                                    $url = add_query_arg(array('v' => $this->helper->get('version')), $url);
+                                    $url = add_query_arg(['v' => $this->helper->get('version')], $url);
                                 } elseif (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported()) {
                                     if ($inline) {
                                         $target = '_blank';
@@ -517,7 +497,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $hash_id = sanitize_text_field(wp_unslash($_GET['e2pdf-hash']));
             $dataset = get_transient('e2pdf_hash_' . $hash_id);
             if ($dataset && apply_filters('e2pdf_hash_clear', true, 'shortcode', $atts) && has_action('shutdown', array($this, 'action_e2pdf_hash_clear')) === false) {
-                add_action('shutdown', array($this, 'action_e2pdf_hash_clear'));
+                add_action('shutdown', [$this, 'action_e2pdf_hash_clear']);
             }
         }
         // phpcs:enable
@@ -532,27 +512,22 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $entry = new Model_E2pdf_Entry();
             $entry->set_data('template_id', $template_id);
             $template->extension()->set('template_id', $template_id);
-
             if ($dataset) {
                 $entry->set_data('dataset', $dataset);
                 $template->extension()->set('dataset', $dataset);
             }
-
             if ($dataset2) {
                 $entry->set_data('dataset2', $dataset2);
                 $template->extension()->set('dataset2', $dataset2);
             }
-
             if ($wc_order_id) {
                 $entry->set_data('wc_order_id', $wc_order_id);
                 $template->extension()->set('wc_order_id', $wc_order_id);
             }
-
             if ($wc_product_item_id) {
                 $entry->set_data('wc_product_item_id', $wc_product_item_id);
                 $template->extension()->set('wc_product_item_id', $wc_product_item_id);
             }
-
             if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf, WordPress.WP.CapitalPDangit.Misspelled
             } else {
                 if (array_key_exists('user_id', $atts)) {
@@ -565,27 +540,25 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $template->extension()->set('user_id', $user_id);
                 }
             }
-
             if (!empty($args)) {
                 $entry->set_data('args', $args);
                 $template->extension()->set('args', $args);
             }
-
             if ($template->extension()->get_storing_engine() !== false) {
                 $entry->set_data('storing_engine', $template->extension()->get_storing_engine());
                 $template->extension()->set('storing_engine', $template->extension()->get_storing_engine());
             }
-
             if (array_key_exists('class', $atts)) {
                 $classes = explode(' ', $atts['class']);
             } else {
-                $classes = array();
+                $classes = [];
             }
             $classes[] = 'e2pdf-download';
 
-            $options = array();
+            $options = [];
             $options = apply_filters('e2pdf_model_shortcode_extension_options', $options, $template);
             $options = apply_filters('e2pdf_model_shortcode_e2pdf_download_extension_options', $options, $template);
+
             foreach ($options as $option_key => $option_value) {
                 $template->extension()->set($option_key, $option_value);
             }
@@ -602,7 +575,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 if ($inline) {
                     $classes[] = 'e2pdf-inline';
                 }
-
                 if (array_key_exists('auto', $atts)) {
                     $auto = $atts['auto'] == 'true' ? '1' : '0';
                 } else {
@@ -724,6 +696,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         'page' => 'e2pdf-download',
                         'uid' => $entry->get('uid'),
                     );
+
                     if ($template->get('name')) {
                         $download_name = $template->get('name');
                     } else {
@@ -740,10 +713,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
                     $url = $this->helper->get_frontend_pdf_url(
                             $url_data, $site_url,
-                            array(
+                            [
                                 'e2pdf_model_shortcode_site_url',
                                 'e2pdf_model_shortcode_e2pdf_download_site_url',
-                            )
+                            ]
                     );
                     switch ($output) {
                         case 'url':
@@ -761,11 +734,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             break;
                         default:
                             $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_pdf_url', $url, $atts);
-
                             $file_download = '';
                             if ($print && $this->helper->load('server')->isPrintingSupported()) {
                                 $classes[] = 'e2pdf-print-pdf';
-                                $url = add_query_arg(array('v' => $this->helper->get('version')), $url);
+                                $url = add_query_arg(['v' => $this->helper->get('version')], $url);
                             } elseif (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported()) {
                                 if ($inline) {
                                     $target = '_blank';
@@ -792,17 +764,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * @since 0.01.44
-     * [e2pdf-save] shortcode
-     * @param array $atts - Attributes
-     */
-    public function e2pdf_save($atts = array()) {
+    // e2pdf-save
+    public function e2pdf_save($atts = []) {
 
         $response = '';
 
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_save_atts', $atts);
-
         $template_id = isset($atts['id']) ? (int) $atts['id'] : false;
         $dataset = isset($atts['dataset']) ? $atts['dataset'] : false;
         $dataset2 = isset($atts['dataset2']) ? $atts['dataset2'] : false;
@@ -811,19 +778,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $attachment = isset($atts['attachment']) && $atts['attachment'] == 'true' ? true : false;
         $zapier = isset($atts['zapier']) && $atts['zapier'] == 'true' ? true : false;
         $output = isset($atts['output']) ? $atts['output'] : '';
-
         /* Backward compatiability */
         $esc_url_raw = isset($atts['esc_url_raw']) && $atts['esc_url_raw'] == 'true' ? true : false;
         if ($output == 'url' && $esc_url_raw) {
             $output = 'url_raw';
         }
-
         /* Backward Compatibility */
         $overwrite = '1';
         if (isset($atts['overwrite'])) {
             $overwrite = $atts['overwrite'] == 'false' ? '0' : $atts['overwrite'];
         }
-
         $apply = isset($atts['apply']) ? true : false;
         $dir = isset($atts['dir']) ? $atts['dir'] : false;
         $create_dir = isset($atts['create_dir']) && $atts['create_dir'] == 'true' ? true : false;
@@ -835,7 +799,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $site_url = isset($atts['site_url']) ? $atts['site_url'] : false;
         $media = isset($atts['media']) && $atts['media'] == 'true' ? true : false;
 
-        $args = array();
+        $args = [];
         foreach ($atts as $att_key => $att_value) {
             if (substr($att_key, 0, 3) === 'arg') {
                 $args[$att_key] = $att_value;
@@ -851,39 +815,35 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if ($template->load($template_id)) {
 
             $entry = new Model_E2pdf_Entry();
+
             $template->extension()->set('template_id', $template_id);
             if ($media) {
                 $entry->set_data('dataset', $dataset);
             }
-
             if ($dataset) {
                 $template->extension()->set('dataset', $dataset);
                 if ($media) {
                     $entry->set_data('dataset', $dataset);
                 }
             }
-
             if ($dataset2) {
                 $template->extension()->set('dataset2', $dataset2);
                 if ($media) {
                     $entry->set_data('dataset2', $dataset2);
                 }
             }
-
             if ($wc_order_id) {
                 $template->extension()->set('wc_order_id', $wc_order_id);
                 if ($media) {
                     $entry->set_data('wc_order_id', $dataset2);
                 }
             }
-
             if ($wc_product_item_id) {
                 $template->extension()->set('wc_product_item_id', $wc_product_item_id);
                 if ($media) {
                     $entry->set_data('wc_product_item_id', $dataset2);
                 }
             }
-
             if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf, WordPress.WP.CapitalPDangit.Misspelled
             } else {
                 if (array_key_exists('user_id', $atts)) {
@@ -900,14 +860,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                 }
             }
-
             if (!empty($args)) {
                 $template->extension()->set('args', $args);
                 if ($media) {
                     $entry->set_data('args', $args);
                 }
             }
-
             if ($template->extension()->get_storing_engine() !== false) {
                 $template->extension()->set('storing_engine', $template->extension()->get_storing_engine());
                 if ($media) {
@@ -915,7 +873,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
             }
 
-            $options = array();
+            $options = [];
             $options = apply_filters('e2pdf_model_shortcode_extension_options', $options, $template);
             $options = apply_filters('e2pdf_model_shortcode_e2pdf_save_extension_options', $options, $template);
             foreach ($options as $option_key => $option_value) {
@@ -1043,13 +1001,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         } else {
                             $dir = $template->extension()->convert_shortcodes($dir, true);
                         }
-
                         $save_dir = rtrim(trim($this->helper->load('convert')->to_file_dir($dir)), '/') . '/';
-
                         if (strpos($save_dir, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $save_dir)) {
                             $save_dir = ABSPATH . $save_dir;
                         }
-
                         if ($create_dir) {
                             $this->helper->create_dir($save_dir, true, $create_index, $create_htaccess);
                         }
@@ -1059,7 +1014,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $this->helper->create_dir($tpl_dir, false, true);
                         $this->helper->create_dir($save_dir, false, $create_index, $create_htaccess);
                     }
-
                     $htaccess = $save_dir . '.htaccess';
                     if ($create_htaccess && !file_exists($htaccess)) {
                         if ($local) {
@@ -1166,13 +1120,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     base64_decode($request['file']) // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
                             );
                             if (is_array($file) && isset($file['file']) && file_exists($file['file'])) {
-                                $attachment_args = array(
+                                $attachment_args = [
                                     'guid' => $file['url'],
                                     'post_mime_type' => $file['type'],
                                     'post_title' => preg_replace('/\.[^.]+$/', '', basename($file['file'])),
                                     'post_excerpt' => '',
                                     'post_content' => '',
-                                );
+                                ];
                                 $attachment_id = wp_insert_attachment($attachment_args, $file['file']);
                                 if (!is_wp_error($attachment_id) && $attachment_id) {
                                     require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -1239,18 +1193,18 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     $entry->save();
                                 }
                                 if ($entry->get('ID')) {
-                                    $url_data = array(
+                                    $url_data = [
                                         'page' => 'e2pdf-download',
                                         'uid' => $entry->get('uid'),
-                                    );
+                                    ];
                                     $url_data = apply_filters('e2pdf_model_shortcode_url_data', $url_data, $atts);
                                     $url_data = apply_filters('e2pdf_model_shortcode_e2pdf_save_url_data', $url_data, $atts);
                                     $url = $this->helper->get_frontend_pdf_url(
                                             $url_data, $site_url,
-                                            array(
+                                            [
                                                 'e2pdf_model_shortcode_site_url',
                                                 'e2pdf_model_shortcode_e2pdf_save_site_url',
-                                            )
+                                            ]
                                     );
                                     switch ($output) {
                                         case 'url':
@@ -1361,18 +1315,18 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                             $entry->save();
                                         }
                                         if ($entry->get('ID')) {
-                                            $url_data = array(
+                                            $url_data = [
                                                 'page' => 'e2pdf-download',
                                                 'uid' => $entry->get('uid'),
-                                            );
+                                            ];
                                             $url_data = apply_filters('e2pdf_model_shortcode_url_data', $url_data, $atts);
                                             $url_data = apply_filters('e2pdf_model_shortcode_e2pdf_save_url_data', $url_data, $atts);
                                             $url = $this->helper->get_frontend_pdf_url(
                                                     $url_data, $site_url,
-                                                    array(
+                                                    [
                                                         'e2pdf_model_shortcode_site_url',
                                                         'e2pdf_model_shortcode_e2pdf_save_site_url',
-                                                    )
+                                                    ]
                                             );
                                             switch ($output) {
                                                 case 'url':
@@ -1404,12 +1358,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * @since 1.13.20
-     * [e2pdf-zapier] shortcode
-     * @param array $atts - Attributes
-     */
-    public function e2pdf_zapier($atts = array()) {
+    // e2pdf-zapier
+    public function e2pdf_zapier($atts = []) {
 
         $response = '';
 
@@ -1430,7 +1380,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             return $response;
         }
 
-        $args = array();
+        $args = [];
         foreach ($atts as $att_key => $att_value) {
             if (substr($att_key, 0, 3) === 'arg') {
                 $args[$att_key] = $att_value;
@@ -1451,17 +1401,20 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $entry->set_data('pdf', $pdf);
                 }
+
                 if (array_key_exists('class', $atts)) {
                     $classes = explode(' ', $atts['class']);
                 } else {
-                    $classes = array();
+                    $classes = [];
                 }
                 $classes[] = 'e2pdf-download';
                 $inline = '0';
+
                 if (array_key_exists('inline', $atts)) {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
                     $entry->set_data('inline', $inline);
                 }
+
                 if (array_key_exists('name', $atts)) {
                     $name = $atts['name'];
                     $entry->set_data('name', $name);
@@ -1484,21 +1437,21 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
 
                     if ($entry->get('ID')) {
-                        $url_data = array(
+
+                        $url_data = [
                             'page' => 'e2pdf-download',
                             'uid' => $entry->get('uid'),
-                        );
-
+                        ];
                         $url_data = apply_filters('e2pdf_model_shortcode_url_data', $url_data, $atts);
                         $url_data = apply_filters('e2pdf_model_shortcode_e2pdf_zapier_url_data', $url_data, $atts);
 
                         $url = esc_url_raw(
                                 $this->helper->get_frontend_pdf_url(
                                         $url_data, $site_url,
-                                        array(
+                                        [
                                             'e2pdf_model_shortcode_site_url',
                                             'e2pdf_model_shortcode_e2pdf_zapier_site_url',
-                                        )
+                                        ]
                                 )
                         );
                         $url = apply_filters('e2pdf_model_shortcode_e2pdf_zapier_pdf_url', $url, $atts);
@@ -1509,7 +1462,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                 }
                 if ($local || $entry->get('ID')) {
-                    $zapier = array();
+                    $zapier = [];
                     if ($template_id) {
                         $zapier['id'] = $template_id;
                     }
@@ -1541,15 +1494,15 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
                     $zapier_args = apply_filters(
                             'e2pdf_model_shortcode_e2pdf_zapier_args',
-                            array(
+                            [
                                 'method' => 'POST',
                                 'body' => json_encode($data), // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
-                                'headers' => array(
+                                'headers' => [
                                     'Content-Type' => $content_type,
-                                ),
-                            ), $atts
+                                ],
+                            ], $atts
                     );
-                    $result = array();
+                    $result = [];
                     if ($webhook !== 'local') {
                         $result = wp_remote_post($webhook, $zapier_args);
                     }
@@ -1567,29 +1520,25 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if ($template->load($template_id, false)) {
 
             $entry = new Model_E2pdf_Entry();
+
             $entry->set_data('template_id', $template_id);
             $template->extension()->set('template_id', $template_id);
-
             if ($dataset) {
                 $entry->set_data('dataset', $dataset);
                 $template->extension()->set('dataset', $dataset);
             }
-
             if ($dataset2) {
                 $entry->set_data('dataset2', $dataset2);
                 $template->extension()->set('dataset2', $dataset2);
             }
-
             if ($wc_order_id) {
                 $entry->set_data('wc_order_id', $wc_order_id);
                 $template->extension()->set('wc_order_id', $wc_order_id);
             }
-
             if ($wc_product_item_id) {
                 $entry->set_data('wc_product_item_id', $wc_product_item_id);
                 $template->extension()->set('wc_product_item_id', $wc_product_item_id);
             }
-
             if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf, WordPress.WP.CapitalPDangit.Misspelled
             } else {
                 if (array_key_exists('user_id', $atts)) {
@@ -1602,25 +1551,22 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $template->extension()->set('user_id', $user_id);
                 }
             }
-
             if (!empty($args)) {
                 $entry->set_data('args', $args);
                 $template->extension()->set('args', $args);
             }
-
             if ($template->extension()->get_storing_engine() !== false) {
                 $entry->set_data('storing_engine', $template->extension()->get_storing_engine());
                 $template->extension()->set('storing_engine', $template->extension()->get_storing_engine());
             }
-
             if (array_key_exists('class', $atts)) {
                 $classes = explode(' ', $atts['class']);
             } else {
-                $classes = array();
+                $classes = [];
             }
             $classes[] = 'e2pdf-download';
 
-            $options = array();
+            $options = [];
             $options = apply_filters('e2pdf_model_shortcode_extension_options', $options, $template);
             $options = apply_filters('e2pdf_model_shortcode_e2pdf_zapier_extension_options', $options, $template);
             foreach ($options as $option_key => $option_value) {
@@ -1635,19 +1581,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $inline = $template->get('inline');
                 }
-
                 if (array_key_exists('flatten', $atts)) {
                     $flatten = strval((int) $atts['flatten']);
                     $entry->set_data('flatten', $flatten);
                 }
-
                 if (array_key_exists('format', $atts)) {
                     $format = $atts['format'];
                     if ($template->set('format', $format)) {
                         $entry->set_data('format', $format);
                     }
                 }
-
                 if (array_key_exists('password', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $password = $template->extension()->render($atts['password']);
@@ -1656,7 +1599,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('password', $password);
                 }
-
                 if (array_key_exists('dpdf', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $dpdf = $template->extension()->render($atts['dpdf']);
@@ -1665,7 +1607,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('dpdf', $dpdf);
                 }
-
                 if (array_key_exists('meta_title', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_title = $template->extension()->render($atts['meta_title']);
@@ -1674,7 +1615,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('meta_title', $meta_title);
                 }
-
                 if (array_key_exists('meta_subject', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_subject = $template->extension()->render($atts['meta_subject']);
@@ -1683,7 +1623,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('meta_subject', $meta_subject);
                 }
-
                 if (array_key_exists('meta_author', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_author = $template->extension()->render($atts['meta_author']);
@@ -1692,7 +1631,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('meta_author', $meta_author);
                 }
-
                 if (array_key_exists('meta_keywords', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_keywords = $template->extension()->render($atts['meta_keywords']);
@@ -1701,7 +1639,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('meta_keywords', $meta_keywords);
                 }
-
                 if (array_key_exists('name', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $name = $template->extension()->render($atts['name']);
@@ -1726,10 +1663,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $content_type .= '; charset=' . get_option('blog_charset');
                     }
 
-                    $url_data = array(
+                    $url_data = [
                         'page' => 'e2pdf-download',
                         'uid' => $entry->get('uid'),
-                    );
+                    ];
 
                     $url_data = apply_filters('e2pdf_model_shortcode_url_data', $url_data, $atts);
                     $url_data = apply_filters('e2pdf_model_shortcode_e2pdf_zapier_url_data', $url_data, $atts);
@@ -1737,15 +1674,15 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $url = esc_url_raw(
                             $this->helper->get_frontend_pdf_url(
                                     $url_data, $site_url,
-                                    array(
+                                    [
                                         'e2pdf_model_shortcode_site_url',
                                         'e2pdf_model_shortcode_e2pdf_zapier_site_url',
-                                    )
+                                    ]
                             )
                     );
                     $url = apply_filters('e2pdf_model_shortcode_e2pdf_zapier_pdf_url', $url, $atts);
 
-                    $zapier = array();
+                    $zapier = [];
                     if ($template_id) {
                         $zapier['id'] = $template_id;
                     }
@@ -1782,16 +1719,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
                     $zapier_args = apply_filters(
                             'e2pdf_model_shortcode_e2pdf_zapier_args',
-                            array(
+                            [
                                 'method' => 'POST',
                                 'body' => json_encode($data), // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
-                                'headers' => array(
+                                'headers' => [
                                     'Content-Type' => $content_type,
-                                ),
-                            ), $atts
+                                ],
+                            ], $atts
                     );
 
-                    $result = array();
+                    $result = [];
                     if ($webhook !== 'local') {
                         $result = wp_remote_post($webhook, $zapier_args);
                     }
@@ -1803,11 +1740,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * [e2pdf-view] shortcode
-     * @param array $atts - Attributes
-     */
-    public function e2pdf_view($atts = array()) {
+    // e2pdf-view
+    public function e2pdf_view($atts = []) {
 
         if (function_exists('vc_is_page_editable') && vc_is_page_editable()) {
             return '[e2pdf-view]';
@@ -1817,7 +1751,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $name = '';
 
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_view_atts', $atts);
-
         $template_id = isset($atts['id']) ? (int) $atts['id'] : false;
         $dataset = isset($atts['dataset']) ? $atts['dataset'] : false;
         $dataset2 = isset($atts['dataset2']) ? $atts['dataset2'] : false;
@@ -1837,23 +1770,21 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $wc_product_item_id = isset($atts['wc_product_item_id']) ? $atts['wc_product_item_id'] : false;
         $local = isset($atts['local']) && $atts['local'] == 'true' ? true : false;
         $preload = isset($atts['preload']) && $atts['preload'] == 'true' ? true : false;
-        $style = isset($atts['style']) && $atts['style'] ? explode(';', $atts['style']) : array();
+        $style = isset($atts['style']) && $atts['style'] ? explode(';', $atts['style']) : [];
         $output = isset($atts['output']) ? $atts['output'] : '';
-
         /* Backward compatiability */
         $esc_url_raw = isset($atts['esc_url_raw']) && $atts['esc_url_raw'] == 'true' ? true : false;
         if ($output == 'url' && $esc_url_raw) {
             $output = 'url_raw';
         }
-
-        $args = array();
+        $args = [];
         foreach ($atts as $att_key => $att_value) {
             if (substr($att_key, 0, 3) === 'arg') {
                 $args[$att_key] = $att_value;
             }
         }
 
-        $app_options = array();
+        $app_options = [];
         if (isset($atts['resolution'])) {
             $app_options[] = 'resolution="' . esc_attr($atts['resolution']) . '"';
         }
@@ -1867,7 +1798,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $app_options[] = 'spread="' . esc_attr($atts['spread']) . '"';
         }
 
-        $viewer_options = array();
+        $viewer_options = [];
         if (isset($atts['page'])) {
             $viewer_options[] = 'page=' . $atts['page'];
         }
@@ -1890,9 +1821,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if (array_key_exists('class', $atts)) {
             $classes = explode(' ', $atts['class']);
         } else {
-            $classes = array();
+            $classes = [];
         }
-
         $classes[] = 'e2pdf-view';
 
         if ($preload) {
@@ -1915,113 +1845,85 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         }
 
         if ($hide) {
-
             $hidden = array_map('trim', explode(',', $hide));
-
             if (in_array('toolbar', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-toolbar';
             }
-
             if (in_array('secondary-toolbar', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-secondary-toolbar';
             }
-
             if (in_array('left-toolbar', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-left-toolbar';
             }
-
             if (in_array('middle-toolbar', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-middle-toolbar';
             }
-
             if (in_array('right-toolbar', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-right-toolbar';
             }
-
             if (in_array('sidebar', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-sidebar';
             }
-
             if (in_array('search', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-search';
             }
-
             if (in_array('pageupdown', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-pageupdown';
             }
-
             if (in_array('pagenumber', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-pagenumber';
             }
-
             if (in_array('zoom', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-zoom';
             }
-
             if (in_array('scale', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-scale';
             }
-
             if (in_array('presentation', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-presentation';
             }
-
             if (in_array('openfile', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-openfile';
             }
-
             if (in_array('print', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-print';
             }
-
             if (in_array('download', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-download';
             }
-
             if (in_array('bookmark', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-bookmark';
             }
-
             if (in_array('firstlastpage', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-firstlastpage';
             }
-
             if (in_array('rotate', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-rotate';
             }
-
             if (in_array('cursor', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-cursor';
             }
-
             if (in_array('scroll', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-scroll';
             }
-
             if (in_array('spread', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-spread';
             }
-
             if (in_array('properties', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-properties';
             }
-
             if (in_array('loader', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-loader';
             }
-
             if (in_array('freetext', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-freetext';
             }
-
             if (in_array('ink', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-ink';
             }
-
             if (in_array('stamp', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-stamp';
             }
-
             if (in_array('editor', $hidden, true)) {
                 $classes[] = 'e2pdf-hide-editor';
             }
@@ -2051,10 +1953,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     case 'url_raw':
                     case 'url_encode':
                         $viewer_url = add_query_arg(
-                                array(
+                                [
                                     'class' => implode(';', $classes),
                                     'file' => $file,
-                                ),
+                                ],
                                 $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))
                         );
                         if ($output == 'url') {
@@ -2067,7 +1969,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
                         break;
                     default:
-                        $viewer_url = esc_url(add_query_arg(array('file' => $file), $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))));
+                        $viewer_url = esc_url(add_query_arg(['file' => $file], $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))));
                         if ($preload) {
                             $response = '<iframe name="' . md5($this->helper->get('version')) . '" onload="e2pdfViewer.iframeLoad(this)" style="' . esc_attr(implode(';', $style)) . '" class="' . esc_attr(implode(' ', $classes)) . '" ' . implode(' ', $app_options) . ' width="' . esc_attr($width) . '" height="' . esc_attr($height) . '" preload="' . $viewer_url . '"></iframe>';
                         } else {
@@ -2112,10 +2014,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 case 'url_raw':
                                 case 'url_encode':
                                     $viewer_url = add_query_arg(
-                                            array(
+                                            [
                                                 'class' => implode(';', $classes),
                                                 'file' => $file,
-                                            ),
+                                            ],
                                             $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))
                                     );
                                     if ($output == 'url') {
@@ -2128,7 +2030,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     }
                                     break;
                                 default:
-                                    $viewer_url = esc_url(add_query_arg(array('file' => $file), $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))));
+                                    $viewer_url = esc_url(add_query_arg(['file' => $file], $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))));
                                     if ($preload) {
                                         $response = '<iframe name="' . md5($this->helper->get('version')) . '" onload="e2pdfViewer.iframeLoad(this)" style="' . esc_attr(implode(';', $style)) . '" class="' . esc_attr(implode(' ', $classes)) . '" ' . implode(' ', $app_options) . ' width="' . esc_attr($width) . '" height="' . esc_attr($height) . '" preload="' . $viewer_url . '"></iframe>';
                                     } else {
@@ -2178,26 +2080,24 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 $name = basename($pdf, '.' . $ext);
                             }
 
-                            $url_data = array(
+                            $url_data = [
                                 'page' => 'e2pdf-download',
                                 'uid' => $entry->get('uid'),
                                 'v' => $this->helper->get('version'),
-                            );
-
+                            ];
                             if ($ext == 'pdf') {
                                 $url_data['saveName'] = $name;
                             }
-
                             $url_data = apply_filters('e2pdf_model_shortcode_url_data', $url_data, $atts);
                             $url_data = apply_filters('e2pdf_model_shortcode_e2pdf_viewer_url_data', $url_data, $atts);
 
                             $url = esc_url_raw(
                                     $this->helper->get_frontend_pdf_url(
                                             $url_data, $site_url,
-                                            array(
+                                            [
                                                 'e2pdf_model_shortcode_site_url',
                                                 'e2pdf_model_shortcode_e2pdf_view_site_url',
-                                            )
+                                            ]
                                     )
                             );
                             $url = apply_filters('e2pdf_model_shortcode_e2pdf_view_pdf_url', $url, $atts);
@@ -2213,10 +2113,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     case 'url_raw':
                                     case 'url_encode':
                                         $viewer_url = add_query_arg(
-                                                array(
+                                                [
                                                     'class' => implode(';', $classes),
                                                     'file' => $file,
-                                                ),
+                                                ],
                                                 $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))
                                         );
                                         if ($output == 'url') {
@@ -2229,7 +2129,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         }
                                         break;
                                     default:
-                                        $viewer_url = esc_url(add_query_arg(array('file' => $file), $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))));
+                                        $viewer_url = esc_url(add_query_arg(['file' => $file], $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))));
                                         if ($preload) {
                                             $response = '<iframe name="' . md5($this->helper->get('version')) . '" onload="e2pdfViewer.iframeLoad(this)" style="' . esc_attr(implode(';', $style)) . '" class="' . esc_attr(implode(' ', $classes)) . '" ' . implode(' ', $app_options) . ' width="' . esc_attr($width) . '" height="' . esc_attr($height) . '" preload="' . $viewer_url . '"></iframe>';
                                         } else {
@@ -2279,8 +2179,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if (isset($_GET['e2pdf-hash']) && !$dataset) {
             $hash_id = sanitize_text_field(wp_unslash($_GET['e2pdf-hash']));
             $dataset = get_transient('e2pdf_hash_' . $hash_id);
-            if ($dataset && apply_filters('e2pdf_hash_clear', true, 'shortcode', $atts) && has_action('shutdown', array($this, 'action_e2pdf_hash_clear')) === false) {
-                add_action('shutdown', array($this, 'action_e2pdf_hash_clear'));
+            if ($dataset && apply_filters('e2pdf_hash_clear', true, 'shortcode', $atts) && has_action('shutdown', [$this, 'action_e2pdf_hash_clear']) === false) {
+                add_action('shutdown', [$this, 'action_e2pdf_hash_clear']);
             }
         }
         // phpcs:enable
@@ -2293,29 +2193,25 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if ($template->load($template_id, false)) {
 
             $entry = new Model_E2pdf_Entry();
+
             $entry->set_data('template_id', $template_id);
             $template->extension()->set('template_id', $template_id);
-
             if ($dataset) {
                 $entry->set_data('dataset', $dataset);
                 $template->extension()->set('dataset', $dataset);
             }
-
             if ($dataset2) {
                 $entry->set_data('dataset2', $dataset2);
                 $template->extension()->set('dataset2', $dataset2);
             }
-
             if ($wc_order_id) {
                 $entry->set_data('wc_order_id', $wc_order_id);
                 $template->extension()->set('wc_order_id', $wc_order_id);
             }
-
             if ($wc_product_item_id) {
                 $entry->set_data('wc_product_item_id', $wc_product_item_id);
                 $template->extension()->set('wc_product_item_id', $wc_product_item_id);
             }
-
             if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf, WordPress.WP.CapitalPDangit.Misspelled
             } else {
                 if (array_key_exists('user_id', $atts)) {
@@ -2328,18 +2224,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $template->extension()->set('user_id', $user_id);
                 }
             }
-
             if (!empty($args)) {
                 $entry->set_data('args', $args);
                 $template->extension()->set('args', $args);
             }
-
             if ($template->extension()->get_storing_engine() !== false) {
                 $entry->set_data('storing_engine', $template->extension()->get_storing_engine());
                 $template->extension()->set('storing_engine', $template->extension()->get_storing_engine());
             }
 
-            $options = array();
+            $options = [];
             $options = apply_filters('e2pdf_model_shortcode_extension_options', $options, $template);
             $options = apply_filters('e2pdf_model_shortcode_e2pdf_view_extension_options', $options, $template);
             foreach ($options as $option_key => $option_value) {
@@ -2352,19 +2246,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
                     $entry->set_data('inline', $inline);
                 }
-
                 if (array_key_exists('flatten', $atts)) {
                     $flatten = strval((int) $atts['flatten']);
                     $entry->set_data('flatten', $flatten);
                 }
-
                 if (array_key_exists('format', $atts)) {
                     $format = $atts['format'];
                     if ($template->set('format', $format)) {
                         $entry->set_data('format', $format);
                     }
                 }
-
                 if (array_key_exists('password', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $password = $template->extension()->render($atts['password']);
@@ -2373,7 +2264,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('password', $password);
                 }
-
                 if (array_key_exists('dpdf', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $dpdf = $template->extension()->render($atts['dpdf']);
@@ -2382,7 +2272,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('dpdf', $dpdf);
                 }
-
                 if (array_key_exists('meta_title', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_title = $template->extension()->render($atts['meta_title']);
@@ -2391,7 +2280,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('meta_title', $meta_title);
                 }
-
                 if (array_key_exists('meta_subject', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_subject = $template->extension()->render($atts['meta_subject']);
@@ -2400,7 +2288,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('meta_subject', $meta_subject);
                 }
-
                 if (array_key_exists('meta_author', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_author = $template->extension()->render($atts['meta_author']);
@@ -2409,7 +2296,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('meta_author', $meta_author);
                 }
-
                 if (array_key_exists('meta_keywords', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_keywords = $template->extension()->render($atts['meta_keywords']);
@@ -2418,7 +2304,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                     $entry->set_data('meta_keywords', $meta_keywords);
                 }
-
                 if (array_key_exists('name', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $name = $template->extension()->render($atts['name']);
@@ -2438,22 +2323,21 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 if ($entry->get('ID')) {
                     if ($template->get('format') == 'jpg') {
 
-                        $url_data = array(
+                        $url_data = [
                             'page' => 'e2pdf-download',
                             'uid' => $entry->get('uid'),
                             'v' => $this->helper->get('version'),
-                        );
-
+                        ];
                         $url_data = apply_filters('e2pdf_model_shortcode_url_data', $url_data, $atts);
                         $url_data = apply_filters('e2pdf_model_shortcode_e2pdf_viewer_url_data', $url_data, $atts);
 
                         $url = esc_url_raw(
                                 $this->helper->get_frontend_pdf_url(
                                         $url_data, $site_url,
-                                        array(
+                                        [
                                             'e2pdf_model_shortcode_site_url',
                                             'e2pdf_model_shortcode_e2pdf_view_site_url',
-                                        )
+                                        ]
                                 )
                         );
                         $url = apply_filters('e2pdf_model_shortcode_e2pdf_view_pdf_url', $url, $atts);
@@ -2487,30 +2371,27 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 break;
                         }
                     } else {
-
                         if ($template->get('name')) {
                             $name = $template->get('name');
                         } else {
                             $name = $template->extension()->render($template->get_name());
                         }
-
-                        $url_data = array(
+                        $url_data = [
                             'page' => 'e2pdf-download',
                             'uid' => $entry->get('uid'),
                             'v' => $this->helper->get('version'),
                             'saveName' => $name . '.pdf',
-                        );
-
+                        ];
                         $url_data = apply_filters('e2pdf_model_shortcode_url_data', $url_data, $atts);
                         $url_data = apply_filters('e2pdf_model_shortcode_e2pdf_viewer_url_data', $url_data, $atts);
 
                         $url = esc_url_raw(
                                 $this->helper->get_frontend_pdf_url(
                                         $url_data, $site_url,
-                                        array(
+                                        [
                                             'e2pdf_model_shortcode_site_url',
                                             'e2pdf_model_shortcode_e2pdf_view_site_url',
-                                        )
+                                        ]
                                 )
                         );
                         $url = apply_filters('e2pdf_model_shortcode_e2pdf_view_pdf_url', $url, $atts);
@@ -2524,10 +2405,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             case 'url_raw':
                             case 'url_encode':
                                 $viewer_url = add_query_arg(
-                                        array(
+                                        [
                                             'class' => implode(';', $classes),
                                             'file' => $file,
-                                        ),
+                                        ],
                                         $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))
                                 );
                                 if ($output == 'url') {
@@ -2540,7 +2421,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 }
                                 break;
                             default:
-                                $viewer_url = esc_url(add_query_arg(array('file' => $file), $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))));
+                                $viewer_url = esc_url(add_query_arg(['file' => $file], $viewer ? $viewer : plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))));
                                 if ($preload) {
                                     $response = '<iframe name="' . md5($this->helper->get('version')) . '" onload="e2pdfViewer.iframeLoad(this)" style="' . esc_attr(implode(';', $style)) . '" class="' . esc_attr(implode(' ', $classes)) . '" ' . implode(' ', $app_options) . ' width="' . esc_attr($width) . '" height="' . esc_attr($height) . '" preload="' . $viewer_url . '"></iframe>';
                                 } else {
@@ -2555,22 +2436,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * [e2pdf-adobesign] shortcode
-     * @param array $atts - Attributes
-     */
-    public function e2pdf_adobesign($atts = array()) {
+    // e2pdf-adobesign
+    public function e2pdf_adobesign($atts = []) {
 
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_adobesign_atts', $atts);
-
         $template_id = isset($atts['id']) ? (int) $atts['id'] : false;
         $dataset = isset($atts['dataset']) ? $atts['dataset'] : false;
         $dataset2 = isset($atts['dataset2']) ? $atts['dataset2'] : false;
         $wc_order_id = isset($atts['wc_order_id']) ? $atts['wc_order_id'] : false;
         $wc_product_item_id = isset($atts['wc_product_item_id']) ? $atts['wc_product_item_id'] : false;
         $apply = isset($atts['apply']) ? true : false;
-
-        $args = array();
+        $args = [];
         foreach ($atts as $att_key => $att_value) {
             if (substr($att_key, 0, 3) === 'arg') {
                 $args[$att_key] = $att_value;
@@ -2589,27 +2465,22 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $entry = new Model_E2pdf_Entry();
             $entry->set_data('template_id', $template_id);
             $template->extension()->set('template_id', $template_id);
-
             if ($dataset) {
                 $entry->set_data('dataset', $dataset);
                 $template->extension()->set('dataset', $dataset);
             }
-
             if ($dataset2) {
                 $entry->set_data('dataset2', $dataset2);
                 $template->extension()->set('dataset2', $dataset2);
             }
-
             if ($wc_order_id) {
                 $entry->set_data('wc_order_id', $wc_order_id);
                 $template->extension()->set('wc_order_id', $wc_order_id);
             }
-
             if ($wc_product_item_id) {
                 $entry->set_data('wc_product_item_id', $wc_product_item_id);
                 $template->extension()->set('wc_product_item_id', $wc_product_item_id);
             }
-
             if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf, WordPress.WP.CapitalPDangit.Misspelled
             } else {
                 if (array_key_exists('user_id', $atts)) {
@@ -2622,18 +2493,15 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $template->extension()->set('user_id', $user_id);
                 }
             }
-
             if (!empty($args)) {
                 $entry->set_data('args', $args);
                 $template->extension()->set('args', $args);
             }
-
             if ($template->extension()->get_storing_engine() !== false) {
                 $entry->set_data('storing_engine', $template->extension()->get_storing_engine());
                 $template->extension()->set('storing_engine', $template->extension()->get_storing_engine());
             }
-
-            $options = array();
+            $options = [];
             $options = apply_filters('e2pdf_model_shortcode_extension_options', $options, $template);
             $options = apply_filters('e2pdf_model_shortcode_e2pdf_adobesign_extension_options', $options, $template);
             foreach ($options as $option_key => $option_value) {
@@ -2646,20 +2514,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $inline = $atts['inline'] == 'true' ? '1' : '0';
                     $entry->set_data('inline', $inline);
                 }
-
                 if (array_key_exists('flatten', $atts)) {
                     $flatten = strval((int) $atts['flatten']);
                     $entry->set_data('flatten', $flatten);
                     $template->set('flatten', $flatten);
                 }
-
                 if (array_key_exists('format', $atts)) {
                     $format = $atts['format'];
                     if ($template->set('format', $format)) {
                         $entry->set_data('format', $format);
                     }
                 }
-
                 if (array_key_exists('password', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $password = $template->extension()->render($atts['password']);
@@ -2671,7 +2536,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('password', $template->extension()->render($template->get('password')));
                 }
-
                 if (array_key_exists('dpdf', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $dpdf = $template->extension()->render($atts['dpdf']);
@@ -2683,7 +2547,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('dpdf', $template->extension()->render($template->get('dpdf')));
                 }
-
                 if (array_key_exists('meta_title', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_title = $template->extension()->render($atts['meta_title']);
@@ -2695,7 +2558,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('meta_title', $template->extension()->render($template->get('meta_title')));
                 }
-
                 if (array_key_exists('meta_subject', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_subject = $template->extension()->render($atts['meta_subject']);
@@ -2707,7 +2569,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('meta_subject', $template->extension()->render($template->get('meta_subject')));
                 }
-
                 if (array_key_exists('meta_author', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_author = $template->extension()->render($atts['meta_author']);
@@ -2719,7 +2580,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('meta_author', $template->extension()->render($template->get('meta_author')));
                 }
-
                 if (array_key_exists('meta_keywords', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $meta_keywords = $template->extension()->render($atts['meta_keywords']);
@@ -2731,7 +2591,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 } else {
                     $template->set('meta_keywords', $template->extension()->render($template->get('meta_keywords')));
                 }
-
                 if (array_key_exists('name', $atts)) {
                     if (!array_key_exists('filter', $atts)) {
                         $name = $template->extension()->render($atts['name']);
@@ -2758,14 +2617,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     } else {
                         $name = $template->extension()->render($template->get_name());
                     }
-
                     $file_name = $name . '.pdf';
                     $file_name = $this->helper->load('convert')->to_file_name($file_name);
                     $file_path = $tmp_dir . $file_name;
                     // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents, WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
                     file_put_contents($file_path, base64_decode($request['file']));
 
-                    $disable = array();
+                    $disable = [];
                     if (array_key_exists('disable', $atts)) {
                         $disable = explode(',', $atts['disable']);
                     }
@@ -2773,32 +2631,32 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     if (file_exists($file_path)) {
 
                         $agreement_id = false;
-                        $documents = array();
+                        $documents = [];
                         if (!in_array('post_transientDocuments', $disable, true)) {
                             $model_e2pdf_adobesign = new Model_E2pdf_AdobeSign();
                             $model_e2pdf_adobesign->set(
-                                    array(
+                                    [
                                         'action' => 'api/rest/v5/transientDocuments',
-                                        'headers' => array(
+                                        'headers' => [
                                             'Content-Type: multipart/form-data',
-                                        ),
-                                        'data' => array(
+                                        ],
+                                        'data' => [
                                             'File-Name' => $file_name,
                                             'Mime-Type' => 'application/pdf',
                                             'File' => class_exists('cURLFile') ? new cURLFile($file_path) : '@' . $file_path,
-                                        ),
-                                    )
+                                        ],
+                                    ]
                             );
 
                             $transientDocumentId = $model_e2pdf_adobesign->request('transientDocumentId');
                             if ($transientDocumentId) {
-                                $documents[] = array(
+                                $documents[] = [
                                     'transientDocumentId' => $transientDocumentId,
-                                );
+                                ];
                             }
                             $model_e2pdf_adobesign->flush();
                         }
-
+                        // phpcs:ignore WordPress.NamingConventions.ValidHookName.NotLowercase
                         $documents = apply_filters('e2pdf_model_shortcode_e2pdf_adobesign_fileInfos', $documents, $atts, $template, $entry, $template->extension(), $file_path);
 
                         if (!in_array('post_agreements', $disable, true) && !empty($documents)) {
@@ -2806,40 +2664,39 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             if (array_key_exists('output', $atts)) {
                                 $output = $atts['output'];
                             }
-
-                            $recipients = array();
+                            $recipients = [];
                             if (array_key_exists('recipients', $atts)) {
                                 $atts['recipients'] = $template->extension()->render($atts['recipients']);
                                 $recipients_list = explode(',', $atts['recipients']);
 
                                 foreach ($recipients_list as $recipient_info) {
-                                    $recipients[] = array(
-                                        'recipientSetMemberInfos' => array(
+                                    $recipients[] = [
+                                        'recipientSetMemberInfos' => [
                                             'email' => trim($recipient_info),
-                                        ),
+                                        ],
                                         'recipientSetRole' => 'SIGNER',
-                                    );
+                                    ];
                                 }
                             }
 
-                            $data = array(
-                                'documentCreationInfo' => array(
+                            $data = [
+                                'documentCreationInfo' => [
                                     'signatureType' => 'ESIGN',
                                     'recipientSetInfos' => $recipients,
                                     'signatureFlow' => 'SENDER_SIGNATURE_NOT_REQUIRED',
                                     'fileInfos' => $documents,
                                     'name' => $name,
-                                ),
-                            );
+                                ],
+                            ];
 
                             $data = apply_filters('e2pdf_model_shortcode_e2pdf_adobesign_post_agreements_data', $data, $atts, $template, $entry, $template->extension(), $file_path, $documents);
 
                             $model_e2pdf_adobesign = new Model_E2pdf_AdobeSign();
                             $model_e2pdf_adobesign->set(
-                                    array(
+                                    [
                                         'action' => 'api/rest/v5/agreements',
                                         'data' => $data,
-                                    )
+                                    ]
                             );
 
                             $agreement_id = $model_e2pdf_adobesign->request('agreementId');
@@ -2857,56 +2714,55 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * [e2pdf-format-number] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_format_number($atts = array(), $value = '') {
+    // e2pdf-format-number
+    public function e2pdf_format_number($atts = [], $value = '') {
+
+        //if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_number', false) && !apply_filters('e2pdf_pdf_render', false)) {
+        //    return '';
+        //}
 
         $response = $value;
-
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_format_number_atts', $atts);
 
         $dec_point = isset($atts['dec_point']) ? $atts['dec_point'] : '.';
         $thousands_sep = isset($atts['thousands_sep']) ? $atts['thousands_sep'] : '';
-        $decimal = isset($atts['decimal']) ? $atts['decimal'] : false;
+        $decimal = isset($atts['decimal']) ? (int) $atts['decimal'] : false;
         $explode = isset($atts['explode']) ? $atts['explode'] : '';
         $implode = isset($atts['implode']) ? $atts['implode'] : '';
 
-        $new_value = array();
+        $new_value = [];
         $response = array_filter((array) $response, 'strlen');
         foreach ($response as $v) {
             if ($explode && strpos($v, $explode) !== false) {
                 $v = explode($explode, $v);
             }
             foreach ((array) $v as $n) {
-                $n = str_replace(array(' ', ','), array('', '.'), $n);
+                $n = str_replace([' ', ','], ['', '.'], $n);
                 $n = preg_replace('/\.(?=.*\.)/', '', $n);
                 $n = floatval($n);
-
-                if (!$decimal) {
+                if ($decimal === false) {
                     $num = explode('.', $n);
                     $decimal = isset($num[1]) ? strlen($num[1]) : 0;
                 }
-
                 $n = number_format($n, $decimal, $dec_point, $thousands_sep);
                 $new_value[] = $n;
             }
             unset($v);
         }
 
-        $new_value = array_filter((array) $new_value, 'strlen');
-
-        return apply_filters('e2pdf_model_shortcode_e2pdf_format_number', implode($implode, $new_value), $atts, $value);
+        $response = implode($implode, array_filter((array) $new_value, 'strlen'));
+        if (!apply_filters('e2pdf_pdf_fill', false)) {
+            $response = $this->sanitize_html($response);
+        }
+        return apply_filters('e2pdf_model_shortcode_e2pdf_format_number', $response, $atts, $value);
     }
 
-    /**
-     * [e2pdf-format-date] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_format_date($atts = array(), $value = '') {
+    // e2pdf-format-date
+    public function e2pdf_format_date($atts = [], $value = '') {
+
+        //if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_date', false) && !apply_filters('e2pdf_pdf_render', false)) {
+        //    return '';
+        //}
 
         $response = trim(strtolower($value));
 
@@ -2980,18 +2836,20 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             restore_previous_locale();
         }
 
+        if (!apply_filters('e2pdf_pdf_fill', false)) {
+            $response = $this->sanitize_html($response);
+        }
         return apply_filters('e2pdf_model_shortcode_e2pdf_format_date', $response, $atts, $value);
     }
 
-    /**
-     * [e2pdf-format-output] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_format_output($atts = array(), $value = '') {
+    // e2pdf-format-output
+    public function e2pdf_format_output($atts = [], $value = '') {
+
+        //if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_output', false) && !apply_filters('e2pdf_pdf_render', false)) {
+        //    return '';
+        //}
 
         $response = $value;
-
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_format_output_atts', $atts);
 
         $explode = isset($atts['explode']) ? $atts['explode'] : false;
@@ -3000,10 +2858,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $implode = isset($atts['implode']) ? $atts['implode'] : '';
         $output = isset($atts['output']) ? $atts['output'] : false;
         $filter = isset($atts['filter']) ? $atts['filter'] : false;
-        $search = isset($atts['search']) ? explode('|||', $atts['search']) : array();
-        $sreplace = isset($atts['sreplace']) ? explode('|||', $atts['sreplace']) : array();
-        $ireplace = isset($atts['ireplace']) ? explode('|||', $atts['ireplace']) : array();
-        $replace = isset($atts['replace']) ? explode('|||', $atts['replace']) : array();
+        $search = isset($atts['search']) ? explode('|||', $atts['search']) : [];
+        $sreplace = isset($atts['sreplace']) ? explode('|||', $atts['sreplace']) : [];
+        $ireplace = isset($atts['ireplace']) ? explode('|||', $atts['ireplace']) : [];
+        $replace = isset($atts['replace']) ? explode('|||', $atts['replace']) : [];
         $substr = isset($atts['substr']) ? $atts['substr'] : false;
         $sprintf = isset($atts['sprintf']) ? $atts['sprintf'] : false;
         $remove_tags = isset($atts['remove_tags']) ? $atts['remove_tags'] : false;
@@ -3013,15 +2871,15 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $strip_tags_allowed = isset($atts['strip_tags_allowed']) ? $atts['strip_tags_allowed'] : false;
         $pre = isset($atts['pre']) && $atts['pre'] ? $atts['pre'] : '';
         $after = isset($atts['after']) && $atts['after'] ? $atts['after'] : '';
-        $strip_shortcodes_tags = isset($atts['strip_shortcodes_tags']) ? explode(',', $atts['strip_shortcodes_tags']) : array();
-        $strip_shortcodes_tags_full = isset($atts['strip_shortcodes_tags_full']) ? explode(',', $atts['strip_shortcodes_tags_full']) : array();
-        $extract_by_tag = isset($atts['extract_by_tag']) ? explode(',', $atts['extract_by_tag']) : array();
-        $extract_by_id = isset($atts['extract_by_id']) ? explode(',', $atts['extract_by_id']) : array();
-        $extract_by_class = isset($atts['extract_by_class']) ? explode(',', $atts['extract_by_class']) : array();
+        $strip_shortcodes_tags = isset($atts['strip_shortcodes_tags']) ? explode(',', $atts['strip_shortcodes_tags']) : [];
+        $strip_shortcodes_tags_full = isset($atts['strip_shortcodes_tags_full']) ? explode(',', $atts['strip_shortcodes_tags_full']) : [];
+        $extract_by_tag = isset($atts['extract_by_tag']) ? explode(',', $atts['extract_by_tag']) : [];
+        $extract_by_id = isset($atts['extract_by_id']) ? explode(',', $atts['extract_by_id']) : [];
+        $extract_by_class = isset($atts['extract_by_class']) ? explode(',', $atts['extract_by_class']) : [];
         $extract_implode = isset($atts['extract_implode']) ? $atts['extract_implode'] : '';
-        $remove_by_tag = isset($atts['remove_by_tag']) ? explode(',', $atts['remove_by_tag']) : array();
-        $remove_by_id = isset($atts['remove_by_id']) ? explode(',', $atts['remove_by_id']) : array();
-        $remove_by_class = isset($atts['remove_by_class']) ? explode(',', $atts['remove_by_class']) : array();
+        $remove_by_tag = isset($atts['remove_by_tag']) ? explode(',', $atts['remove_by_tag']) : [];
+        $remove_by_id = isset($atts['remove_by_id']) ? explode(',', $atts['remove_by_id']) : [];
+        $remove_by_class = isset($atts['remove_by_class']) ? explode(',', $atts['remove_by_class']) : [];
         $transliterate = isset($atts['transliterate']) ? $atts['transliterate'] : false;
         $truncate = isset($atts['truncate']) ? intval($atts['truncate']) : false;
         $truncate_html = isset($atts['truncate_html']) ? intval($atts['truncate_html']) : false;
@@ -3140,7 +2998,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        $filters = array();
+        $filters = [];
         if ($filter) {
             if (strpos($filter, ',')) {
                 $filters = explode(',', $filter);
@@ -3149,7 +3007,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        $explode_filters = array();
+        $explode_filters = [];
         if ($explode_filter) {
             if (strpos($explode_filter, ',')) {
                 $explode_filters = explode(',', $explode_filter);
@@ -3224,7 +3082,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
         if (!in_array('transliterate', $filters, true)) {
             if ($transliterate !== false && function_exists('transliterator_transliterate')) {
-                $response = transliterator_transliterate(str_replace(array('{{', '}}'), array('[', ']'), $transliterate), $response);
+                $response = transliterator_transliterate(str_replace(['{{', '}}'], ['[', ']'], $transliterate), $response);
             }
         }
 
@@ -3242,14 +3100,14 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        $closed_tags = array(
+        $closed_tags = [
             'style', 'script', 'title', 'head', 'a',
-        );
+        ];
         if (isset($atts['closed_tags']) && $atts['closed_tags']) {
             $closed_tags = array_merge($closed_tags, explode(',', $atts['closed_tags']));
         }
 
-        $mixed_tags = array();
+        $mixed_tags = [];
         if (isset($atts['mixed_tags']) && $atts['mixed_tags']) {
             $closed_tags = array_merge($closed_tags, explode(',', $atts['mixed_tags']));
         }
@@ -3273,7 +3131,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        $new_value = array();
+        $new_value = [];
         if ($path !== false) {
             $response = is_serialized($response) ? $this->helper->load('convert')->unserialize($response) : '';
             $response = $this->helper->load('shortcode')->apply_path_attribute($response, $path);
@@ -3364,7 +3222,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             case 'transliterate':
                                 if (function_exists('transliterator_transliterate')) {
                                     if ($transliterate !== false) {
-                                        $n = transliterator_transliterate(str_replace(array('{{', '}}'), array('[', ']'), $transliterate), $n);
+                                        $n = transliterator_transliterate(str_replace(['{{', '}}'], ['[', ']'], $transliterate), $n);
                                     } else {
                                         $n = transliterator_transliterate('Any-Latin; Latin-ASCII; NFD; NFC;', $n);
                                     }
@@ -3544,69 +3402,68 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $new_value = apply_filters('e2pdf_model_shortcode_e2pdf_format_output_after_filter', $new_value, $atts, $value);
         if ($output) {
             if ($output == '{count}') {
-                return apply_filters('e2pdf_model_shortcode_e2pdf_format_output', count($new_value), $atts, $value);
+                $response = count($new_value);
             } elseif ($output == '{serialize}') {
                 // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
-                return apply_filters('e2pdf_model_shortcode_e2pdf_format_output', serialize($new_value), $atts, $value);
+                $response = serialize($new_value);
             } else {
-                $o_search = array();
-                $o_replace = array();
+                $o_search = [];
+                $o_replace = [];
                 foreach ($new_value as $key => $val) {
                     $o_search[] = '{' . $key . '}';
                     $o_replace[] = $val;
                 }
                 $output = str_replace($o_search, $o_replace, $output);
-                return apply_filters('e2pdf_model_shortcode_e2pdf_format_output', preg_replace('~(?:{/?)[^/}]+/?}~s', '', $output), $atts, $value);
+                $response = preg_replace('~(?:{/?)[^/}]+/?}~s', '', $output);
             }
         } else {
             if ($pre || $after) {
-                $wrapped = array();
+                $wrapped = [];
                 foreach ($new_value as $key => $val) {
                     $wrapped[] = $pre . $val . $after;
                 }
-                return apply_filters('e2pdf_model_shortcode_e2pdf_format_output', implode($implode, $wrapped), $atts, $value);
+                $response = implode($implode, $wrapped);
             } else {
                 $response = implode($implode, $new_value);
-                return apply_filters('e2pdf_model_shortcode_e2pdf_format_output', $response, $atts, $value);
             }
         }
+
+        if (!apply_filters('e2pdf_pdf_fill', false)) {
+            $response = $this->sanitize_html($response);
+        }
+        return apply_filters('e2pdf_model_shortcode_e2pdf_format_output', $response, $atts, $value);
     }
 
-    /**
-     * [e2pdf-math] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_math($atts = array(), $value = '') {
+    // e2pdf-math
+    public function e2pdf_math($atts = [], $value = '') {
+
+        //if (!apply_filters('e2pdf_shortcode_enable_e2pdf_math', false) && !apply_filters('e2pdf_pdf_render', false)) {
+        //    return '';
+        //}
+
         $thousands_sep_split = isset($atts['thousands_sep_split']) ? $atts['thousands_sep_split'] : ',';
         $dec_point_split = isset($atts['dec_point_split']) ? $atts['dec_point_split'] : '.';
         $default = isset($atts['default']) ? $atts['default'] : '0';
         $value = strtr(
                 $value,
-                array(
+                [
                     $thousands_sep_split => '',
                     $dec_point_split => '.',
                     '%%' => '¦',
-                )
+                ]
         );
         $value = preg_replace('/[^0-9\-\+\*\¦\/\^\(\)\.]/', '', $value);
-        if (!$value) {
-            $value = $default;
-        } else {
-            $value = $this->helper->load('math')->evaluate($value);
+        $value = $value ? $this->helper->load('math')->evaluate($value) : $default;
+
+        $response = is_numeric($value) ? $this->e2pdf_format_number($atts, $value) : $value;
+        if (!apply_filters('e2pdf_pdf_fill', false)) {
+            $response = $this->sanitize_html($response);
         }
-        if (is_numeric($value)) {
-            return $this->e2pdf_format_number($atts, $value);
-        } else {
-            return $value;
-        }
+        return $response;
     }
 
-    /**
-     * [e2pdf-user] shortcode
-     * @param array $atts - Attributes
-     */
-    public function e2pdf_user($atts = array(), $value = '') {
+    // e2pdf-user
+    public function e2pdf_user($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_user', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -3630,7 +3487,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $attachment_url = isset($atts['attachment_url']) && $atts['attachment_url'] == 'true' ? true : false;
         $attachment_image_url = isset($atts['attachment_image_url']) && $atts['attachment_image_url'] == 'true' ? true : false;
         $size = isset($atts['size']) ? $atts['size'] : 'thumbnail';
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
         $has_cap = isset($atts['has_cap']) && $atts['has_cap'] ? $atts['has_cap'] : false;
         $has_role = isset($atts['has_role']) && $atts['has_role'] ? $atts['has_role'] : false;
         $convert = isset($atts['convert']) ? $atts['convert'] : false;
@@ -3639,7 +3495,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
         $data_fields = apply_filters(
                 'e2pdf_model_shortcode_user_data_fields',
-                array(
+                [
                     'ID',
                     'user_description',
                     'user_firstname',
@@ -3659,7 +3515,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'syntax_highlighting',
                     'use_ssl',
                     'roles',
-                )
+                ]
         );
 
         if ($has_cap) {
@@ -3751,7 +3607,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
                     }
                     if (is_array($user_meta)) {
-                        $post_terms = array();
+                        $post_terms = [];
                         foreach ($user_meta as $user_meta_part) {
                             if (!is_array($user_meta_part)) {
                                 $post_term = get_term($user_meta_part);
@@ -3784,7 +3640,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
             }
 
-            if ($raw) {
+            if (apply_filters('e2pdf_raw_output', false)) {
                 $response = $user_meta;
             } else {
                 if (is_array($user_meta)) {
@@ -3811,20 +3667,19 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_user_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_user_response', $response, $atts, $value);
         }
     }
 
-    /**
-     * [e2pdf-content] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_content($atts = array(), $value = '') {
+    // e2pdf-content
+    public function e2pdf_content($atts = [], $value = '') {
 
         $response = '';
 
@@ -3837,7 +3692,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $wp_post = get_post($id);
             if ($wp_post) {
                 if (isset($wp_post->post_content) && $wp_post->post_content) {
-                    $content = $this->helper->load('convert')->to_content_key($key, $wp_post->post_content);
+                    $content = $this->helper->load('convert')->is_content_key($key, $wp_post->post_content);
                     remove_filter('the_content', 'wpautop');
                     $content = apply_filters('the_content', $content, $id);
                     add_filter('the_content', 'wpautop');
@@ -3851,32 +3706,15 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * [e2pdf-exclude] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_exclude($atts = array(), $value = '') {
-
+    // e2pdf-exclude
+    public function e2pdf_exclude($atts = [], $value = '') {
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_exclude_atts', $atts);
-
         $apply = isset($atts['apply']) ? true : false;
-
-        if ($apply) {
-            $response = '';
-        } else {
-            $response = apply_filters('the_content', $value);
-        }
-
-        return $response;
+        return $apply ? '' : apply_filters('the_content', $value);
     }
 
-    /**
-     * [e2pdf-wp] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_wp($atts = array(), $value = '') {
+    // e2pdf-wp
+    public function e2pdf_wp($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_wp', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -3900,7 +3738,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $meta = isset($atts['meta']) && $atts['meta'] == 'true' ? true : false;
         $terms = isset($atts['terms']) && $atts['terms'] == 'true' ? true : false;
         $output = isset($atts['output']) ? $atts['output'] : false;
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
         $convert = isset($atts['convert']) ? $atts['convert'] : false;
 
         /* Backward compatibility */
@@ -3918,7 +3755,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
         $data_fields = apply_filters(
                 'e2pdf_model_shortcode_wp_data_fields',
-                array(
+                [
                     'id',
                     'post_author',
                     'post_author_id',
@@ -3952,7 +3789,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_the_post_thumbnail',
                     'get_the_post_thumbnail_url',
                     'response_hook',
-                )
+                ]
         );
 
         if ($id && $key) {
@@ -3980,11 +3817,11 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     } elseif ($key == 'post_content' && isset($wp_post->post_content)) {
                         $content = $wp_post->post_content;
                         if (false !== strpos($content, '[')) {
-                            $shortcode_tags = array(
+                            $shortcode_tags = [
                                 'e2pdf-exclude',
                                 'e2pdf-save',
                                 'e2pdf-view',
-                            );
+                            ];
                             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
                             $tagnames = array_intersect($shortcode_tags, $matches[1]);
                             if (!empty($tagnames)) {
@@ -4047,7 +3884,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $post_meta = $wp_post->$key;
                     }
                 } elseif ($terms && $names) {
-                    $post_terms = wp_get_post_terms($id, $key, array('fields' => 'names'));
+                    $post_terms = wp_get_post_terms($id, $key, ['fields' => 'names']);
                     if (!is_wp_error($post_terms) && is_array($post_terms)) {
                         foreach ($post_terms as $post_term_key => $post_terms_value) {
                             $post_terms[$post_term_key] = $this->helper->load('translator')->translate($post_terms_value);
@@ -4119,7 +3956,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 }
                             }
                             if (is_array($post_meta)) {
-                                $post_terms = array();
+                                $post_terms = [];
                                 foreach ($post_meta as $post_meta_part) {
                                     if (!is_array($post_meta_part)) {
                                         $post_term = get_term($post_meta_part);
@@ -4152,7 +3989,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
                     }
 
-                    if ($raw) {
+                    if (apply_filters('e2pdf_raw_output', false)) {
                         $response = $post_meta;
                     } else {
                         if (is_array($post_meta)) {
@@ -4181,20 +4018,19 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_wp_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_wp_response', $response, $atts, $value);
         }
     }
 
-    /**
-     * [e2pdf-wp-term] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_wp_term($atts = array(), $value = '') {
+    // e2pdf-wp-term
+    public function e2pdf_wp_term($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_wp_term', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -4212,7 +4048,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $attachment_image_url = isset($atts['attachment_image_url']) && $atts['attachment_image_url'] == 'true' ? true : false;
         $size = isset($atts['size']) ? $atts['size'] : 'thumbnail';
         $path = isset($atts['path']) ? $atts['path'] : false;
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
 
         if ($id == 'dynamic') {
             $id = $value;
@@ -4269,7 +4104,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
                     }
 
-                    if ($raw) {
+                    if (apply_filters('e2pdf_raw_output', false)) {
                         $response = $post_meta;
                     } else {
                         if (is_array($post_meta)) {
@@ -4298,20 +4133,19 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_wp_term_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_wp_term_response', $response, $atts, $value);
         }
     }
 
-    /**
-     * [e2pdf-wp-posts] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_wp_posts($atts = array(), $value = '') {
+    // e2pdf-wp-posts
+    public function e2pdf_wp_posts($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_wp_posts', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -4328,9 +4162,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $attachment_url = isset($atts['attachment_url']) && $atts['attachment_url'] == 'true' ? true : false;
         $attachment_image_url = isset($atts['attachment_image_url']) && $atts['attachment_image_url'] == 'true' ? true : false;
         $size = isset($atts['size']) ? $atts['size'] : 'thumbnail';
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
 
-        $args = array();
+        $args = [];
 
         if (isset($atts['fields'])) {
             $args['fields'] = $atts['fields'];
@@ -4415,18 +4248,18 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $args['suppress_filters'] = $args['suppress_filters'] === 'true' ? true : false;
         }
 
-        $tax_query = array();
+        $tax_query = [];
         foreach ($atts as $att_key => $att_value) {
             if (substr($att_key, 0, 9) === 'tax_query') {
                 $tax = explode('|||', $att_value, 5);
                 if (count($tax) >= 3) {
-                    $tax_query[] = array(
+                    $tax_query[] = [
                         'taxonomy' => $tax[0],
                         'field' => $tax[1],
                         'terms' => explode(',', $tax[2]),
                         'operator' => isset($tax[3]) ? $tax[3] : 'IN',
                         'include_children' => isset($tax[4]) && $tax[4] == 'false' ? false : true,
-                    );
+                    ];
                 }
             }
         }
@@ -4477,7 +4310,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
             }
 
-            if ($raw) {
+            if (apply_filters('e2pdf_raw_output', false)) {
                 $response = $post_meta;
             } else {
                 if (is_array($post_meta)) {
@@ -4504,20 +4337,19 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_posts_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_posts_response', $response, $atts, $value);
         }
     }
 
-    /**
-     * [e2pdf-wp-users] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_wp_users($atts = array(), $value = '') {
+    // e2pdf-wp-users
+    public function e2pdf_wp_users($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_wp_users', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -4534,9 +4366,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $attachment_url = isset($atts['attachment_url']) && $atts['attachment_url'] == 'true' ? true : false;
         $attachment_image_url = isset($atts['attachment_image_url']) && $atts['attachment_image_url'] == 'true' ? true : false;
         $size = isset($atts['size']) ? $atts['size'] : 'thumbnail';
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
 
-        $args = array();
+        $args = [];
 
         if (isset($atts['fields'])) {
             $args['fields'] = $atts['fields'];
@@ -4588,7 +4419,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
             }
 
-            if ($raw) {
+            if (apply_filters('e2pdf_raw_output', false)) {
                 $response = $post_meta;
             } else {
                 if (is_array($post_meta)) {
@@ -4615,20 +4446,19 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_users_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_users_response', $response, $atts, $value);
         }
     }
 
-    /**
-     * [e2pdf-wc-product] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_wc_product($atts = array(), $value = '') {
+    // e2pdf-wc-product
+    public function e2pdf_wc_product($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_wc_product', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -4657,7 +4487,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $wc_order_id = isset($atts['wc_order_id']) ? $atts['wc_order_id'] : false;
         $wc_price = isset($atts['wc_price']) && $atts['wc_price'] == 'true' ? true : false;
         $download_index = isset($atts['download_index']) ? $atts['download_index'] : false;
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
         $attribute = isset($atts['attribute']) ? $atts['attribute'] : false;
         $order = isset($atts['order']) && $atts['order'] == 'true' ? true : false;
         $detached = isset($atts['detached']) && $atts['detached'] == 'true' ? true : false;
@@ -4682,7 +4511,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
         $data_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_product_data_fields',
-                array(
+                [
                     'id',
                     'post_author',
                     'post_author_id',
@@ -4715,12 +4544,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_the_post_thumbnail',
                     'get_the_post_thumbnail_url',
                     'response_hook',
-                )
+                ]
         );
 
         $product_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_product_product_fields',
-                array(
+                [
                     'get_name',
                     'get_type',
                     'get_slug',
@@ -4791,12 +4620,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_file_download_path',
                     'get_price_suffix',
                     'get_availability',
-                )
+                ]
         );
 
         $product_item_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_product_item_fields',
-                array(
+                [
                     'get_order_id',
                     'get_name',
                     'get_type',
@@ -4821,12 +4650,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'item_response_hook',
                     'item_cart_response_hook',
                     'cart_response_hook',
-                )
+                ]
         );
 
         $product_order_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_product_order_item_fields',
-                array(
+                [
                     'get_item_subtotal',
                     'get_item_total',
                     'get_item_tax',
@@ -4834,12 +4663,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_line_tax',
                     'get_formatted_line_subtotal',
                     'order_response_hook',
-                )
+                ]
         );
 
         $wc_product = false;
         $wc_order = false;
-        $wc_order_items = array();
+        $wc_order_items = [];
         $wc_order_item_id = false;
         $wc_order_item = false;
         $wc_order_item_index = 0;
@@ -4936,11 +4765,11 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     } elseif ($key == 'post_content' && isset($wp_post->post_content)) {
                         $content = $wp_post->post_content;
                         if (false !== strpos($content, '[')) {
-                            $shortcode_tags = array(
+                            $shortcode_tags = [
                                 'e2pdf-exclude',
                                 'e2pdf-save',
                                 'e2pdf-view',
-                            );
+                            ];
                             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
                             $tagnames = array_intersect($shortcode_tags, $matches[1]);
                             if (!empty($tagnames)) {
@@ -5005,8 +4834,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 if ($wc_product && is_object($wc_product) && (method_exists($wc_product, $key) || $key == 'get_variation_attribute')) {
                     if ($key == 'get_attributes' || $key == 'get_variation_attributes') {
                         $wc_parent_product = false;
-                        $parent_attributes = array();
-                        $child_attributes = array();
+                        $parent_attributes = [];
+                        $child_attributes = [];
                         if ($key == 'get_variation_attributes') {
                             $post_meta = $wc_product->get_attributes($wc_product);
                         } else {
@@ -5031,7 +4860,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
 
                         if (is_array($post_meta) && !empty($post_meta)) {
-                            $exclude = array();
+                            $exclude = [];
                             if (isset($atts['exclude'])) {
                                 $exclude = explode(',', $atts['exclude']);
                             }
@@ -5043,16 +4872,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
 
                         if ($wc_filter) {
-                            $product_attributes = array();
+                            $product_attributes = [];
                             foreach ($post_meta as $attribute_key => $attribute) {
                                 if ($attribute && is_a($attribute, 'WC_Product_Attribute')) {
-                                    $values = array();
+                                    $values = [];
                                     if ($attribute->is_taxonomy()) {
                                         $attribute_taxonomy = $attribute->get_taxonomy_object();
                                         if ($wc_parent_product) {
-                                            $attribute_values = wc_get_product_terms($wc_parent_product->get_id(), $attribute->get_name(), array('fields' => 'all'));
+                                            $attribute_values = wc_get_product_terms($wc_parent_product->get_id(), $attribute->get_name(), ['fields' => 'all']);
                                         } else {
-                                            $attribute_values = wc_get_product_terms($wc_product->get_id(), $attribute->get_name(), array('fields' => 'all'));
+                                            $attribute_values = wc_get_product_terms($wc_product->get_id(), $attribute->get_name(), ['fields' => 'all']);
                                         }
                                         foreach ($attribute_values as $attribute_value) {
                                             $value_name = esc_html($attribute_value->name);
@@ -5069,18 +4898,18 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         }
                                     }
 
-                                    $product_attributes['attribute_' . sanitize_title_with_dashes($attribute->get_name())] = array(
+                                    $product_attributes['attribute_' . sanitize_title_with_dashes($attribute->get_name())] = [
                                         'label' => wc_attribute_label($attribute->get_name()),
                                         'value' => apply_filters('woocommerce_attribute', wpautop(wptexturize(implode(', ', $values))), $attribute, $values),
-                                    );
+                                    ];
                                 } else {
                                     $attribute_value = $wc_product->get_attribute($attribute_key);
                                     $attribute_value = implode(', ', array_map('trim', explode('|', $attribute_value)));
                                     $attribute_value = apply_filters('e2pdf_model_shortcode_wc_product_get_attribute_value', $attribute_value, $wc_product);
-                                    $product_attributes['attribute_' . $attribute_key] = array(
+                                    $product_attributes['attribute_' . $attribute_key] = [
                                         'label' => wc_attribute_label($attribute_key, $wc_product),
                                         'value' => $attribute_value,
-                                    );
+                                    ];
                                 }
                             }
 
@@ -5097,8 +4926,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         if ($attribute) {
 
                             $wc_parent_product = false;
-                            $parent_attributes = array();
-                            $child_attributes = array();
+                            $parent_attributes = [];
+                            $child_attributes = [];
 
                             if ($key == 'get_variation_attribute') {
                                 $attributes = $wc_product->get_attributes($wc_product);
@@ -5132,9 +4961,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                             if ($wc_attribute->is_taxonomy()) {
                                                 $attribute_taxonomy = $wc_attribute->get_taxonomy_object();
                                                 if ($wc_parent_product) {
-                                                    $attribute_values = wc_get_product_terms($wc_parent_product->get_id(), $wc_attribute->get_name(), array('fields' => 'all'));
+                                                    $attribute_values = wc_get_product_terms($wc_parent_product->get_id(), $wc_attribute->get_name(), ['fields' => 'all']);
                                                 } else {
-                                                    $attribute_values = wc_get_product_terms($wc_product->get_id(), $wc_attribute->get_name(), array('fields' => 'all'));
+                                                    $attribute_values = wc_get_product_terms($wc_product->get_id(), $wc_attribute->get_name(), ['fields' => 'all']);
                                                 }
                                                 foreach ($attribute_values as $attribute_value) {
                                                     $value_name = esc_html($attribute_value->name);
@@ -5202,11 +5031,11 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     } elseif ($key == 'get_short_description' || $key == 'get_description') {
                         $content = $wc_product->$key();
                         if (false !== strpos($content, '[')) {
-                            $shortcode_tags = array(
+                            $shortcode_tags = [
                                 'e2pdf-exclude',
                                 'e2pdf-save',
                                 'e2pdf-view',
-                            );
+                            ];
                             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
                             $tagnames = array_intersect($shortcode_tags, $matches[1]);
                             if (!empty($tagnames)) {
@@ -5242,9 +5071,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 $image_width = absint($image_size['0']);
                                 $image_height = absint($image_size['1']);
                                 if ($image_width && $image_height) {
-                                    $size = array(
+                                    $size = [
                                         $image_width, $image_height,
-                                    );
+                                    ];
                                 }
                             }
                         }
@@ -5304,9 +5133,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 $image_width = absint($image_size['0']);
                                 $image_height = absint($image_size['1']);
                                 if ($image_width && $image_height) {
-                                    $size = array(
+                                    $size = [
                                         $image_width, $image_height,
-                                    );
+                                    ];
                                 }
                             }
                         }
@@ -5342,7 +5171,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 $post_meta = wc_get_formatted_cart_item_data($wc_order_item, $flat);
                             }
                         } else {
-                            $item_data = array();
+                            $item_data = [];
                             if ($wc_order_item['data']->is_type('variation') && is_array($wc_order_item['variation'])) {
                                 foreach ($wc_order_item['variation'] as $name => $value) {
                                     $taxonomy = wc_attribute_taxonomy_name(str_replace('attribute_pa_', '', urldecode($name)));
@@ -5361,10 +5190,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         continue;
                                     }
 
-                                    $item_data[] = array(
+                                    $item_data[] = [
                                         'key' => $label,
                                         'value' => $value,
-                                    );
+                                    ];
                                 }
                             }
 
@@ -5442,7 +5271,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
             } elseif ($terms && $names) {
                 if ($wp_post) {
-                    $post_terms = wp_get_post_terms($id, $key, array('fields' => 'names'));
+                    $post_terms = wp_get_post_terms($id, $key, ['fields' => 'names']);
                     if (!is_wp_error($post_terms) && is_array($post_terms)) {
                         foreach ($post_terms as $post_term_key => $post_terms_value) {
                             $post_terms[$post_term_key] = $this->helper->load('translator')->translate($post_terms_value);
@@ -5536,7 +5365,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             }
                         }
                         if (is_array($post_meta)) {
-                            $post_terms = array();
+                            $post_terms = [];
                             foreach ($post_meta as $post_meta_part) {
                                 if (!is_array($post_meta_part)) {
                                     $post_term = get_term($post_meta_part);
@@ -5569,7 +5398,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     }
                 }
 
-                if ($raw) {
+                if (apply_filters('e2pdf_raw_output', false)) {
                     $response = $post_meta;
                 } else {
                     if (is_array($post_meta)) {
@@ -5597,20 +5426,19 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_wc_product_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_wc_product_response', $response, $atts, $value);
         }
     }
 
-    /**
-     * [e2pdf-wc-order] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_wc_order($atts = array(), $value = '') {
+    // e2pdf-wc-order
+    public function e2pdf_wc_order($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_wc_order', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -5636,7 +5464,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $order_item_meta = isset($atts['order_item_meta']) && $atts['order_item_meta'] == 'true' ? true : false;
         $terms = isset($atts['terms']) && $atts['terms'] == 'true' ? true : false;
         $wc_price = isset($atts['wc_price']) && $atts['wc_price'] == 'true' ? true : false;
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
         $output = isset($atts['output']) ? $atts['output'] : false;
         $checkout_field_editor = isset($atts['checkout_field_editor']) && $atts['checkout_field_editor'] == 'true' ? true : false;
 
@@ -5646,7 +5473,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
         $data_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_order_data_fields',
-                array(
+                [
                     'id',
                     'post_author',
                     'post_author_id',
@@ -5679,12 +5506,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_the_post_thumbnail',
                     'get_the_post_thumbnail_url',
                     'response_hook',
-                )
+                ]
         );
 
         $order_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_order_order_fields',
-                array(
+                [
                     'cart',
                     'get_id',
                     'get_order_key',
@@ -5767,7 +5594,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_order_item_totals',
                     'get_tax_totals',
                     'get_items',
-                )
+                    'get_items_category',
+                    'get_items_category_ids',
+                ]
         );
 
         if ($id && $key) {
@@ -5870,13 +5699,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 $show_totals_subtotal = isset($atts['show_totals_subtotal']) && $atts['show_totals_subtotal'] == 'false' ? false : true;
                                 $show_totals_discount = isset($atts['show_totals_discount']) && $atts['show_totals_discount'] == 'false' ? false : true;
                                 $show_totals_payment_method = isset($atts['show_totals_payment_method']) && $atts['show_totals_payment_method'] == 'false' ? false : true;
-
-                                $show_totals_coupons = isset($atts['show_totals_coupons']) && $atts['show_totals_coupons'] == 'false' ? false : true;
                                 $show_totals_shipping = isset($atts['show_totals_shipping']) && $atts['show_totals_shipping'] == 'false' ? false : true;
-                                $show_totals_shipping_destination = isset($atts['show_totals_shipping_destination']) && $atts['show_totals_shipping_destination'] == 'false' ? false : true;
-                                $show_totals_shipping_package = isset($atts['show_totals_shipping_package']) && $atts['show_totals_shipping_package'] == 'false' ? false : true;
-                                $show_totals_fees = isset($atts['show_totals_fees']) && $atts['show_totals_fees'] == 'false' ? false : true;
-                                $show_totals_taxes = isset($atts['show_totals_taxes']) && $atts['show_totals_taxes'] == 'false' ? false : true;
                                 $show_totals_total = isset($atts['show_totals_total']) && $atts['show_totals_total'] == 'false' ? false : true;
                                 $show_comment = isset($atts['show_comment']) && $atts['show_comment'] == 'false' ? false : true;
 
@@ -5894,9 +5717,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         $image_width = absint($image_size['0']);
                                         $image_height = absint($image_size['1']);
                                         if ($image_width && $image_height) {
-                                            $size = array(
+                                            $size = [
                                                 $image_width, $image_height,
-                                            );
+                                            ];
                                         }
                                     }
                                 }
@@ -5970,18 +5793,18 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                             if ($show_meta) {
                                                 $wc_display_item_meta = wc_display_item_meta(
                                                         $item,
-                                                        array(
+                                                        [
                                                             'echo' => false,
                                                             'before' => '',
                                                             'separator' => '',
                                                             'after' => '',
                                                             'label_before' => "<div size='8px' class='e2pdf-wc-cart-product-meta'>",
                                                             'lable_after' => '</div>',
-                                                        )
+                                                        ]
                                                 );
 
                                                 if ($wc_display_item_meta) {
-                                                    $content .= str_replace(array('<p>', '</p>'), array('', ''), $wc_display_item_meta);
+                                                    $content .= str_replace(['<p>', '</p>'], ['', ''], $wc_display_item_meta);
                                                 }
                                             }
 
@@ -6004,7 +5827,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         }
 
                                         if ($show_price) {
-                                            $content .= "<td class='e2pdf-wc-cart-product-price'>" . wc_price($order->get_item_subtotal($item, false, true), array('currency' => $order->get_currency())) . '</td>';
+                                            $content .= "<td class='e2pdf-wc-cart-product-price'>" . wc_price($order->get_item_subtotal($item, false, true), ['currency' => $order->get_currency()]) . '</td>';
                                         }
 
                                         if ($show_subtotal) {
@@ -6053,6 +5876,21 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
                                 $post_meta = $content;
                             }
+                        } elseif ($key == 'get_items_category' || $key == 'get_items_category_ids') {
+                            $item_metas = [];
+                            foreach ($order->get_items() as $item) {
+                                if (is_callable(array($item, 'get_product_id'))) {
+                                    $product_categories = wp_get_post_terms($item->get_product_id(), 'product_cat');
+                                    foreach ($product_categories as $product_category) {
+                                        if ($key == 'get_items_category') {
+                                            $item_metas[] = $product_category->name;
+                                        } else {
+                                            $item_metas[] = $product_category->term_id;
+                                        }
+                                    }
+                                }
+                            }
+                            $post_meta = $item_metas;
                         } else {
                             if ($order && is_object($order) && method_exists($order, $key)) {
                                 if ($key == 'get_date_created' || $key == 'get_date_modified' || $key == 'get_date_completed' || $key == 'get_date_paid') {
@@ -6068,7 +5906,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         $post_meta = wc_get_order_status_name($post_meta);
                                     }
                                 } elseif ($key == 'get_items') {
-                                    $types = isset($atts['types']) ? explode(',', $atts['types']) : array('line_item');
+                                    $types = isset($atts['types']) ? explode(',', $atts['types']) : ['line_item'];
                                     $post_meta = $order->$key($types);
                                 } else {
                                     $post_meta = $order->$key();
@@ -6077,7 +5915,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
                     }
                 } elseif ($terms && $names) {
-                    $post_terms = wp_get_post_terms($id, $key, array('fields' => 'names'));
+                    $post_terms = wp_get_post_terms($id, $key, ['fields' => 'names']);
                     if (!is_wp_error($post_terms) && is_array($post_terms)) {
                         foreach ($post_terms as $post_term_key => $post_terms_value) {
                             $post_terms[$post_term_key] = $this->helper->load('translator')->translate($post_terms_value);
@@ -6109,7 +5947,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         $i++;
                                     }
                                 } else {
-                                    $item_metas = array();
+                                    $item_metas = [];
                                     foreach ($items as $item_id => $item) {
                                         $item_metas[] = wc_get_order_item_meta($item_id, $subkey, true);
                                     }
@@ -6123,18 +5961,18 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             $items = $order->get_items($key);
                             if ($items) {
                                 global $wpdb;
-                                $item_metas = array();
+                                $item_metas = [];
                                 $i = 0;
                                 foreach ($items as $item_id => $item) {
                                     if ($index !== false) {
                                         if ($i == $index) {
-                                            $condition = array(
-                                                'meta.order_item_id' => array(
+                                            $condition = [
+                                                'meta.order_item_id' => [
                                                     'condition' => '=',
                                                     'value' => $item_id,
                                                     'type' => '%d',
-                                                ),
-                                            );
+                                                ],
+                                            ];
                                             $where = $this->helper->load('db')->prepare_where($condition);
 
                                             // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
@@ -6148,13 +5986,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                             break;
                                         }
                                     } else {
-                                        $condition = array(
-                                            'meta.order_item_id' => array(
+                                        $condition = [
+                                            'meta.order_item_id' => [
                                                 'condition' => '=',
                                                 'value' => $item_id,
                                                 'type' => '%d',
-                                            ),
-                                        );
+                                            ],
+                                        ];
                                         $where = $this->helper->load('db')->prepare_where($condition);
 
                                         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
@@ -6246,14 +6084,56 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                      * Checkout Field Editor (Checkout Manager) for WooCommerce
                      * https://wordpress.org/plugins/woo-checkout-field-editor-pro/
                      */
-                    if ($checkout_field_editor && class_exists('THWCFD_Utils')) {
-                        $checkout_field_editor_fields = array_merge(THWCFD_Utils::get_fields('billing'), THWCFD_Utils::get_fields('shipping'), THWCFD_Utils::get_fields('additional'));
-                        if (isset($checkout_field_editor_fields[$key])) {
-                            $post_meta = THWCFD_Utils::get_option_text($checkout_field_editor_fields[$key], $post_meta);
+                    if ($checkout_field_editor) {
+                        $checkout_field = false;
+
+                        if (class_exists('WCFE_Checkout_Fields_Utils') && class_exists('THWCFE_Utils_Section') && class_exists('THWCFE_Utils')) {
+                            $checkout_field_editor_sections = WCFE_Checkout_Fields_Utils::get_checkout_sections();
+                            foreach ($checkout_field_editor_sections as $checkout_field_editor_section) {
+                                $checkout_field_editor_fields = THWCFE_Utils_Section::get_fields($checkout_field_editor_section);
+                                if (isset($checkout_field_editor_fields[$key])) {
+                                    $post_meta = THWCFE_Utils::get_option_text_from_value($checkout_field_editor_fields[$key], $post_meta);
+                                    $checkout_field = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!$checkout_field && class_exists('THWCFD_Utils')) {
+                            $checkout_field_editor_fields = array_merge(THWCFD_Utils::get_fields('billing'), THWCFD_Utils::get_fields('shipping'), THWCFD_Utils::get_fields('additional'));
+                            if (isset($checkout_field_editor_fields[$key])) {
+                                $post_meta = THWCFD_Utils::get_option_text($checkout_field_editor_fields[$key], $post_meta);
+                                $checkout_field = true;
+                            }
+                        }
+
+                        if (!$checkout_field && class_exists('THWCFD_Utils_Block') && class_exists('THWCFE_Utils_Section') && class_exists('THWCFE_Utils_Section')) {
+                            $checkout_field_editor_sections = THWCFD_Utils_Block::get_block_checkout_sections();
+                            foreach ($checkout_field_editor_sections as $checkout_field_editor_section) {
+                                $checkout_field_editor_fields = THWCFE_Utils_Section::get_fields($checkout_field_editor_section);
+                                if (isset($checkout_field_editor_fields[$key])) {
+                                    $post_meta = THWCFE_Utils::get_option_text_from_value($checkout_field_editor_fields[$key], $post_meta);
+                                    $checkout_field = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!$checkout_field && class_exists('THWCFD_Utils_Block') && class_exists('THWCFD_Utils_Section') && class_exists('THWCFD_Utils')) {
+                            $checkout_field_editor_sections = THWCFD_Utils_Block::get_block_checkout_sections();
+                            foreach ($checkout_field_editor_sections as $checkout_field_editor_section) {
+                                $checkout_field_editor_fields = [];
+                                $checkout_field_editor_fields = THWCFD_Utils_Section::get_fieldset($checkout_field_editor_section);
+                                if (isset($checkout_field_editor_fields[$key])) {
+                                    $post_meta = THWCFD_Utils::get_option_text($checkout_field_editor_fields[$key], $post_meta);
+                                    $checkout_field = true;
+                                    break;
+                                }
+                            }
                         }
                     }
 
-                    if ($raw) {
+                    if (apply_filters('e2pdf_raw_output', false)) {
                         $response = $post_meta;
                     } else {
                         if (is_array($post_meta)) {
@@ -6282,34 +6162,34 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_wc_order_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_wc_order_response', $response, $atts, $value);
         }
     }
 
-    /**
-     * [e2pdf-foreach] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_foreach($atts = array(), $value = '') {
+    // e2pdf-foreach
+    public function e2pdf_foreach($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_foreach', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
         }
 
-        $response = array();
+        $response = [];
         $implode = isset($atts['implode']) ? $atts['implode'] : '';
         if (isset($atts['shortcode'])) {
             $foreach_shortcode = str_replace('-', '_', $atts['shortcode']);
             if (method_exists($this, $foreach_shortcode)) {
-                $atts['raw'] = 'true';
+                add_filter('e2pdf_raw_output', array($this->helper, '__return_true'), 999);
                 $data = $this->$foreach_shortcode($atts, '');
+                remove_filter('e2pdf_raw_output', array($this->helper, '__return_true'), 999);
                 if ($data && (is_string($data) || is_numeric($data))) {
-                    $data = array($data);
+                    $data = [$data];
                 }
                 if (is_array($data) && count($data) > 0) {
                     $index = 0;
@@ -6321,15 +6201,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
             }
         }
-        return implode($implode, $response);
+
+        $response = implode($implode, $response);
+        if (!apply_filters('e2pdf_pdf_fill', false)) {
+            $response = $this->sanitize_html($response);
+        }
+        return $response;
     }
 
-    /**
-     * [e2pdf-wc-cart] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_wc_cart($atts = array(), $value = '') {
+    // e2pdf-wc-cart
+    public function e2pdf_wc_cart($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_wc_cart', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -6353,12 +6234,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $terms = isset($atts['terms']) && $atts['terms'] == 'true' ? true : false;
         $output = isset($atts['output']) ? $atts['output'] : false;
         $wc_price = isset($atts['wc_price']) && $atts['wc_price'] == 'true' ? true : false;
-        $wc_filter = isset($atts['wc_filter']) && $atts['wc_filter'] == 'true' ? true : false;
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
 
         $data_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_cart_data_fields',
-                array(
+                [
                     'id',
                     'post_author',
                     'post_author_id',
@@ -6391,12 +6270,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_the_post_thumbnail',
                     'get_the_post_thumbnail_url',
                     'response_hook',
-                )
+                ]
         );
 
         $cart_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_cart_cart_fields',
-                array(
+                [
                     'cart',
                     'get_cart',
                     'get_applied_coupons',
@@ -6438,7 +6317,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_taxes_total',
                     'get_shipping_method_title',
                     'get_payment_method_title',
-                )
+                ]
         );
 
         if ($id && $key) {
@@ -6458,11 +6337,11 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     } elseif ($key == 'post_content' && isset($wp_post->post_content)) {
                         $content = $wp_post->post_content;
                         if (false !== strpos($content, '[')) {
-                            $shortcode_tags = array(
+                            $shortcode_tags = [
                                 'e2pdf-exclude',
                                 'e2pdf-save',
                                 'e2pdf-view',
-                            );
+                            ];
                             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
                             $tagnames = array_intersect($shortcode_tags, $matches[1]);
                             if (!empty($tagnames)) {
@@ -6564,9 +6443,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         $image_width = absint($image_size['0']);
                                         $image_height = absint($image_size['1']);
                                         if ($image_width && $image_height) {
-                                            $size = array(
+                                            $size = [
                                                 $image_width, $image_height,
-                                            );
+                                            ];
                                         }
                                     }
                                 }
@@ -6598,12 +6477,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
                                     $item_index = 0;
                                     foreach ($items as $item_id => $item) {
-
                                         $product = apply_filters('woocommerce_cart_item_product', $item['data'], $item, $item_id);
-                                        $product_id = apply_filters('woocommerce_cart_item_product_id', $item['product_id'], $item, $item_id);
-
                                         if ($product && $product->exists() && $item['quantity'] > 0 && apply_filters('woocommerce_cart_item_visible', true, $item, $item_id)) {
-
                                             $sku = '';
                                             $purchase_note = '';
                                             $image = '';
@@ -6638,39 +6513,33 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
                                                 $content .= '</td>';
                                             }
-
                                             if ($show_sku) {
                                                 $content .= "<td class='e2pdf-wc-cart-product-sku'>" . $sku . '</td>';
                                             }
-
                                             if ($show_quantity) {
                                                 $content .= "<td class='e2pdf-wc-cart-product-quantity'>" . $item['quantity'] . '</td>';
                                             }
-
                                             if ($show_price) {
                                                 $content .= "<td class='e2pdf-wc-cart-product-price'>" . apply_filters('woocommerce_cart_item_price', WC()->cart->get_product_price($product), $item, $item_id) . '</td>';
                                             }
-
                                             if ($show_subtotal) {
                                                 $content .= "<td class='e2pdf-wc-cart-product-subtotal'>" . apply_filters('woocommerce_cart_item_subtotal', WC()->cart->get_product_subtotal($product, $item['quantity']), $item, $item_id) . '</td>';
                                             }
-
                                             $content .= '</tr>';
-
                                             $item_index++;
                                         }
                                     }
                                     $content .= '</table>';
                                 }
 
-                                $item_totals = array();
+                                $item_totals = [];
                                 if ($show_totals) {
                                     /* Total Subtotal */
                                     if ($show_totals_subtotal) {
-                                        $item_totals['subtotal'] = array(
+                                        $item_totals['subtotal'] = [
                                             'label' => __('Subtotal', 'woocommerce'),
                                             'value' => WC()->cart->get_cart_subtotal(),
-                                        );
+                                        ];
                                     }
 
                                     /* Total Coupons */
@@ -6689,10 +6558,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                                 $discount_amount_html = __('Free shipping coupon', 'woocommerce');
                                             }
 
-                                            $item_totals['coupon_' . $index_id] = array(
+                                            $item_totals['coupon_' . $index_id] = [
                                                 'label' => wc_cart_totals_coupon_label($coupon, false),
                                                 'value' => $discount_amount_html,
-                                            );
+                                            ];
                                             $index_id++;
                                         }
                                     }
@@ -6708,7 +6577,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                             foreach ($packages as $i => $package) {
                                                 $chosen_method = isset(WC()->session->chosen_shipping_methods[$i]) ? WC()->session->chosen_shipping_methods[$i] : '';
                                                 if ($chosen_method) {
-                                                    $product_names = array();
+                                                    $product_names = [];
                                                     if (count($packages) > 1) {
                                                         foreach ($package['contents'] as $item_id => $values) {
                                                             $product_names[$item_id] = $values['data']->get_name() . ' &times;' . $values['quantity'];
@@ -6723,10 +6592,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                                     $package_name = apply_filters('woocommerce_shipping_package_name', (($i + 1) > 1) ? sprintf(_x('Shipping %d', 'shipping packages', 'woocommerce'), ($i + 1)) : _x('Shipping', 'shipping packages', 'woocommerce'), $i, $package);
                                                     $formatted_destination = WC()->countries->get_formatted_address($package['destination'], ', ');
 
-                                                    $item_totals['shipping_' . $index_id] = array(
+                                                    $item_totals['shipping_' . $index_id] = [
                                                         'label' => wp_kses_post($package_name),
                                                         'value' => '',
-                                                    );
+                                                    ];
 
                                                     if ($available_methods) {
                                                         foreach ($available_methods as $method) {
@@ -6764,10 +6633,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         $index_id = 0;
                                         foreach (WC()->cart->get_fees() as $fee) {
                                             $cart_totals_fee_html = WC()->cart->display_prices_including_tax() ? wc_price($fee->total + $fee->tax) : wc_price($fee->total);
-                                            $item_totals['fee_' . $index_id] = array(
+                                            $item_totals['fee_' . $index_id] = [
                                                 'label' => esc_html($fee->name),
                                                 'value' => apply_filters('woocommerce_cart_totals_fee_html', $cart_totals_fee_html, $fee),
-                                            );
+                                            ];
                                             $index_id++;
                                         }
                                     }
@@ -6786,17 +6655,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                             if ('itemized' === get_option('woocommerce_tax_total_display')) {
                                                 $index_id = 0;
                                                 foreach (WC()->cart->get_tax_totals() as $code => $tax) {
-                                                    $item_totals['tax_' . $index_id] = array(
+                                                    $item_totals['tax_' . $index_id] = [
                                                         'label' => esc_html($tax->label) . $estimated_text,
                                                         'value' => wp_kses_post($tax->formatted_amount),
-                                                    );
+                                                    ];
                                                     $index_id++;
                                                 }
                                             } else {
-                                                $item_totals['tax_or_vat'] = array(
+                                                $item_totals['tax_or_vat'] = [
                                                     'label' => esc_html(WC()->countries->tax_or_vat()) . $estimated_text,
                                                     'value' => apply_filters('woocommerce_cart_totals_taxes_total_html', wc_price(WC()->cart->get_taxes_total())),
-                                                );
+                                                ];
                                             }
                                         }
                                     }
@@ -6805,7 +6674,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     if ($show_totals_total) {
                                         $total = WC()->cart->get_total();
                                         if (wc_tax_enabled() && WC()->cart->display_prices_including_tax()) {
-                                            $tax_string_array = array();
+                                            $tax_string_array = [];
                                             $cart_tax_totals = WC()->cart->get_tax_totals();
 
                                             if (get_option('woocommerce_tax_total_display') === 'itemized') {
@@ -6829,10 +6698,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                             }
                                         }
 
-                                        $item_totals['total'] = array(
+                                        $item_totals['total'] = [
                                             'label' => __('Total', 'woocommerce'),
                                             'value' => apply_filters('woocommerce_cart_totals_order_total_html', $total),
-                                        );
+                                        ];
                                     }
 
                                     $item_totals = apply_filters('e2pdf_model_shortcode_wc_cart_item_totals', $item_totals, $atts, $value);
@@ -6880,7 +6749,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             }
                         } elseif ($key == 'get_formatted_cart_totals') {
 
-                            $include = array(
+                            $include = [
                                 'subtotal',
                                 'coupons',
                                 'shipping',
@@ -6889,13 +6758,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 'fees',
                                 'taxes',
                                 'total',
-                            );
+                            ];
 
                             if (isset($atts['include'])) {
                                 $include = explode(',', $atts['include']);
                             }
 
-                            $exclude = array();
+                            $exclude = [];
                             if (isset($atts['exclude'])) {
                                 $exclude = explode(',', $atts['exclude']);
                             }
@@ -6903,10 +6772,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
                             /* Total Subtotal */
                             if (in_array('subtotal', $include, true)) {
-                                $item_totals['subtotal'] = array(
+                                $item_totals['subtotal'] = [
                                     'label' => __('Subtotal', 'woocommerce'),
                                     'value' => WC()->cart->get_cart_subtotal(),
-                                );
+                                ];
                             }
 
                             /* Total Coupons */
@@ -6925,10 +6794,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                         $discount_amount_html = __('Free shipping coupon', 'woocommerce');
                                     }
 
-                                    $item_totals['coupon_' . $index_id] = array(
+                                    $item_totals['coupon_' . $index_id] = [
                                         'label' => wc_cart_totals_coupon_label($coupon, false),
                                         'value' => $discount_amount_html,
-                                    );
+                                    ];
                                     $index_id++;
                                 }
                             }
@@ -6944,7 +6813,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     foreach ($packages as $i => $package) {
                                         $chosen_method = isset(WC()->session->chosen_shipping_methods[$i]) ? WC()->session->chosen_shipping_methods[$i] : '';
                                         if ($chosen_method) {
-                                            $product_names = array();
+                                            $product_names = [];
                                             if (count($packages) > 1) {
                                                 foreach ($package['contents'] as $item_id => $values) {
                                                     $product_names[$item_id] = $values['data']->get_name() . ' &times;' . $values['quantity'];
@@ -6959,10 +6828,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                             $package_name = apply_filters('woocommerce_shipping_package_name', (($i + 1) > 1) ? sprintf(_x('Shipping %d', 'shipping packages', 'woocommerce'), ($i + 1)) : _x('Shipping', 'shipping packages', 'woocommerce'), $i, $package);
                                             $formatted_destination = WC()->countries->get_formatted_address($package['destination'], ', ');
 
-                                            $item_totals['shipping_' . $index_id] = array(
+                                            $item_totals['shipping_' . $index_id] = [
                                                 'label' => wp_kses_post($package_name),
                                                 'value' => '',
-                                            );
+                                            ];
 
                                             if ($available_methods) {
                                                 foreach ($available_methods as $method) {
@@ -7000,10 +6869,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 $index_id = 0;
                                 foreach (WC()->cart->get_fees() as $fee) {
                                     $cart_totals_fee_html = WC()->cart->display_prices_including_tax() ? wc_price($fee->total + $fee->tax) : wc_price($fee->total);
-                                    $item_totals['fee_' . $index_id] = array(
+                                    $item_totals['fee_' . $index_id] = [
                                         'label' => esc_html($fee->name),
                                         'value' => apply_filters('woocommerce_cart_totals_fee_html', $cart_totals_fee_html, $fee),
-                                    );
+                                    ];
                                     $index_id++;
                                 }
                             }
@@ -7022,17 +6891,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     if ('itemized' === get_option('woocommerce_tax_total_display')) {
                                         $index_id = 0;
                                         foreach (WC()->cart->get_tax_totals() as $code => $tax) {
-                                            $item_totals['tax_' . $index_id] = array(
+                                            $item_totals['tax_' . $index_id] = [
                                                 'label' => esc_html($tax->label) . $estimated_text,
                                                 'value' => wp_kses_post($tax->formatted_amount),
-                                            );
+                                            ];
                                             $index_id++;
                                         }
                                     } else {
-                                        $item_totals['tax_or_vat'] = array(
+                                        $item_totals['tax_or_vat'] = [
                                             'label' => esc_html(WC()->countries->tax_or_vat()) . $estimated_text,
                                             'value' => apply_filters('woocommerce_cart_totals_taxes_total_html', wc_price(WC()->cart->get_taxes_total())),
-                                        );
+                                        ];
                                     }
                                 }
                             }
@@ -7043,7 +6912,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             if (in_array('total', $include, true)) {
                                 $total = WC()->cart->get_total();
                                 if (wc_tax_enabled() && WC()->cart->display_prices_including_tax()) {
-                                    $tax_string_array = array();
+                                    $tax_string_array = [];
                                     $cart_tax_totals = WC()->cart->get_tax_totals();
 
                                     if (get_option('woocommerce_tax_total_display') === 'itemized') {
@@ -7067,10 +6936,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     }
                                 }
 
-                                $item_totals['total'] = array(
+                                $item_totals['total'] = [
                                     'label' => __('Total', 'woocommerce'),
                                     'value' => apply_filters('woocommerce_cart_totals_order_total_html', $total),
-                                );
+                                ];
                             }
 
                             $item_totals = apply_filters('e2pdf_model_shortcode_wc_cart_get_cart_totals', $item_totals, $atts, $value);
@@ -7099,7 +6968,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
                     }
                 } elseif ($terms && $names) {
-                    $post_terms = wp_get_post_terms($id, $key, array('fields' => 'names'));
+                    $post_terms = wp_get_post_terms($id, $key, ['fields' => 'names']);
                     if (!is_wp_error($post_terms) && is_array($post_terms)) {
                         foreach ($post_terms as $post_term_key => $post_terms_value) {
                             $post_terms[$post_term_key] = $this->helper->load('translator')->translate($post_terms_value);
@@ -7168,7 +7037,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
                     }
 
-                    if ($raw) {
+                    if (apply_filters('e2pdf_raw_output', false)) {
                         $response = $post_meta;
                     } else {
                         if (is_array($post_meta)) {
@@ -7197,20 +7066,19 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_wc_cart_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_wc_cart_response', $response, $atts, $value);
         }
     }
 
-    /**
-     * [e2pdf-wc-customer] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_wc_customer($atts = array(), $value = '') {
+    // e2pdf-wc-customer
+    public function e2pdf_wc_customer($atts = [], $value = '') {
 
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_wc_customer', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
@@ -7228,12 +7096,11 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $size = isset($atts['size']) ? $atts['size'] : 'thumbnail';
         $attachment_url = isset($atts['attachment_url']) && $atts['attachment_url'] == 'true' ? true : false;
         $attachment_image_url = isset($atts['attachment_image_url']) && $atts['attachment_image_url'] == 'true' ? true : false;
-        $raw = isset($atts['raw']) && $atts['raw'] == 'true' ? true : false;
         $output = isset($atts['output']) ? $atts['output'] : false;
 
         $customer_fields = apply_filters(
                 'e2pdf_model_shortcode_wc_customer_fields',
-                array(
+                [
                     'get_taxable_address',
                     'is_vat_exempt',
                     'get_is_vat_exempt',
@@ -7275,7 +7142,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     'get_is_paying_customer',
                     'get_formatted_shipping_address',
                     'get_formatted_billing_address',
-                )
+                ]
         );
 
         if (in_array($key, $customer_fields, true)) {
@@ -7341,7 +7208,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
             }
 
-            if ($raw) {
+            if (apply_filters('e2pdf_raw_output', false)) {
                 $response = $post_meta;
             } else {
                 if (is_array($post_meta)) {
@@ -7368,19 +7235,22 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
         }
 
-        if ($raw) {
+        if (apply_filters('e2pdf_raw_output', false)) {
             return apply_filters('e2pdf_model_shortcode_e2pdf_wc_customer_raw', $response, $atts, $value);
         } else {
             $response = $this->helper->load('translator')->translate($response, 'partial');
+            if (!apply_filters('e2pdf_pdf_fill', false)) {
+                $response = $this->sanitize_html($response);
+            }
             return apply_filters('e2pdf_model_shortcode_e2pdf_wc_customer_response', $response, $atts, $value);
         }
     }
 
-    public function e2pdf_page_number($atts = array(), $value = '') {
+    public function e2pdf_page_number($atts = [], $value = '') {
         return 'e2pdf-page-number';
     }
 
-    public function e2pdf_page_total($atts = array(), $value = '') {
+    public function e2pdf_page_total($atts = [], $value = '') {
         return 'e2pdf-page-total';
     }
 
@@ -7391,16 +7261,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return $this->helper->load('acfrepeater')->do_shortcode($atts, $content);
     }
 
-    /**
-     * [e2pdf-filter] shortcode
-     * @param array $atts - Attributes
-     * @param string $value - Content
-     */
-    public function e2pdf_filter($atts = array(), $value = '') {
+    // e2pdf-filter
+    public function e2pdf_filter($atts = [], $value = '') {
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_filter_atts', $atts);
         if ($value) {
-            $search = array('[', ']', '&#091;', '&#093;');
-            $replace = array('&#91;', '&#93;', '&#91;', '&#93;');
+            $search = ['[', ']', '&#091;', '&#093;'];
+            $replace = ['&#91;', '&#93;', '&#91;', '&#93;'];
             $value = str_replace($search, $replace, $value);
             $value = esc_attr($value);
         }
@@ -7467,5 +7333,20 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     // WPBakery Page Builder Grid Item View Shortcode
     public function e2pdf_vc_view_item($atts, $content = null) {
         return '{{ e2pdf_view:' . http_build_query((array) $atts) . ' }}';
+    }
+
+    // sanitize css
+    public function sanitize_css($css) {
+        $css = apply_filters('e2pdf_safe_css', $css);
+        return $css;
+    }
+
+    // sanitize html
+    public function sanitize_html($html) {
+        $allowed_html = apply_filters('e2pdf_safe_html', wp_kses_allowed_html('post'));
+        add_filter('safe_style_css', [$this, 'sanitize_css']);
+        $html = wp_kses($html, $allowed_html);
+        remove_filter('safe_style_css', [$this, 'sanitize_css']);
+        return $html;
     }
 }

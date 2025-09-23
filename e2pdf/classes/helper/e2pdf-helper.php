@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 class Helper_E2pdf_Helper {
 
-    protected static $instance = null;
+    protected static $instance;
     private $helper;
 
     const CHMOD_DIR = 0755;
@@ -189,7 +189,7 @@ class Helper_E2pdf_Helper {
 
             $url = get_option('upload_url_path');
             if (!$url) {
-                if (empty($upload_path) || ( 'wp-content/uploads' === $upload_path ) || ( $upload_path == $dir )) {
+                if (empty($upload_path) || ('wp-content/uploads' === $upload_path) || ($upload_path == $dir)) {
                     $url = WP_CONTENT_URL . '/uploads';
                 } else {
                     $url = trailingslashit($siteurl) . $upload_path;
@@ -201,7 +201,7 @@ class Helper_E2pdf_Helper {
                 $url = trailingslashit($siteurl) . E2PDF_UPLOADS;
             }
 
-            if (is_multisite() && !( is_main_network() && is_main_site() && defined('MULTISITE') )) {
+            if (is_multisite() && !(is_main_network() && is_main_site() && defined('MULTISITE'))) {
                 if (!get_site_option('ms_files_rewriting')) {
                     if (defined('MULTISITE')) {
                         $ms_dir = '/sites/' . get_current_blog_id();
@@ -418,5 +418,14 @@ class Helper_E2pdf_Helper {
             $site_url = site_url();
         }
         return $site_url;
+    }
+
+    public function __return_true() {
+        return true;
+    }
+
+    // return false
+    public function __return_false() {
+        return false;
     }
 }

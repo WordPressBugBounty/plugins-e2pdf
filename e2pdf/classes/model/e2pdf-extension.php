@@ -143,19 +143,19 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     }
 
     public function pre_render() {
-        add_filter('e2pdf_pdf_render', array($this, '__return_true'), 999);
+        add_filter('e2pdf_pdf_render', array($this->helper, '__return_true'), 999);
         if (class_exists('ACF')) {
             if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
-                add_filter('acf/settings/enable_shortcode', array($this, '__return_true'), 999);
+                add_filter('acf/settings/enable_shortcode', array($this->helper, '__return_true'), 999);
             }
             if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
-                add_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, '__return_true'), 999);
+                add_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this->helper, '__return_true'), 999);
             }
             if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
                 add_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
             }
             if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
-                add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this, '__return_false'), 999);
+                add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this->helper, '__return_false'), 999);
             }
         }
     }
@@ -163,19 +163,19 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     public function after_render() {
         if (class_exists('ACF')) {
             if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
-                remove_filter('acf/settings/enable_shortcode', array($this, '__return_true'), 999);
+                remove_filter('acf/settings/enable_shortcode', array($this->helper, '__return_true'), 999);
             }
             if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
-                remove_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this, '__return_true'), 999);
+                remove_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this->helper, '__return_true'), 999);
             }
             if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
                 remove_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
             }
             if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
-                remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this, '__return_false'), 999);
+                remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this->helper, '__return_false'), 999);
             }
         }
-        remove_filter('e2pdf_pdf_render', array($this, '__return_true'), 999);
+        remove_filter('e2pdf_pdf_render', array($this->helper, '__return_true'), 999);
     }
 
     // convert shortcodes
@@ -358,16 +358,6 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         if ($this->extension() && method_exists($this->extension(), 'load_shortcodes')) {
             return $this->extension()->load_shortcodes();
         }
-        return false;
-    }
-
-    // return true
-    public function __return_true() {
-        return true;
-    }
-
-    // return false
-    public function __return_false() {
         return false;
     }
 

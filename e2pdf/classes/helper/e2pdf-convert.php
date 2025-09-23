@@ -165,7 +165,7 @@ class Helper_E2pdf_Convert {
         }
     }
 
-    public function to_content_key($content_key = false, $value = '') {
+    public function is_content_key($content_key = false, $value = '') {
         $response = '';
         if ($content_key) {
             $shortcode_tags = array(
@@ -185,6 +185,22 @@ class Helper_E2pdf_Convert {
             }
         }
         return $response;
+    }
+
+    public function is_string_array($value) {
+        if (!is_array($value)) {
+            $value = !empty($value) ? (array) $value : array();
+        }
+        return $value;
+    }
+
+    public function is_unserialized_array($value) {
+        if (!is_array($value)) {
+            if (is_serialized($value)) {
+                $value = $this->unserialize($value);
+            }
+        }
+        return is_array($value) ? $value : array();
     }
 
     private function parse_fields($value) {

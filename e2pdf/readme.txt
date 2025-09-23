@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 6.8
 Requires PHP: 5.4
-Stable tag: 1.28.09
+Stable tag: 1.28.10
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -137,6 +137,15 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 6. Settings Page.
 
 == Changelog ==
+
+= 1.28.10 =
+*Release Date - 23 September 2025*
+
+* Add: Checkout Field Editor (Checkout Manager) for WooCommerce support
+* Add: get_items_category, get_items_category_ids keys for WooCommerce
+* Fix: Compatibility fix with Foxtool All-in-One: Contact chat button, Custom login, Media optimize images
+* Security: Cross Site Scripting (XSS)
+* Security: HTML filter
 
 = 1.28.09 =
 *Release Date - 13 September 2025*

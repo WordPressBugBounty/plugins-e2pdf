@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Filter Helper
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.07.09
+ * File: /helper/e2pdf-filter.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -24,7 +23,7 @@ class Helper_E2pdf_Filter {
             }
 
             foreach ($wrappers as $wrapper) {
-                if (in_array($wrapper, ['http', 'https', 'file'])) {
+                if (in_array($wrapper, ['http', 'https', 'file'], true)) {
                     continue;
                 }
                 if (stripos($file_path, $wrapper . '://') === 0) {
@@ -36,7 +35,7 @@ class Helper_E2pdf_Filter {
     }
 
     public function is_downloadable($file_path) {
-        if ($file_path && in_array(strtolower(pathinfo($file_path, PATHINFO_EXTENSION)), $this->is_allowed_extensions())) {
+        if ($file_path && in_array(strtolower(pathinfo($file_path, PATHINFO_EXTENSION)), $this->is_allowed_extensions(), true)) {
             return true;
         }
         return false;

@@ -302,29 +302,72 @@ var e2pdf = {
         },
         // e2pdf.helper.css
         css: function (element_id, css) {
-            var css = css.replace(/([^{}]+?{[^}]+?})/g, function (match) {
-                return '.e2pdf-element[data-element_id="' + element_id + '"] .e2pdf-html ' + match;
-            });
-            var style = jQuery('#e2pdf-html-css-' + element_id);
-            if (style.length !== 0) {
-                style.remove();
-            }
-            if (css) {
-                jQuery('<style>', {id: 'e2pdf-html-css-' + element_id}).html(css).appendTo('head');
+            if (typeof css === 'string') {
+                css = css.replace(/([^{}]+?{[^}]+?})/g, function (match) {
+                    return '#poststuff .e2pdf-element[data-element_id="' + element_id + '"] .e2pdf-html ' + match;
+                });
+                var style = jQuery('#e2pdf-html-css-' + element_id);
+                if (style.length !== 0) {
+                    style.remove();
+                }
+                if (css.trim()) {
+                    var el = document.createElement('style');
+                    el.id = 'e2pdf-html-css-' + element_id;
+                    el.type = 'text/css';
+                    el.appendChild(document.createTextNode(css.trim()));
+                    document.head.appendChild(el);
+                }
             }
         },
         // e2pdf.helper.cssGlobal
         cssGlobal: function (css) {
-            var css = css.replace(/([^{}]+?{[^}]+?})/g, function (match) {
-                return '.e2pdf-element .e2pdf-html ' + match;
-            });
-            var style = jQuery('#e2pdf-html-css');
-            if (style.length !== 0) {
-                style.remove();
+            if (typeof css === 'string') {
+                css = css.replace(/([^{}]+?{[^}]+?})/g, function (match) {
+                    return '#poststuff .e2pdf-element .e2pdf-html ' + match;
+                });
+                var style = jQuery('#e2pdf-html-css');
+                if (style.length !== 0) {
+                    style.remove();
+                }
+                if (css.trim()) {
+                    var el = document.createElement('style');
+                    el.id = 'e2pdf-html-css';
+                    el.type = 'text/css';
+                    el.appendChild(document.createTextNode(css.trim()));
+                    document.head.appendChild(el);
+                }
             }
-            if (css) {
-                jQuery('<style>', {id: 'e2pdf-html-css'}).html(css).appendTo('head');
+        },
+        // e2pdf.helper.sanitizeHTML
+        sanitizeHTML: function (html) {
+            if (typeof html === 'string') {
+                if (window.DOMPurify) {
+                    try {
+                        return window.DOMPurify.sanitize(html, {
+                            ADD_ATTR: [
+                                "after", "align", "ascender", "background", "before", "block-height", "block-width",
+                                "border", "border-bottom", "border-bottom-color", "border-bottom-width", "border-left",
+                                "border-left-color", "border-left-width", "border-right", "border-right-color",
+                                "border-right-width", "border-top", "border-top-color", "border-top-width", "border-width",
+                                "bordercolor", "cellpadding", "char-fill", "char-fill-color", "char-fill-size", "chunkbgcolor",
+                                "class", "color", "colspan", "complex-encoding", "descender", "direction", "display",
+                                "dir", "disable-border-top", "encoding", "extraparaspace", "face", "float", "font-family",
+                                "font-size", "font-style", "font-weight", "header-rows", "height", "href", "html-height",
+                                "html-worker", "html-width", "hyphenation", "keep-together", "letter-spacing", "leading",
+                                "line-fill", "line-fill-color", "line-fill-size", "list-style-image", "list-style-image-height",
+                                "list-style-image-size", "list-style-image-width", "list-style-type", "list-style-type-color",
+                                "list-style-type-size", "margin-bottom", "margin-left", "margin-right", "margin-top",
+                                "max-height", "max-width", "nowrap", "padding-bottom", "padding-left", "padding-right",
+                                "padding-top", "page-break-after", "page-break-before", "rotate", "rtl", "size", "split",
+                                "split-border", "split-late", "split-padding", "split-rows", "style", "text-align",
+                                "text-decoration", "text-indent", "text-transform", "valign", "width"
+                            ]
+                        });
+                    } catch (err) {
+                    }
+                }
             }
+            return html;
         }
     },
     // e2pdf.select2
@@ -6907,11 +6950,11 @@ var e2pdf = {
                         children.val(e2pdf.helper.getString(properties['value']));
                     } else {
                         e2pdf.helper.css(e2pdf.helper.getInt(el.attr('data-element_id')), e2pdf.helper.getString(properties['css']));
-                        children.html(e2pdf.helper.getString(properties['value']));
+                        children.html(e2pdf.helper.sanitizeHTML(e2pdf.helper.getString(properties['value'])));
                     }
                     break;
                 case 'e2pdf-page-number':
-                    children.html(e2pdf.helper.getString(properties['value']).replace('[e2pdf-page-number]', '1').replace('[e2pdf-page-total]', '2'));
+                    children.html(e2pdf.helper.sanitizeHTML(e2pdf.helper.getString(properties['value']).replace('[e2pdf-page-number]', '1').replace('[e2pdf-page-total]', '2')));
                     break;
                 case 'e2pdf-link':
                     children.text(e2pdf.helper.getString(properties['link_label']));
@@ -7906,7 +7949,7 @@ var e2pdf = {
                     } else {
                         var element =
                                 jQuery('<div>', {'class': 'e2pdf-el-wrapper e2pdf-resizable'}).append(
-                                jQuery('<div>', {'contenteditable': true, 'class': 'content e2pdf-html e2pdf-inner-element'}).html(properties['value'] ? properties['value'] : ''),
+                                jQuery('<div>', {'contenteditable': true, 'class': 'content e2pdf-html e2pdf-inner-element'}).html(properties['value'] ? e2pdf.helper.sanitizeHTML(properties['value']) : ''),
                                 jQuery('<i>', {'class': 'e2pdf-drag'})
                                 );
                     }
@@ -8074,7 +8117,7 @@ var e2pdf = {
                     var value = properties['value'] ? properties['value'] : '';
                     var element =
                             jQuery('<div>', {'class': 'e2pdf-el-wrapper e2pdf-resizable'}).append(
-                            jQuery('<div>', {'class': 'content e2pdf-page-number e2pdf-inner-element'}).html(value.replace('[e2pdf-page-number]', '1').replace('[e2pdf-page-total]', '2')),
+                            jQuery('<div>', {'class': 'content e2pdf-page-number e2pdf-inner-element'}).html(e2pdf.helper.sanitizeHTML(value.replace('[e2pdf-page-number]', '1').replace('[e2pdf-page-total]', '2'))),
                             jQuery('<i>', {'class': 'e2pdf-drag'})
                             );
                     break;

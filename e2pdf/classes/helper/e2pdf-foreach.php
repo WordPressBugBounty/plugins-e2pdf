@@ -70,8 +70,9 @@ class Helper_E2pdf_Foreach {
                         }
                         $model_e2pdf_shortcode = new Model_E2pdf_Shortcode();
                         if (method_exists($model_e2pdf_shortcode, $foreach_shortcode)) {
-                            $atts['raw'] = 'true';
+                            add_filter('e2pdf_raw_output', array($this->helper, '__return_true'), 999);
                             $data = $model_e2pdf_shortcode->$foreach_shortcode($atts, '');
+                            remove_filter('e2pdf_raw_output', array($this->helper, '__return_true'), 999);
                             if (is_array($data) && count($data) > 0) {
                                 $index = 0;
                                 foreach ($data as $data_key => $data_value) {

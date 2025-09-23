@@ -13,8 +13,8 @@ if (!defined('ABSPATH')) {
 
 class Model_E2pdf_Template extends Model_E2pdf_Model {
 
-    private $template = array();
-    private $extension = null;
+    private $template = [];
+    private $extension;
     private $table;
 
     public function __construct() {
@@ -504,6 +504,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
     // fill
     public function fill() {
 
+        add_filter('e2pdf_pdf_fill', array($this->helper, '__return_true'), 999);
         do_action('e2pdf_model_template_fill_pre', $this, $this->extension());
 
         $action = new Model_E2pdf_Action();
@@ -615,6 +616,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
         $this->set('pages', $pages);
 
         do_action('e2pdf_model_template_fill_after', $this, $this->extension());
+        remove_filter('e2pdf_pdf_fill', array($this->helper, '__return_true'), 999);
     }
 
     // pre render
@@ -638,7 +640,6 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                     }
                 }
             }
-
             $this->helper->load('sort')->uasort($pages[$key]['elements'], 'sort_by_elementid');
             $this->helper->load('sort')->stable_uasort($pages[$key]['elements'], 'sort_by_zindex');
         }
