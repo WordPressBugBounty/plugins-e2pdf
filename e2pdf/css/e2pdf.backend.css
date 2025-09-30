@@ -1575,9 +1575,11 @@ a.e2pdf-vm-element:hover {
 
 .e2pdf-vm-item {
     padding: 0 5px;
+    vertical-align: bottom;
 }
 
 .e2pdf-vm-item label {
+    word-break: break-all;
     text-overflow: ellipsis;
     overflow: hidden;
 }

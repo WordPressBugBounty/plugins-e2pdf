@@ -98,7 +98,8 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
     public function load_filters() {
         add_filter('everest_forms_add_success', array($this, 'filter_everest_forms_add_success'));
         add_filter('everest_forms_email_attachments', array($this, 'filter_everest_forms_email_attachments'), 10, 2);
-        add_filter('everest_forms_email_message', array($this, 'filter_everest_forms_email_message'), 10, 2);
+        add_filter('everest_forms_email_message', array($this, 'filter_everest_forms_email_message'), 10);
+        add_filter('everest_forms_email_template_message', array($this, 'filter_everest_forms_email_message'), 10);
         add_filter('everest_forms_entry_table_actions', array($this, 'hook_everest_row_actions'), 10, 2);
         add_filter('everest_forms_after_success_ajax_message', array($this, 'filter_everest_forms_after_success_ajax_message'), 99, 3);
     }
@@ -1028,7 +1029,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
     public function filter_everest_forms_email_attachments($attachments, $mail) {
         $files = $this->helper->get('everest_attachments');
         if (is_array($files) && !empty($files)) {
-            $attachments = $this->helper->load('convert')->to_array($attachments);
+            $attachments = $this->helper->load('convert')->is_string_array($attachments);
             foreach ($files as $key => $file) {
                 $attachments[] = $file;
             }
@@ -1037,7 +1038,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
     }
 
     // email message filter
-    public function filter_everest_forms_email_message($message, $mail) {
+    public function filter_everest_forms_email_message($message) {
         $message = $this->filter_message($message, 'mail');
         return $message;
     }
@@ -1165,7 +1166,7 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                     if (!isset($atts['apply'])) {
                         $shortcode[3] .= ' apply="true"';
                     }
-                    if (!isset($atts['iframe_download'])) {
+                    if ($type == 'message' && !isset($atts['iframe_download'])) {
                         $shortcode[3] .= ' iframe_download="true"';
                     }
                     $file = false;

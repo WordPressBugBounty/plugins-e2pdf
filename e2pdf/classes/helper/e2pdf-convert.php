@@ -141,15 +141,6 @@ class Helper_E2pdf_Convert {
         }
     }
 
-    public function to_shortcode_array($value, $fields = array()) {
-        $list = explode(',', $value);
-        $data = array();
-        foreach ($list as $item) {
-            $data[] = $this->parse_fields($item);
-        }
-        return $data;
-    }
-
     public function path_to_url($path = '') {
         $url = str_replace(
                 wp_normalize_path(untrailingslashit(ABSPATH)), site_url(), wp_normalize_path($path)
@@ -158,6 +149,10 @@ class Helper_E2pdf_Convert {
     }
 
     public function unserialize($value) {
+        /* Compatibility fix with Docket Cache */
+        if (is_array($value)) {
+            return $value;
+        }
         if (version_compare(PHP_VERSION, '7.0.0', '<')) {
             return @unserialize($value);
         } else {
@@ -201,38 +196,6 @@ class Helper_E2pdf_Convert {
             }
         }
         return is_array($value) ? $value : array();
-    }
-
-    private function parse_fields($value) {
-        $data = array();
-        $fields = explode("|", $value);
-        foreach ($fields as $field) {
-            $field_data = explode(":", $field);
-            $field_key = $field_data['0'];
-            unset($field_data['0']);
-            $field_value = implode(":", $field_data);
-            $data = array_merge_recursive($data, $this->parse_field($field_key, $field_value));
-        }
-        return $data;
-    }
-
-    private function parse_field($field_key, $field_value) {
-        $keys = array_reverse(explode('_', $field_key));
-        foreach ($keys as $key) {
-            $field_value = [$key => $field_value];
-        }
-        return $field_value;
-    }
-
-    public function to_array($value) {
-        if (!is_array($value)) {
-            if (!empty($value)) {
-                $value = (array) $value;
-            } else {
-                $value = array();
-            }
-        }
-        return $value;
     }
 
     public function load_html($source, $dom, $form = false) {

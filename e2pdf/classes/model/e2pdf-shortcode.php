@@ -7254,11 +7254,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return 'e2pdf-page-total';
     }
 
-    public function e2pdf_acf_repeater($atts, $content = '') {
+    public function e2pdf_acf_repeater($atts, $value = '') {
+
         if (!apply_filters('e2pdf_shortcode_enable_e2pdf_acf_repeater', false) && !apply_filters('e2pdf_pdf_render', false)) {
             return '';
         }
-        return $this->helper->load('acfrepeater')->do_shortcode($atts, $content);
+
+        $response = $this->helper->load('acfrepeater')->do_shortcode($atts, $value);
+        if (!apply_filters('e2pdf_pdf_fill', false)) {
+            $response = $this->sanitize_html($response);
+        }
+        return apply_filters('e2pdf_model_shortcode_e2pdf_acf_repeater_response', $response, $atts, $value);
     }
 
     // e2pdf-filter
@@ -7306,7 +7312,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     }
 
     // WPBakery Page Builder Download Shortcode
-    public function e2pdf_vc_download($atts, $content = null) {
+    public function e2pdf_vc_download($atts, $value = null) {
         if (function_exists('get_the_ID')) {
             $atts = array_filter((array) $atts, 'strlen');
             $atts['dataset'] = get_the_ID();
@@ -7316,7 +7322,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     }
 
     // WPBakery Page Builder View Shortcode
-    public function e2pdf_vc_view($atts, $content = null) {
+    public function e2pdf_vc_view($atts, $value = null) {
         if (function_exists('get_the_ID')) {
             $atts = array_filter((array) $atts, 'strlen');
             $atts['dataset'] = get_the_ID();
@@ -7326,12 +7332,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     }
 
     // WPBakery Page Builder Grid Item Download Shortcode
-    public function e2pdf_vc_download_item($atts, $content = null) {
+    public function e2pdf_vc_download_item($atts, $value = null) {
         return '{{ e2pdf_download:' . http_build_query((array) $atts) . ' }}';
     }
 
     // WPBakery Page Builder Grid Item View Shortcode
-    public function e2pdf_vc_view_item($atts, $content = null) {
+    public function e2pdf_vc_view_item($atts, $value = null) {
         return '{{ e2pdf_view:' . http_build_query((array) $atts) . ' }}';
     }
 
