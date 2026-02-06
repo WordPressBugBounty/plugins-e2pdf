@@ -59,6 +59,18 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
                     }
                 }
 
+                if (get_option('e2pdf_cache', '1') !== $this->post->get('e2pdf_cache')) {
+                    $this->helper->load('cache')->purge_objects_cache();
+                }
+
+                if (get_option('e2pdf_cache_fonts', '1') !== $this->post->get('e2pdf_cache_fonts')) {
+                    $this->helper->load('cache')->purge_fonts_cache();
+                }
+
+                if (get_option('e2pdf_cache_pdfs', '0') !== $this->post->get('e2pdf_cache_pdfs')) {
+                    $this->helper->load('cache')->purge_pdfs_cache();
+                }
+
                 Model_E2pdf_Options::update_options('common_group', $this->post->get());
                 $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Settings Saved', 'e2pdf')));
 
@@ -334,7 +346,6 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
      * @url admin.php?page=e2pdf-settings&action=extensions
      */
     public function translation_action() {
-
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
                 Model_E2pdf_Options::update_options('translation_group', $this->post->get());
@@ -343,7 +354,6 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
                 wp_die($this->message('wp_verify_nonce_error'));
             }
         }
-
         $this->view('options', Model_E2pdf_Options::get_options(false, array('translation_group')));
         $this->view('groups', $this->get_groups());
     }

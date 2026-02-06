@@ -588,7 +588,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                 } else {
                     if ($field->enableChoiceValue && $value) {
                         if (substr($value, -1) == '}') {
-                            $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                            $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                         }
                     }
                 }
@@ -640,7 +640,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     } else {
                         if ($field->enableChoiceValue && $value) {
                             if (substr($value, -1) == '}') {
-                                $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                             }
                         }
                     }
@@ -706,7 +706,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     } else {
                         if ($field->enableChoiceValue && $value) {
                             if (substr($value, -1) == '}') {
-                                $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                             }
                         }
                     }
@@ -717,7 +717,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                             $value = isset($merged_tags[$field->inputs[$opt_key]['id']]) ? $merged_tags[$field->inputs[$opt_key]['id']] : '';
                             if ($field->enableChoiceValue && $value) {
                                 if (substr($value, -1) == '}') {
-                                    $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                    $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                                 }
                             }
                         }
@@ -1324,7 +1324,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                             $value = isset($merged_tags[$sub_field['id']]) ? $merged_tags[$sub_field['id']] : '';
                             if ($field->enableChoiceValue && $value) {
                                 if (substr($value, -1) == '}') {
-                                    $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                    $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                                 }
                             }
                             $choices = array();
@@ -1334,7 +1334,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                                     $value = isset($merged_tags[$field->inputs[$opt_key]['id']]) ? $merged_tags[$field->inputs[$opt_key]['id']] : '';
                                     if ($field->enableChoiceValue && $value) {
                                         if (substr($value, -1) == '}') {
-                                            $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                            $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                                         }
                                     }
                                 }
@@ -1376,7 +1376,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                         $value = isset($merged_tags[$field->id]) ? $merged_tags[$field->id] : '';
                         if ($field->enableChoiceValue && $value) {
                             if (substr($value, -1) == '}') {
-                                $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                             }
                         }
                         $choices = array();
@@ -1385,7 +1385,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                                 $value = isset($merged_tags[$field->inputs[$opt_key]['id']]) ? $merged_tags[$field->inputs[$opt_key]['id']] : '';
                                 if ($field->enableChoiceValue && $value) {
                                     if (substr($value, -1) == '}') {
-                                        $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                        $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                                     }
                                 }
                             }
@@ -1714,6 +1714,19 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     }
                 }
 
+                // display:none fix in case fields with conditional logic
+                $gform_wrappers = array(
+                    'gform_wrapper',
+                );
+                foreach ($gform_wrappers as $key => $class) {
+                    $elements = $xpath->query("//*[contains(@class, '{$class}')]");
+                    foreach ($elements as $element) {
+                        if ($element->hasAttribute('style')) {
+                            $element->removeAttribute('style');
+                        }
+                    }
+                }
+
                 // remove by tag
                 $remove_by_tag = array(
                     'script',
@@ -1934,14 +1947,13 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                                             $field['inputType'] != 'select' &&
                                             $field['inputType'] != 'rank') {
                                         if (isset($field['enableChoiceValue'])) {
-                                            $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                            $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                                         }
                                     }
                                     $xml->set_node_value($element, 'name', $value);
                                 } else {
                                     if (isset($merged_tags[$field_id])) {
                                         $value = $merged_tags[$field_id];
-
                                         if (substr($value, -1) == '}') {
                                             if (false !== strpos($xml->get_node_value($element->parentNode, 'class'), 'ginput_post_image_')) {
                                                 if (false !== strpos($xml->get_node_value($element->parentNode, 'class'), 'ginput_post_image_title')) {
@@ -1987,7 +1999,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                                                 if ($this->get('nested')) {
                                                     $value = substr($value, 0, -1) . ':value,filter[' . $field_id . '],index[0]}';
                                                 } else {
-                                                    $value = substr($value, 0, -1) . (false === strpos($value, ':') ? ':value' : ',value') . '}';
+                                                    $value = substr($value, 0, -1) . (substr_count($value, ':') >= 2 ? ',value' : ':value') . '}';
                                                 }
                                             } else {
                                                 if ($this->get('nested')) {
@@ -2103,7 +2115,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
 
     // gform confirmation filter
     public function filter_gform_confirmation($content, $form, $entry, $ajax) {
-        return $this->filter_content($content, isset($entry['id']) ? $entry['id'] : 0, false);
+        return $this->filter_content($content, isset($entry['id']) ? $entry['id'] : 0, false, 'message');
     }
 
     // twilio message filter
@@ -2275,7 +2287,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
     }
 
     // filter content
-    public function filter_content($content = '', $entry_id = 0, $do_shortcode = false) {
+    public function filter_content($content = '', $entry_id = 0, $do_shortcode = false, $type = '') {
         if (is_array($content) || false === strpos($content, '[')) {
             return $content;
         }
@@ -2310,6 +2322,9 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     }
                     if (!isset($atts['filter'])) {
                         $shortcode[3] .= ' filter="true"';
+                    }
+                    if (!isset($atts['iframe_download']) && $type == 'message') {
+                        $shortcode[3] .= ' iframe_download="true"';
                     }
                     if ($do_shortcode) {
                         $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);

@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 6.8
 Requires PHP: 5.4
-Stable tag: 1.28.11
+Stable tag: 1.28.14
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -137,6 +137,22 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 6. Settings Page.
 
 == Changelog ==
+
+= 1.28.14 =
+*Release Date - 07 November 2025*
+
+* Fix: Gravity Forms incorrect value mapping when using separate values
+
+= 1.28.13 =
+*Release Date - 25 October 2025*
+
+* Fix: Checkbox and Select compatibility with Forminator 1.48.x
+
+= 1.28.12 =
+*Release Date - 08 October 2025*
+
+* Fix: Gravity Forms Visual Mapper
+* Fix: Clear cache upon settings change
 
 = 1.28.11 =
 *Release Date - 30 September 2025*

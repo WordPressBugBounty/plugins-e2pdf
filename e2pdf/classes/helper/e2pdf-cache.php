@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2Pdf Cache Helper
+ * File: /helper/e2pdf-cache.php
  * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.24.05
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -49,23 +47,27 @@ class Helper_E2pdf_Cache {
     }
 
     public function purge_fonts_cache() {
-        update_option('e2pdf_cached_fonts', array());
+        update_option('e2pdf_cached_fonts', []);
     }
 
-    public function cache_pdf($cached_pdf = '', $request = array()) {
+    public function cache_pdf($cached_pdf = '', $request = []) {
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
         if ($cached_pdf && get_option('e2pdf_cache_pdfs', '0') && !@file_exists($this->helper->get('cache_dir') . $cached_pdf)) {
             if (!isset($request['error']) && !empty($request['file'])) {
-                file_put_contents($this->helper->get('cache_dir') . $cached_pdf, $request['file']);
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
+                file_put_contents($this->helper->get('cache_dir') . $cached_pdf, $request['file'], LOCK_EX);
             }
         }
     }
 
     public function get_cached_pdf($cached_pdf = '') {
-        $request = array();
+        $request = [];
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
         if ($cached_pdf && get_option('e2pdf_cache_pdfs', '0') && @file_exists($this->helper->get('cache_dir') . $cached_pdf)) {
-            $request = array(
+            $request = [
+                // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
                 'file' => @file_get_contents($this->helper->get('cache_dir') . $cached_pdf),
-            );
+            ];
             $this->purge_pdfs_cache_ttl();
         }
         return $request;
@@ -76,6 +78,7 @@ class Helper_E2pdf_Cache {
         $ttl = max(10, (int) get_option('e2pdf_cache_pdfs_ttl', '180'));
         foreach ($files as $file) {
             if (false === strpos($file, 'index.php') && false === strpos($file, '.htaccess') && (time() - filectime($file)) > $ttl) {
+                // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                 @unlink($file);
             }
         }
@@ -85,6 +88,7 @@ class Helper_E2pdf_Cache {
         $files = glob($this->helper->get('cache_dir') . '*', GLOB_MARK);
         foreach ($files as $file) {
             if (false === strpos($file, 'index.php') && false === strpos($file, '.htaccess')) {
+                // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                 @unlink($file);
             }
         }

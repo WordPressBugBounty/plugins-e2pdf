@@ -63,10 +63,17 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                     if ($this->get('dataset') == 'is_prevent_store') {
                         $entry = new Forminator_Form_Entry_Model();
                         $entry->set_fields($this->replace_values_to_labels($this->get('field_data_array'), $this->get('cached_form'), $entry));
+                        if (isset($entry->meta_data) && is_array($entry->meta_data)) {
+                            $entry->meta_data = $this->update_meta_data($entry->meta_data);
+                        }
                         $this->set('cached_entry', $entry);
                         $this->set('cached_meta', $this->get('cached_entry')->meta_data);
                     } else {
-                        $this->set('cached_entry', Forminator_API::get_entry($this->get('item'), $this->get('dataset')));
+                        $entry = Forminator_API::get_entry($this->get('item'), $this->get('dataset'));
+                        if (isset($entry->meta_data) && is_array($entry->meta_data)) {
+                            $entry->meta_data = $this->update_meta_data($entry->meta_data);
+                        }
+                        $this->set('cached_entry', $entry);
                         $this->set('cached_meta', $this->get('cached_entry')->meta_data);
                     }
                     $data = array();
@@ -521,6 +528,16 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
             }
         }
         return $content;
+    }
+
+    // Fix: Compatibility with Forminator 1.48.x
+    public function update_meta_data($meta_data) {
+        foreach ($meta_data as $meta_key => $meta) {
+            if ((false !== strpos($meta_key, 'checkbox') || false !== strpos($meta_key, 'select')) && !empty($meta['value']) && is_string($meta['value'])) {
+                $meta_data[$meta_key]['value'] = implode(', ', explode('<br/>', $meta['value']));
+            }
+        }
+        return $meta_data;
     }
 
     // replace values to labels
