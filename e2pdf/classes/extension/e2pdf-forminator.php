@@ -841,7 +841,6 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                 }
 
                 $xml = $this->helper->load('xml');
-                $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
 
                 // remove by class

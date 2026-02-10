@@ -59,6 +59,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
         if ($this->get->get('uid')) {
             $model_e2pdf_bulk = new Model_E2pdf_Bulk();
             if ($model_e2pdf_bulk->load_by_uid($this->get->get('uid')) && file_exists($this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '.zip')) {
+                $this->helper->set_time_limit(0);
                 $this->download_response('zip', $this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '.zip', $model_e2pdf_bulk->get('uid'), '', true);
                 exit;
             }
@@ -72,7 +73,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
         }
 
         if ($this->helper->get('license')->get('type') == 'FREE' && !get_option('e2pdf_hide_warnings', '0')) {
-            $this->add_notification('notice', sprintf(__("The Bulk PDFs creation is not available with Free License Type. Check <a target='_blank' href='%s'>%s</a> for upgrade options", 'e2pdf'), 'https://e2pdf.com/price', 'https://e2pdf.com'));
+            $this->add_notification('notice', sprintf(__("Bulk PDF generation is not available with the Free License Type. Please visit <a target='_blank' href='%s'>%s</a> for upgrade options", 'e2pdf'), 'https://e2pdf.com/price', 'https://e2pdf.com'));
         }
 
         $users_tmp = get_users(
@@ -515,7 +516,6 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                 } else {
                     $content['datasets']['dataset'] = $this->get_datasets($template_id);
                 }
-
                 $actions = $template->extension()->get_template_actions($template_id);
                 if (isset($actions->delete) && $actions->delete) {
                     $content['actions'][] = sprintf('<a target="_blank" class="e2pdf-delete-items e2pdf-link" template="%s" href="javascript:void(0);" _wpnonce="%s">%s</a>', $template_id, wp_create_nonce('e2pdf'), __('Delete All Datasets', 'e2pdf'));
@@ -531,6 +531,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                         __('Edit Template', 'e2pdf')
                 );
             }
+
             $content['options'] = array(
                 'name' => $template->get('name'),
                 'savename' => $template->get('savename'),
@@ -709,7 +710,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                 );
             } elseif ($this->helper->get('license')->get('type') == 'FREE') {
                 $response = array(
-                    'error' => sprintf(__("The Bulk PDFs generation is not available with Free License Type. Check <a target='_blank' href='%s'>%s</a> for upgrade options", 'e2pdf'), 'https://e2pdf.com/price', 'https://e2pdf.com')
+                    'error' => __('Bulk PDF generation is not available with the Free License Type. Please visit https://e2pdf.com/price for upgrade options', 'e2pdf')
                 );
             } elseif (!class_exists('ZipArchive')) {
                 $response = array(
@@ -882,6 +883,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
             $zip_path = $this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '.zip';
             $zip = new ZipArchive();
             if ($zip->open($zip_path, ZipArchive::CREATE) === true) {
+                $this->helper->set_time_limit(0);
                 do_action('e2pdf_controller_e2pdf_bulk_export_completed_dir', $pdf_dir, $model_e2pdf_bulk);
                 $dir = opendir($pdf_dir);
                 while ($file = readdir($dir)) {

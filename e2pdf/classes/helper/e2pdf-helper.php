@@ -428,4 +428,14 @@ class Helper_E2pdf_Helper {
     public function __return_false() {
         return false;
     }
+
+    // set time limit
+    public function set_time_limit($timeout = 0) {
+        $timeout = (int) $timeout;
+        if (function_exists('set_time_limit') && is_callable('set_time_limit')) {
+            @set_time_limit($timeout);
+        } elseif (function_exists('ini_set') && is_callable('ini_set')) {
+            @ini_set('max_execution_time', $timeout);
+        }
+    }
 }

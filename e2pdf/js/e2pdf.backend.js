@@ -2894,7 +2894,6 @@ var e2pdf = {
                                 }
                             }
                         }
-
                         obj = {
                             'name': e2pdf.lang.get('Property'),
                             'key': 'actions[' + action_id + '][property]',
@@ -3905,21 +3904,21 @@ var e2pdf = {
                     };
                     break;
                 case 'parent':
-                    var options = [];
-                    var option = {
-                        '': e2pdf.lang.get('--- Select ---')
-                    };
-                    options.push(option);
+                    var options = [
+                        {'': e2pdf.lang.get('--- Select ---')}
+                    ];
                     if (el.data('data-type') === 'e2pdf-html') {
                         jQuery('.e2pdf-tpl').find('.e2pdf-html').each(function () {
                             if (!jQuery(this).is(children)) {
                                 var parent = jQuery(this).parent().attr('data-element_id');
-                                var option = {};
-                                option[parent] = parent;
-                                options.push(option);
+                                options.push({[parent]: parent});
                             }
                         });
                     }
+                    options.sort(function (a, b) {
+                        return Number(Object.keys(a)[0]) - Number(Object.keys(b)[0]);
+                    });
+
                     obj = {
                         'name': e2pdf.lang.get('Parent'),
                         'type': 'select',
@@ -7367,11 +7366,9 @@ var e2pdf = {
             if (page) {
                 var newpage = false;
             }
-
             if (!properties) {
                 var properties = {};
             }
-
             if (!actions) {
                 var actions = {};
             }
@@ -7969,7 +7966,7 @@ var e2pdf = {
                             properties['vertical'] = 'bottom';
                         }
                     } else {
-                        // Backward Compatibility
+                        // backward compatibility
                         if (!properties.hasOwnProperty('block_dimension') && properties.hasOwnProperty('scale') && (properties['scale'] == '1' || properties['scale'] == '2')) {
                             properties['block_dimension'] = '1';
                         }
@@ -8729,6 +8726,7 @@ var e2pdf = {
                             }
                         }
                     }
+
                     for (var element in e2pdf.storage.get('elements')) {
                         var buffered = e2pdf.storage.get('elements')[element];
                         var properties = buffered.properties;

@@ -1256,7 +1256,6 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
             } else {
                 $form_handler = new WPForms_Form_Handler();
                 $xml = new Helper_E2pdf_Xml();
-                $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
 
                 // remove by name

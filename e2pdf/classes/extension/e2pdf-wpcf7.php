@@ -641,7 +641,6 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             } else {
 
                 $xml = $this->helper->load('xml');
-                $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
 
                 // remove by name

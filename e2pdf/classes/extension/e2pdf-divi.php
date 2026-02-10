@@ -507,7 +507,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                 $html = $this->helper->load('convert')->load_html($source, $dom, true);
                                 if ($html) {
                                     $xml = $this->helper->load('xml');
-                                    $xml->set('dom', $dom);
                                     $xpath = new DomXPath($dom);
                                     $blocks = $xpath->query("//*[contains(@class, 'et_pb_contact_field')]");
                                     foreach ($blocks as $element) {
@@ -915,7 +914,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     return '<div class="e2pdf-vm-error">' . __('The form could not be parsed due the incorrect HTML', 'e2pdf') . '</div>';
                                 } else {
                                     $xml = $this->helper->load('xml');
-                                    $xml->set('dom', $dom);
                                     $xpath = new DomXPath($dom);
 
                                     // remove by name

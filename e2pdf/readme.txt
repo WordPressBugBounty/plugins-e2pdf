@@ -3,9 +3,9 @@ Contributors: rasmarcus, oleksandrz
 Donate link: https://e2pdf.com/
 Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpforms, elementor, woocommerce, contact form 7, jetformbuilder
 Requires at least: 4.0
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 5.4
-Stable tag: 1.28.14
+Stable tag: 1.28.15
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -138,30 +138,38 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
+= 1.28.15 =
+*Release Date - February 10, 2026*
+
+* Fix: Visual Mapper does not correctly set some values
+* Fix: Bulk PDF generation fails in certain case
+* Improvement: Parent option
+* Improvement: Timeouts
+
 = 1.28.14 =
-*Release Date - 07 November 2025*
+*Release Date - November 07, 2025*
 
 * Fix: Gravity Forms incorrect value mapping when using separate values
 
 = 1.28.13 =
-*Release Date - 25 October 2025*
+*Release Date - October 25, 2025*
 
 * Fix: Checkbox and Select compatibility with Forminator 1.48.x
 
 = 1.28.12 =
-*Release Date - 08 October 2025*
+*Release Date - October 08, 2025*
 
 * Fix: Gravity Forms Visual Mapper
 * Fix: Clear cache upon settings change
 
 = 1.28.11 =
-*Release Date - 30 September 2025*
+*Release Date - September 30, 2025*
 
 * Fix: Docket Cache compatibility
 * Fix: Everest Forms email templates
 
 = 1.28.10 =
-*Release Date - 23 September 2025*
+*Release Date - September 23, 2025*
 
 * Add: Checkout Field Editor (Checkout Manager) for WooCommerce support
 * Add: get_items_category, get_items_category_ids keys for WooCommerce
@@ -170,7 +178,7 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Security: HTML filter
 
 = 1.28.09 =
-*Release Date - 13 September 2025*
+*Release Date - September 13, 2025*
 
 * Add: JetFormBuilder revision form entries
 * Add: WPForms Likert Scale support
@@ -185,27 +193,27 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Improvement: Visual Mapper
 
 = 1.28.08 =
-*Release Date - 11 September 2025*
+*Release Date - September 11, 2025*
 
 * Fix: PHP 8.x deprecation notice
 
 = 1.28.07 =
-*Release Date - 17 July 2025*
+*Release Date - July 17, 2025*
 
 * Fix: Fatal Error upon save to Media
 
 = 1.28.06 =
-*Release Date - 30 June 2025*
+*Release Date - June 30, 2025*
 
 * Fix: Dataset titles
 
 = 1.28.05 =
-*Release Date - 13 May 2025*
+*Release Date - May 13, 2025*
 
 * Fix: Backward compatibility with Formidable Forms 5.x
 
 = 1.28.04 =
-*Release Date - 07 May 2025*
+*Release Date - May 07, 2025*
 
 * Add: Additional actions and filters
 * Add: [e2pdf-acf-repeater] nested shortcodes support
@@ -226,7 +234,7 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Improvement: Elementor Widget shortcodes process
 
 = 1.28.00 =
-*Release Date - 08 April 2025*
+*Release Date - April 08, 2025*
 
 * Add: E2Pdf Template search by ID
 * Add: Everest Forms support
@@ -300,7 +308,7 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Improvement: UI/UX
 
 = 1.25.15 =
-*Release Date - 02 January 2025*
+*Release Date - January 02, 2025*
 
 * Add: ACF shortcodes support for WooCommerce
 * Add: [e2pdf-acf-repeater-index] shortcode
@@ -308,7 +316,7 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Add: [not_in_array], [not_isset], [array_key_not_exists] for [e2pdf-if] shortcode
 * Add: PDFs Cache
 * Add: Image view preload
-* Add: explode_limit for [e2pdf-format-output]
+* Add: [e2pdf-format-output] explode_limit
 * Add: Support for Signature field for Elementor Forms
 * Add: Additional Filters
 * Add: Formidable Forms child forms support
@@ -339,61 +347,61 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Improvement: Optimization
 
 = 1.24.00 =
-*Release Date - 15 May 2024*
+*Release Date - May 15, 2024*
 
 = 1.23.00 =
-*Release Date - 28 February 2024*
+*Release Date - February 28, 2024*
 
 = 1.20.00 =
-*Release Date - 27 March 2023*
+*Release Date - March 27, 2023*
 
 = 1.16.58 =
-*Release Date - 08 March 2023*
+*Release Date - March 08, 2023*
 
 = 1.15.14 =
-*Release Date - 09 June 2021*
+*Release Date - June  09, 2021*
 
 = 1.13.40 =
-*Release Date - 02 May 2021*
+*Release Date - May 02, 2021*
 
 = 1.11.08 =
-*Release Date - 24 August 2020*
+*Release Date - August 24, 2020*
 
 = 1.10.11 =
-*Release Date - 01 May 2020*
+*Release Date - May 01, 2020*
 
 = 1.09.10 =
-*Release Date - 15 January 2020*
+*Release Date - January 15, 2020*
 
 = 1.08.09 =
-*Release Date - 07 August 2019*
+*Release Date - August 07, 2019*
 
 = 1.07.11 =
-*Release Date - 24 June 2019*
+*Release Date - June 24, 2019*
 
 = 1.06.02 =
-*Release Date - 10 April 2019*
+*Release Date - April 10, 2019*
 
 = 1.05.03 =
-*Release Date - 23 February 2019*
+*Release Date - February 23, 2019*
 
 = 1.04.07 =
-*Release Date - 11 February 2019*
+*Release Date - February 11, 2019*
 
 = 1.03.07 =
-*Release Date - 24 December 2018*
+*Release Date - December 24, 2018*
 
 = 1.02.02 =
-*Release Date - 02 December 2018*
+*Release Date - December 02, 2018*
 
 = 1.01.01 =
-*Release Date - 26 October 2018*
+*Release Date - October 26, 2018*
 
 = 1.00.13 =
-*Release Date - 15 October 2018*
+*Release Date - October 15, 2018*
 
 = 1.00.00 =
-*Release Date - 20 August 2018*
+*Release Date - August 20, 2018*
 
 * Initial Release
 

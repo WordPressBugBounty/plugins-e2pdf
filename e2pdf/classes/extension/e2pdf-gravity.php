@@ -1692,7 +1692,6 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     }
                 }
                 $xml = new Helper_E2pdf_Xml();
-                $xml->set('dom', $dom);
                 $xpath = new DomXPath($dom);
 
                 // remove by class

@@ -13,15 +13,20 @@ if (!defined('ABSPATH')) {
 
 class Model_E2pdf_Api extends Model_E2pdf_Model {
 
-    protected $api = null;
+    protected $api;
 
     // request
     public function request($key = false, $api_server = false) {
         if ($this->api->action) {
 
             // fix for upgrade via dashboard -> updates
+            if (method_exists($this->helper, 'set_time_limit')) {
+                $this->helper->set_time_limit((int) get_option('e2pdf_request_timeout', '420'));
+            }
+
+            // fix for upgrade via dashboard -> updates
             if ($this->api->action == 'update/info' && !method_exists($this->helper, 'get_site_url')) {
-                return array();
+                return [];
             }
 
             $api_processor = get_option('e2pdf_debug', '0') && get_option('e2pdf_processor', '0') ? get_option('e2pdf_processor', '0') : '0';
@@ -31,17 +36,16 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
                 $api_version = '1.27.20';
             }
 
-            $data = array(
+            $data = [
                 'api_url' => $this->helper->get_site_url(),
                 'api_license_key' => $this->get_license(),
                 'api_processor' => apply_filters('e2pdf_api_processor', $api_processor),
                 'api_version' => apply_filters('e2pdf_api_version', $api_version),
-            );
+            ];
             if (!$api_server) {
                 $api_server = $this->get_api_server();
             }
             $request_url = 'https://' . $api_server . '/' . $this->api->action;
-            $timeout = get_option('e2pdf_connection_timeout', '300');
 
             // phpcs:disable WordPress.WP.AlternativeFunctions
             $ch = apply_filters('e2pdf_api_connection', curl_init($request_url));
@@ -52,7 +56,7 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             if (!ini_get('safe_mode') && !ini_get('open_basedir')) {
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             }
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int) get_option('e2pdf_connection_timeout', '300'));
 
             if (defined('E2PDF_API_PROXY')) {
                 curl_setopt($ch, CURLOPT_PROXY, E2PDF_API_PROXY);

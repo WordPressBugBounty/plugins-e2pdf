@@ -108,7 +108,7 @@ if (!defined('ABSPATH')) {
                 </li>
                 <li><h2><?php _e('PHP Extensions', 'e2pdf') ?></h2></li>
                 <li>
-                    <?php if (!function_exists('curl_version')) { ?>
+                    <?php if (!is_callable('curl_version')) { ?>
                         <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span> CURL<br><small>curl_version</small>
                     <?php } elseif (in_array('curl_exec', $this->view->disabled_functions)) { ?>
                         <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span> CURL<br><small>curl_exec</small>
@@ -143,6 +143,13 @@ if (!defined('ABSPATH')) {
                     <?php } else { ?>
                         <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span>
                     <?php } ?> INTL
+                </li>
+                <li>
+                    <?php if (extension_loaded('zip')) { ?>
+                        <span class="e2pdf-color-green">[OK]</span>
+                    <?php } else { ?>
+                        <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span>
+                    <?php } ?> ZIP
                 </li>
                 <?php
                 if (function_exists('get_locale') && function_exists('get_available_languages')) {

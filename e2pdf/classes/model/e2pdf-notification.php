@@ -15,20 +15,25 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
 
     // add notification
     public function add_notification($type, $text) {
+
         $notifications = get_transient('e2pdf_notifications');
-        $notifications[] = array(
+        if (!is_array($notifications)) {
+            $notifications = [];
+        }
+
+        $notifications[] = [
             'type' => $type,
             'text' => $text,
-        );
+        ];
         set_transient('e2pdf_notifications', $notifications);
     }
 
     // get notifications
     public function get_notifications() {
-        $notifications = get_transient('e2pdf_notifications');
 
+        $notifications = get_transient('e2pdf_notifications');
         if (!is_array($notifications)) {
-            $notifications = array();
+            $notifications = [];
         }
 
         if (!get_option('e2pdf_hide_warnings', '0')) {
@@ -40,10 +45,10 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
                 }
                 array_unshift(
                         $notifications,
-                        array(
+                        [
                             'type' => 'notice',
                             'text' => $message,
-                        )
+                        ]
                 );
             }
 
@@ -54,20 +59,20 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
                 }
                 array_unshift(
                         $notifications,
-                        array(
+                        [
                             'type' => 'error',
                             'text' => $message,
-                        )
+                        ]
                 );
             }
 
             if ($this->helper->get('license')->get('type') == 'FREE' && $this->helper->get('page') == 'e2pdf-templates') {
                 array_unshift(
                         $notifications,
-                        array(
+                        [
                             'type' => 'notice',
                             'text' => sprintf(__('You are using E2Pdf FREE License Type', 'e2pdf') . ' | ' . __('Up to 1 Page and up to 1 Template allowed', 'e2pdf') . ' | <a class="e2pdf-link" target="_blank" href="%s">%s »</a>', 'https://e2pdf.com/price', __('Upgrade License Key', 'e2pdf')),
-                        )
+                        ]
                 );
             }
         }
@@ -88,14 +93,14 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
             }
             array_unshift(
                     $notifications,
-                    array(
+                    [
                         'type' => 'error',
                         'text' => $message,
-                    )
+                    ]
             );
         }
 
-        set_transient('e2pdf_notifications', array());
+        set_transient('e2pdf_notifications', []);
         return $notifications;
     }
 }

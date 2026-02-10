@@ -607,7 +607,6 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
             return '<div class="e2pdf-vm-error">' . __('The form could not be parsed due the incorrect HTML', 'e2pdf') . '</div>';
         } else {
             $xml = $this->helper->load('xml');
-            $xml->set('dom', $dom);
             $xpath = new DomXPath($dom);
 
             $remove_classes = array(
