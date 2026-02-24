@@ -23,10 +23,9 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
         if (!$page || !$this->extension) {
             return $page;
         }
-
         if (isset($page['actions']) && !empty($page['actions'])) {
-            foreach ($page['actions'] as $action) {
-                $page = $this->process_action($page, $action);
+            foreach ($page['actions'] as $action_key => $action) {
+                $page = $this->process_action($page, $action, $action_key);
             }
         }
 
@@ -35,8 +34,8 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
             if (!empty($page['elements'])) {
                 foreach ($page['elements'] as $el_key => $el_value) {
                     if (isset($el_value['actions']) && !empty($el_value['actions'])) {
-                        foreach ($el_value['actions'] as $action) {
-                            $el_value = $this->process_action($el_value, $action);
+                        foreach ($el_value['actions'] as $action_key => $action) {
+                            $el_value = $this->process_action($el_value, $action, $action_key);
                         }
                         $page['elements'][$el_key] = $el_value;
                         if ((isset($el_value['hidden']) && $el_value['hidden']) || ($el_value['page_id'] != $page['page_id'])) {
@@ -46,14 +45,35 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
                 }
             }
         }
-
         return $page;
     }
 
     public function process_global_actions($actions = array()) {
         if (!empty($actions) && $this->extension) {
             foreach ($actions as $action_key => $action) {
-                $actions[$action_key] = $this->process_action($action, $action);
+                if (isset($action['action'])) {
+                    if ($action['action'] !== 'redirect_access_by_url') {
+                        // Backward Compatibility
+                        if (!isset($action['property'])) {
+                            if (false !== strpos($action['action'], 'restrict_')) {
+                                $action['property'] = 'disable';
+                            } else {
+                                $action['property'] = 'enable';
+                            }
+                            $action['action'] = str_replace(
+                                    [
+                                        'restrict_process_shortcode_',
+                                        'process_shortcode_',
+                                        'restrict_process_',
+                                        'process_',
+                                        'restrict_',
+                                    ], '', $action['action']
+                            );
+                        }
+                        $action['action'] = $action['property'] . '_' . $action['action'];
+                    }
+                }
+                $actions[$action_key] = $this->process_action($action, $action, $action_key);
             }
         }
         return $actions;
@@ -65,9 +85,9 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
             if (!empty($page['elements'])) {
                 foreach ($page['elements'] as $el_key => $el_value) {
                     if (isset($el_value['actions']) && !empty($el_value['actions'])) {
-                        foreach ($el_value['actions'] as $action) {
+                        foreach ($el_value['actions'] as $action_key => $action) {
                             if ($action['action'] == 'change' && isset($action['property']) && $action['property'] == 'page_id') {
-                                $el_value = $this->process_action($el_value, $action);
+                                $el_value = $this->process_action($el_value, $action, $action_key);
                             }
                         }
                         if ($el_value['page_id'] != $page['page_id']) {
@@ -80,8 +100,7 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
         return $elements;
     }
 
-    private function process_action($element, $action) {
-
+    private function process_action($element, $action, $action_key) {
         $apply = false;
         if (isset($action['conditions']) && !empty($action['conditions'])) {
             foreach ($action['conditions'] as $condition) {
@@ -93,22 +112,18 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
                 }
             }
         }
-
         if ($apply) {
-            $element = $this->apply_action($element, $action);
+            $element = $this->apply_action($element, $action, $action_key);
         } else {
             $element = $this->apply_else_action($element, $action);
         }
-
         return $element;
     }
 
     private function process_condition($condition) {
-
         $result = false;
         $if = $this->extension->render($condition['if']);
         $value = $this->extension->render($condition['value']);
-
         switch ($condition['condition']) {
             case '=':
                 $result = $if == $value ? true : false;
@@ -185,11 +200,10 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
                 $result = is_array($unserialized) && array_key_exists($if, $unserialized) ? false : true;
                 break;
         }
-
         return $result;
     }
 
-    private function apply_action($element, $action) {
+    private function apply_action($element, $action, $action_key) {
         if ($action['action'] == 'hide') {
             $element['hidden'] = true;
         } elseif ($action['action'] == 'show') {
@@ -201,16 +215,14 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
                 $element[$action['property']] = $change;
             }
         } elseif ($action['action'] == 'change' && $action['property']) {
-
             $number_properties = array(
                 'width', 'height', 'left', 'top',
             );
-
             $not_properties = array(
                 'top', 'left', 'width', 'height', 'value', 'page_id',
             );
-
             if ($action['property'] == 'value') {
+                $action['change'] = $this->helper->load('translator')->pre_translate($action['change'], $element['template_id'], $element['element_id'], 'value_action_' . $action_key . '_change');
                 if (isset($action['format']) && $action['format'] != 'replace') {
                     if ($action['format'] == 'insert_before') {
                         $value = isset($element[$action['property']]) ? $element[$action['property']] : '';
@@ -223,6 +235,23 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
                         $replace = isset($action['change']) ? $action['change'] : '';
                         if ($search) {
                             $value = isset($element[$action['property']]) ? $element[$action['property']] : '';
+                            $pre_replace = isset($action['pre_replace']) ? $action['pre_replace'] : '';
+                            if ($pre_replace == 'render') {
+                                $type = isset($element['type']) ? $element['type'] : '';
+                                if (!isset($element['rendered'])) {
+                                    if (in_array($type, array('e2pdf-html', 'e2pdf-page-number'), true)) {
+                                        $value = $this->helper->load('filter')->filter_html_tags($this->extension->render($value, $element));
+                                    } else {
+                                        $value = $this->extension->render($value, $element);
+                                    }
+                                }
+                                if (in_array($type, array('e2pdf-html', 'e2pdf-page-number'), true)) {
+                                    $replace = $this->helper->load('filter')->filter_html_tags($this->extension->render($replace, $element));
+                                } else {
+                                    $replace = $this->extension->render($replace, $element);
+                                }
+                                $element['rendered'] = true;
+                            }
                             if ($value) {
                                 $change = str_replace($search, $replace, $value);
                             }
@@ -234,17 +263,14 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
             } else {
                 $change = $this->extension->render($action['change']);
             }
-
             if ((substr($change, 0, 1) === '+' || substr($change, 0, 1) === '-') && in_array($action['property'], $number_properties, true)) {
                 if (isset($element['element_id'])) {
                     $value = isset($element[$action['property']]) ? $element[$action['property']] : 0;
                 } else {
                     $value = isset($element['properties'][$action['property']]) ? $element['properties'][$action['property']] : 0;
                 }
-
                 $change = $value + floatval($change);
             }
-
             if (in_array($action['property'], $not_properties, true) && isset($element['element_id'])) {
                 $element[$action['property']] = $change;
             } else {
@@ -253,7 +279,6 @@ class Model_E2pdf_Action extends Model_E2pdf_Model {
         } elseif (isset($element['action'])) {
             $element['success'] = true;
         }
-
         return $element;
     }
 

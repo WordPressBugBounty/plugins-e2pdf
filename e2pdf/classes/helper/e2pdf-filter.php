@@ -13,6 +13,7 @@ if (!defined('ABSPATH')) {
 
 class Helper_E2pdf_Filter {
 
+    // is stream
     public function is_stream($file_path) {
         if (strpos($file_path, '://') > 0) {
             $wrappers = array(
@@ -34,21 +35,25 @@ class Helper_E2pdf_Filter {
         return false;
     }
 
+    // is downloadable
     public function is_downloadable($file_path) {
-        if ($file_path && in_array(strtolower(pathinfo($file_path, PATHINFO_EXTENSION)), $this->is_allowed_extensions(), true)) {
-            return true;
+        if (!$file_path || !$this->is_downloadable_ext($file_path)) {
+            return false;
         }
-        return false;
+        return true;
     }
 
-    public function is_allowed_extensions() {
-        return apply_filters('e2pdf_helper_filter_is_downloadable_allowed_extensions', array('pdf', 'jpg', 'doc', 'docx'));
+    // is downlodable ext
+    public function is_downloadable_ext($file_path) {
+        $ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
+        $allowed = apply_filters(
+                'e2pdf_helper_filter_is_downloadable_allowed_extensions',
+                ['pdf', 'jpg', 'doc', 'docx']
+        );
+        return in_array($ext, $allowed, true);
     }
 
-    /*
-     * Filter Unsupported HTML Tags
-     */
-
+    // filter html tags
     public function filter_html_tags($value) {
         if ($value) {
             $tags = array(
@@ -60,56 +65,5 @@ class Helper_E2pdf_Filter {
             }
         }
         return $value;
-    }
-
-    public function filter_button_title($button_title) {
-        if (false !== strpos($button_title, '<')) {
-            $button_title = wp_kses_post(
-                    $button_title,
-                    apply_filters(
-                            'e2pdf_helper_filter_button_title',
-                            array(
-                                'img' => array(
-                                    'src' => true,
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                                'span' => array(
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                                'div' => array(
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                                'br' => array(
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                                'p' => array(
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                                'i' => array(
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                                'strong' => array(
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                                'b' => array(
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                                'em' => array(
-                                    'class' => true,
-                                    'style' => true,
-                                ),
-                            )
-                    )
-            );
-        }
-        return $button_title;
     }
 }

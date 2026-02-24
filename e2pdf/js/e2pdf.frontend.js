@@ -198,8 +198,16 @@ var e2pdfViewer = {
                 document.getElementsByTagName('body')[0].appendChild(iframe);
             }
         }
+    },
+    autoDownload: function (lid) {
+        jQuery(document).ready(function () {
+            var link = jQuery('a[lid="' + lid + '"]').first();
+            if (link.length > 0 && !link.hasClass('e2pdf-auto-download-ready')) {
+                link.addClass('e2pdf-auto-download-ready');
+                link[0].click();
+            }
+        });
     }
-
 };
 jQuery(document).ready(function () {
     jQuery(document).on('click', 'a.e2pdf-download-loader', function (e) {
@@ -219,9 +227,37 @@ jQuery(document).ready(function () {
                 if (resp.ok) {
                     return resp.blob().then((blob) => {
                         const blobURL = URL.createObjectURL(blob);
-                        link.attr('href', blobURL).addClass('e2pdf-download-ready');
-                        link[0].click();
-                        link.attr('href', linkURL).removeClass('e2pdf-download-ready e2pdf-download-progress');
+                        if (link.hasClass('e2pdf-ios-safari-loader')) {
+                            window.addEventListener('message', function handleMessage(event) {
+                                if (event.data === 'e2pdf-download-ready') {
+                                    link.removeClass('e2pdf-download-progress');
+                                    window.removeEventListener('message', handleMessage);
+                                }
+                            });
+                            const iframe = document.createElement('iframe');
+                            iframe.style.setProperty('display', 'none', 'important');
+                            document.body.appendChild(iframe);
+                            const doc = iframe.contentDocument || iframe.contentWindow.document;
+                            doc.open();
+                            doc.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <body>
+                            <a href="${blobURL}" download="${link.attr('download')}"></a>
+                            <script>
+                                const link = document.querySelector('a');
+                                parent.postMessage('e2pdf-download-ready', '*');                             
+                                link.click();    
+                            </script>
+                            </body>
+                            </html>
+                            `);
+                            doc.close();
+                        } else {
+                            link.attr('href', blobURL).addClass('e2pdf-download-ready');
+                            link[0].click();
+                            link.attr('href', linkURL).removeClass('e2pdf-download-ready e2pdf-download-progress');
+                        }
                     });
                 } else {
                     var errorMessage = 'Something went wrong!';
@@ -290,19 +326,15 @@ jQuery(document).ready(function () {
         }
     });
     if (jQuery('.e2pdf-download.e2pdf-auto').not('.e2pdf-iframe-download').length > 0) {
-        jQuery('.e2pdf-download.e2pdf-auto').not('.e2pdf-iframe-download').each(function () {
-            if (jQuery(this).hasClass('e2pdf-print-pdf') || jQuery(this).hasClass('e2pdf-download-loader')) {
-                jQuery(this).click();
-            } else if (jQuery(this).hasClass('e2pdf-inline')) {
-                window.open(jQuery(this).attr('href'), '_blank');
-            } else {
-                location.href = jQuery(this).attr('href');
-            }
+        jQuery('.e2pdf-download.e2pdf-auto').not('.e2pdf-iframe-download').each(function (i, el) {
+            setTimeout(function () {
+                jQuery(el).click();
+            }, i * 500);
         });
     }
     jQuery('.modal').on('show.bs.modal', function () {
         var modal = jQuery(this);
-        modal.find('iframe.e2pdf-preload').each(function () {
+        modal.find('iframe.e2pdf-preload, img.e2pdf-preload').each(function () {
             jQuery(this).removeClass('e2pdf-preload').attr('src', jQuery(this).attr('preload'));
         });
     });
@@ -328,4 +360,19 @@ jQuery(document).ready(function () {
             }
         }, false);
     }
+    jQuery(document).on('metform/after_submit', function (event, payload) {
+        if (payload && payload.response) {
+            var response = payload.response;
+            if (response.status && response.data && response.data.message) {
+                var message = response.data.message;
+                if (message && (message.includes('e2pdf-view') || message.includes('e2pdf-download'))) {
+                    if (jQuery('.mf-main-response-wrap').length > 0 && jQuery('.mf-main-response-wrap p').length > 0) {
+                        var response = jQuery('.mf-main-response-wrap').clone();
+                        response.find('p').html(message);
+                        jQuery('.mf-main-response-wrap').replaceWith(response);
+                    }
+                }
+            }
+        }
+    });
 });

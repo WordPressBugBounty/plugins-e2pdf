@@ -19,6 +19,8 @@ class Model_E2pdf_Signature extends Model_E2pdf_Model {
 
         if ($value && trim($value) != '' && extension_loaded('gd') && function_exists('imagettftext')) {
 
+            $value = $this->helper->load('rtl')->rtl($value);
+
             $box = imagettfbbox($options['fontSize'], 0, $options['font'], $value);
 
             $min_x = min(array($box[0], $box[2], $box[4], $box[6]));

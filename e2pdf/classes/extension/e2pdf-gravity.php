@@ -2578,24 +2578,34 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
     public function hook_gravity_entry_view_callback($post, $metabox) {
         if (!empty($metabox['args']['entry']['id'])) {
             foreach ($metabox['args']['hooks'] as $hook) {
-                $action = apply_filters('e2pdf_hook_action_button',
-                        array(
-                            'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
-                            'url' => $this->helper->get_url(
-                                    array(
-                                        'page' => 'e2pdf',
-                                        'action' => 'export',
-                                        'id' => $hook,
-                                        'dataset' => $metabox['args']['entry']['id'],
-                                    ), 'admin.php?'
-                            ),
-                            'title' => 'PDF #' . $hook
-                        ), 'hook_gravity_entry_view', $hook, $metabox['args']['entry']['id']
-                );
-                if (!empty($action)) {
-                    echo sprintf(
-                            $action['html'], $action['url'], $action['title']
+                if ($this->helper->load('hooks')->process_hook(
+                                $hook,
+                                [
+                                    'dataset' => $metabox['args']['entry']['id'],
+                                ],
+                                'hook_gravity_entry_view'
+                        )
+                ) {
+                    $action = apply_filters(
+                            'e2pdf_hook_action_button',
+                            array(
+                                'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $metabox['args']['entry']['id'],
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook,
+                            ), 'hook_gravity_entry_view', $hook, $metabox['args']['entry']['id']
                     );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
                 }
             }
         }
@@ -2606,24 +2616,34 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         if (!empty($entry['form_id']) && !empty($entry['id'])) {
             $hooks = $this->helper->load('hooks')->get('gravity', 'hook_gravity_row_actions', $entry['form_id']);
             foreach ($hooks as $hook) {
-                $action = apply_filters('e2pdf_hook_action_button',
-                        array(
-                            'html' => '<span> | <a class="e2pdf-download-hook" target="_blank" href="%s">%s</a></span>',
-                            'url' => $this->helper->get_url(
-                                    array(
-                                        'page' => 'e2pdf',
-                                        'action' => 'export',
-                                        'id' => $hook,
-                                        'dataset' => $entry['id'],
-                                    ), 'admin.php?'
-                            ),
-                            'title' => 'PDF #' . $hook
-                        ), 'hook_gravity_row_actions', $hook, $entry['id']
-                );
-                if (!empty($action)) {
-                    echo sprintf(
-                            $action['html'], $action['url'], $action['title']
+                if ($this->helper->load('hooks')->process_hook(
+                                $hook,
+                                [
+                                    'dataset' => $entry['id'],
+                                ],
+                                'hook_gravity_row_actions'
+                        )
+                ) {
+                    $action = apply_filters(
+                            'e2pdf_hook_action_button',
+                            array(
+                                'html' => '<span> | <a class="e2pdf-download-hook" target="_blank" href="%s">%s</a></span>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $entry['id'],
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook,
+                            ), 'hook_gravity_row_actions', $hook, $entry['id']
                     );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
                 }
             }
         }

@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf License Controller
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /controller/e2pdf-license.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -49,26 +48,27 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
             $data = $this->post->get('data');
             $model_e2pdf_api = new Model_E2pdf_Api();
             $model_e2pdf_api->set(
-                    array(
+                    [
                         'action' => 'license/update',
-                        'data' => array(
+                        'data' => [
                             'license_key' => isset($data['license_key']) ? trim($data['license_key']) : '',
-                        ),
-                    )
+                        ],
+                    ]
             );
             $request = $model_e2pdf_api->request();
             if (isset($request['error'])) {
                 $this->add_notification('error', $request['error']);
             } else {
+                /* translators: %s: Action */
                 $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('License Key Updated', 'e2pdf')));
             }
-            $response = array(
+            $response = [
                 'redirect' => $this->helper->get_url(
-                        array(
+                        [
                             'page' => 'e2pdf-license',
-                        )
+                        ]
                 ),
-            );
+            ];
         } else {
             $response['error'] = $this->message('wp_verify_nonce_error');
         }
@@ -85,10 +85,10 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_license')) {
             $model_e2pdf_api = new Model_E2pdf_Api();
             $model_e2pdf_api->set(
-                    array(
+                    [
                         'action' => 'license/activation',
-                        'data' => array(),
-                    )
+                        'data' => [],
+                    ]
             );
             $request = $model_e2pdf_api->request();
             if (isset($request['error'])) {
@@ -102,29 +102,31 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
                 }
                 $model_e2pdf_api = new Model_E2pdf_Api();
                 $model_e2pdf_api->set(
-                        array(
+                        [
                             'action' => 'license/request',
-                            'data' => array(),
-                        )
+                            'data' => [],
+                        ]
                 );
                 $request = $model_e2pdf_api->request();
                 if (isset($request['success'])) {
+                    /* translators: %s: Action */
                     $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('License Key Restored', 'e2pdf')));
                 } else {
-                    $this->add_notification('error', sprintf(__('Failed to Restore License Key. Contact Support at <a target="_blank" href="%s">%s</a>', 'e2pdf'), 'https://e2pdf.com/support/contact', 'https://e2pdf.com/support/contact'));
+                    /* translators: %1$s: Url, %2$s: Url   */
+                    $this->add_notification('error', sprintf(__('Failed to Restore License Key. Contact Support at <a target="_blank" href="%1$s">%2$s</a>', 'e2pdf'), 'https://e2pdf.com/support/contact', 'https://e2pdf.com/support/contact'));
                 }
                 if (file_exists($file)) {
                     unlink($file);
                 }
                 delete_transient('e2pdf_activation_key');
             }
-            $response = array(
+            $response = [
                 'redirect' => $this->helper->get_url(
-                        array(
+                        [
                             'page' => 'e2pdf-license',
-                        )
+                        ]
                 ),
-            );
+            ];
         } else {
             $response['error'] = $this->message('wp_verify_nonce_error');
         }
@@ -135,23 +137,24 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_license')) {
             $model_e2pdf_api = new Model_E2pdf_Api();
             $model_e2pdf_api->set(
-                    array(
+                    [
                         'action' => 'template/deactivateall',
-                    )
+                    ]
             );
             $request = $model_e2pdf_api->request();
             if (isset($request['error'])) {
                 $this->add_notification('error', $request['error']);
             } else {
+                /* translators: %s: Action */
                 $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Deactivated', 'e2pdf')));
             }
-            $response = array(
+            $response = [
                 'redirect' => $this->helper->get_url(
-                        array(
+                        [
                             'page' => 'e2pdf-license',
-                        )
+                        ]
                 ),
-            );
+            ];
         } else {
             $response['error'] = $this->message('wp_verify_nonce_error');
         }

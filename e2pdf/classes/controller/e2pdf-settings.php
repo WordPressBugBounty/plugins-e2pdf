@@ -368,6 +368,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
                 array(
                     'static_group',
                     'adobesign_group',
+                    'gdrive_group',
                     'zapier_group',
                 ),
                 true

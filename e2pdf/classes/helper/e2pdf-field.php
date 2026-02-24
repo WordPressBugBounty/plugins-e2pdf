@@ -21,6 +21,27 @@ class Helper_E2pdf_Field {
 
     public function pre_shortcodes($value, $extension, $field = array()) {
         if (false !== strpos($value, '[')) {
+
+            $shortcode_tags = array(
+                'e2pdf-translate'
+            );
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $value, $shortcodes);
+                foreach ($shortcodes[0] as $key => $shortcode_value) {
+                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                    $atts = shortcode_parse_atts($shortcode[3]);
+                    if ($shortcode[2] === 'e2pdf-translate') {
+                        if (!isset($atts['domain'])) {
+                            if ($this->helper->load('translator')->isTRP()) {
+                                $value = str_replace($shortcode_value, $this->helper->load('translator')->pre_translate($shortcode[5], $extension->get('template_id')), $value);
+                            }
+                        }
+                    }
+                }
+            }
+
             $replace = array(
                 '[e2pdf-dataset]' => $extension->get('dataset') ? $extension->get('dataset') : '',
                 '[e2pdf-userid]' => (int) $extension->get('user_id'),
@@ -29,6 +50,9 @@ class Helper_E2pdf_Field {
                 '[e2pdf-url]' => '',
                 '[e2pdf-uid]' => '',
             );
+            if (false !== strpos($value, '[e2pdf-lang]')) {
+                $replace['[e2pdf-lang]'] = $this->helper->load('translator')->lang();
+            }
             if (false !== strpos($value, '[e2pdf-url]') || false !== strpos($value, '[pdf_url]') || false !== strpos($value, '[e2pdf-uid]')) {
                 $pdf_url = '';
                 if ($extension->get('entry')) {
@@ -69,9 +93,6 @@ class Helper_E2pdf_Field {
 
     public function inner_shortcodes($value, $extension, $field = array()) {
         if (false !== strpos($value, '[')) {
-
-            $e2pdf_acf_repeater = 0;
-
             $args = apply_filters('e2pdf_extension_render_shortcodes_args', $extension->get('args'), isset($field['element_id']) ? $field['element_id'] : false, $extension->get('template_id'), $extension->get('item'), $extension->get('dataset'), false, false);
             $shortcode_tags = array(
                 'e2pdf-arg',
@@ -144,6 +165,7 @@ class Helper_E2pdf_Field {
                                         }
                                         break;
                                     case 'shop_order':
+                                    case 'shop_subscription':
                                         if (isset($atts['shortcode']) && $atts['shortcode'] == 'e2pdf-wc-customer') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                         } elseif (isset($atts['shortcode']) && $atts['shortcode'] == 'e2pdf-wc-product') {
                                             if (!isset($atts['wc_order_id']) && isset($extension->get('cached_post')->ID) && $extension->get('cached_post')->ID) {
@@ -181,31 +203,12 @@ class Helper_E2pdf_Field {
                         }
                     }
                 }
-
-                if (false !== strpos($value, '[e2pdf-for') && false !== strpos($value, '[e2pdf-acf-repeater') && false !== strpos($value, '[e2pdf-for-key')) {
-                    $value = preg_replace('/\[(e2pdf-acf-repeater[^\]]*?\[e2pdf-for-key\][^\]]*?)\](.*?)\[(\/e2pdf-acf-repeater)\]/s', '{{$1}}$2{{$3}}', $value, -1, $e2pdf_acf_repeater);
-                }
-                $value = $this->e2pdf_acf_repeater($value, $extension);
             }
 
             $shortcode_tags = array(
-                'e2pdf-for',
+                'e2pdf-for', 'e2pdf-acf-repeater',
             );
-            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
-            $tagnames = array_intersect($shortcode_tags, $matches[1]);
-            if (!empty($tagnames)) {
-                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $value, $shortcodes);
-                foreach ($shortcodes[0] as $key => $shortcode_value) {
-                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
-                    $atts = shortcode_parse_atts($shortcode[3]);
-                    $value = str_replace($shortcode_value, $this->helper->load('for')->do_shortcode(is_array($atts) ? $atts : array(), $shortcode[5], 0, $extension), $value);
-                }
-            }
-
-            if ($e2pdf_acf_repeater > 0) {
-                $value = preg_replace('/{{(e2pdf-acf-repeater[^\]]*?)}}(.*?){{(\/e2pdf-acf-repeater)}}/s', '[$1]$2[$3]', $value);
-                $value = $this->e2pdf_acf_repeater($value, $extension);
-            }
+            $value = $this->helper->load('shortcode')->apply_inline_shortcodes($value, $shortcode_tags, $extension);
 
             $shortcode_tags = array(
                 'e2pdf-if',
@@ -217,7 +220,7 @@ class Helper_E2pdf_Field {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    $value = str_replace($shortcode_value, $this->helper->load('if')->do_shortcode(is_array($atts) ? $atts : array(), $shortcode[5], $extension), $value);
+                    $value = str_replace($shortcode_value, $this->helper->load('if')->do_shortcode($atts, $shortcode[5], 0, $extension), $value);
                 }
             }
 
@@ -260,6 +263,7 @@ class Helper_E2pdf_Field {
             );
             if ($extension instanceof Extension_E2pdf_Formidable) {
                 $shortcode_tags[] = 'frm-math';
+                $shortcode_tags[] = 'e2pdf-frm-field-value';
             }
             if ($extension instanceof Extension_E2pdf_Gravity) {
                 $shortcode_tags[] = 'gravityforms';
@@ -328,7 +332,7 @@ class Helper_E2pdf_Field {
                     $value = $this->helper->load('translator')->translate($value, 'full');
                     $file = false;
                     if (!$text) {
-                        if ($this->helper->load('pdf')->get_extension(trim($value))) {
+                        if ($this->helper->load('pdf')->get_extension($value)) {
                             $file = $this->helper->load('pdf')->get_pdf($value, $extension->info('key'));
                         } else {
                             $file = $this->helper->load('image')->get_image($value, $extension->info('key'), $field);
@@ -402,7 +406,7 @@ class Helper_E2pdf_Field {
                 $value = $this->helper->load('graph')->graph($extension->strip_shortcodes($value), $field);
                 break;
             default:
-                if (!($extension instanceof Extension_E2pdf_Formidable)) {
+                if (!($extension instanceof Extension_E2pdf_Formidable) && !($extension instanceof Extension_E2pdf_Metform)) {
                     $value = $extension->convert_shortcodes($value);
                 }
                 $value = $this->helper->load('properties')->apply($field, $value);
@@ -437,40 +441,6 @@ class Helper_E2pdf_Field {
                 }
             }
             $value = implode(', ', $selected);
-        }
-        return $value;
-    }
-
-    public function e2pdf_acf_repeater($value, $extension) {
-        $shortcode_tags = array(
-            'e2pdf-acf-repeater',
-        );
-        preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
-        $tagnames = array_intersect($shortcode_tags, $matches[1]);
-        if (!empty($tagnames)) {
-            preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $value, $shortcodes);
-            foreach ($shortcodes[0] as $key => $shortcode_value) {
-                $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
-                $atts = shortcode_parse_atts($shortcode[3]);
-                if ($extension instanceof Extension_E2pdf_Wordpress) {
-                    if (!isset($atts['post_id']) && isset($extension->get('cached_post')->ID) && $extension->get('cached_post')->ID) {
-                        if ($extension->get('item') == '-3') {
-                            $shortcode[3] .= ' post_id=user_' . $extension->get('cached_post')->ID . '';
-                        } else {
-                            $shortcode[3] .= ' post_id=' . $extension->get('cached_post')->ID . '';
-                        }
-                    }
-                } elseif ($extension instanceof Extension_E2pdf_Woocommerce) {
-                    if (!isset($atts['post_id']) && isset($extension->get('cached_post')->ID) && $extension->get('cached_post')->ID) {
-                        if ($extension->get('item') == 'product_variation' && isset($extension->get('cached_post')->post_parent)) {
-                            $shortcode[3] .= ' post_id=' . $extension->get('cached_post')->post_parent . '';
-                        } else {
-                            $shortcode[3] .= ' post_id=' . $extension->get('cached_post')->ID . '';
-                        }
-                    }
-                }
-                $value = str_replace($shortcode_value, do_shortcode_tag($shortcode), $value);
-            }
         }
         return $value;
     }

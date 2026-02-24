@@ -301,7 +301,7 @@ class Helper_E2pdf_View {
         switch ($format) {
             case 'pdf':
                 if ($content_length) {
-                    header('Content-Length: ' . strlen(base64_decode($file)));
+                    header('Content-Length: ' . strlen($file));
                 }
                 if (!$disposition) {
                     $disposition = 'inline';
@@ -318,7 +318,7 @@ class Helper_E2pdf_View {
                 break;
             case 'jpg':
                 if ($content_length) {
-                    header('Content-Length: ' . strlen(base64_decode($file)));
+                    header('Content-Length: ' . strlen($file));
                 }
                 if (!$disposition) {
                     $disposition = 'attachment';
@@ -341,7 +341,7 @@ class Helper_E2pdf_View {
                         }
                         header('Content-Length: ' . filesize(trim($file)));
                     } else {
-                        header('Content-Length: ' . strlen(base64_decode($file)));
+                        header('Content-Length: ' . strlen($file));
                     }
                 }
                 if (!$disposition) {
@@ -398,7 +398,6 @@ class Helper_E2pdf_View {
                 }
                 header('Content-Type: text/html');
                 break;
-
             case 'php':
                 if (!$disposition) {
                     $disposition = 'attachment';
@@ -421,7 +420,7 @@ class Helper_E2pdf_View {
             }
             fclose($handle);
         } else {
-            echo base64_decode($file);
+            echo $file;
         }
     }
 

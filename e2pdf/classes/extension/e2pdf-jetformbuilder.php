@@ -386,6 +386,9 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                                     if (!isset($atts['iframe_download'])) {
                                         $shortcode[3] .= ' iframe_download="true"';
                                     }
+                                    if (!isset($atts['iframe_loader'])) {
+                                        $shortcode[3] .= ' iframe_loader="true"';
+                                    }
                                     $success_message = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $success_message);
                                 }
                             }
@@ -1337,21 +1340,31 @@ function hook_e2pdf_jetformbuilder_entry_view_column($hook = '') {
 
             public function get_value(array $record = array()) {
                 $record_id = (int) $record['id'];
-                $action = apply_filters(
-                        'e2pdf_hook_action_button',
-                        array(
-                            'html' => '<p style="padding: 6px 12px 6.5px 42px"><a class="e2pdf-download-hook" target="_blank" href="%s"><span class="dashicons dashicons-pdf"></span> %s</a></p>',
-                            'url' => Helper_E2pdf_Helper::instance()->get_url(
-                                    array(
-                                        'page' => 'e2pdf',
-                                        'action' => 'export',
-                                        'id' => $this->hook,
-                                        'dataset' => $record_id,
-                                    ), 'admin.php?'
-                            ),
-                            'title' => 'PDF #' . $this->hook,
-                        ), 'hook_jetformbuilder_entry_view', $this->hook, $record_id
-                );
+                $action = array();
+                if (Helper_E2pdf_Helper::instance()->load('hooks')->process_hook(
+                                $this->hook,
+                                [
+                                    'dataset' => $record_id,
+                                ],
+                                'hook_jetformbuilder_entry_view'
+                        )
+                ) {
+                    $action = apply_filters(
+                            'e2pdf_hook_action_button',
+                            array(
+                                'html' => '<p style="padding: 6px 12px 6.5px 42px"><a class="e2pdf-download-hook" target="_blank" href="%s"><span class="dashicons dashicons-pdf"></span> %s</a></p>',
+                                'url' => Helper_E2pdf_Helper::instance()->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $this->hook,
+                                            'dataset' => $record_id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $this->hook,
+                            ), 'hook_jetformbuilder_entry_view', $this->hook, $record_id
+                    );
+                }
                 if (!empty($action)) {
                     return array(
                         'text' => $action['title'],

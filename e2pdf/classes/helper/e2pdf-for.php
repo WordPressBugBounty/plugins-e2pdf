@@ -19,55 +19,46 @@ class Helper_E2pdf_For {
         $this->helper = Helper_E2pdf_Helper::instance();
     }
 
-    public function data($condition) {
-        $unserialized = false;
-        if (is_serialized($condition)) {
-            $unserialized = $this->helper->load('convert')->unserialize($condition);
-        }
-        return is_array($unserialized) ? $unserialized : array();
-    }
-
     public function do_shortcode($atts = array(), $value = '', $for = 0, $extension = null) {
         $result = array();
         $implode = isset($atts['implode']) ? $atts['implode'] : '';
         $for_index = $for ? '-' . $for : '';
-
         $tags = array(
-            'e2pdf-for-data' => 'e2pdf-for-data',
-            'e2pdf-for-do' => 'e2pdf-for-do',
-            'e2pdf-for-else' => 'e2pdf-for-else',
+            'e2pdf-for-data' => 'e2pdf-for-data' . $for_index,
+            'e2pdf-for-do' => 'e2pdf-for-do' . $for_index,
+            'e2pdf-for-else' => 'e2pdf-for-else' . $for_index,
         );
         /* Backward compatibility */
         if (false === strpos($value, '[e2pdf-for-data')) {
             $tags = array(
-                'e2pdf-for-data' => 'e2pdf-data',
-                'e2pdf-for-do' => 'e2pdf-do',
-                'e2pdf-for-else' => 'e2pdf-else',
+                'e2pdf-for-data' => 'e2pdf-data' . $for_index,
+                'e2pdf-for-do' => 'e2pdf-do' . $for_index,
+                'e2pdf-for-else' => 'e2pdf-else' . $for_index,
             );
         }
-
         add_filter('e2pdf_for_do_shortcode_data_process', array($this, 'filter_do_shortcode_data_process'));
         if ($extension && method_exists($extension, 'render')) {
-            $data = $this->data($extension->render($this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-data'] . $for_index, $value), array(), false, true));
+            $data = $this->helper->load('convert')->is_unserialized_array($extension->render($this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-data'], $value), array(), false, true));
         } else {
-            $data = $this->data($this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-data'] . $for_index, $value));
+            $data = $this->helper->load('convert')->is_unserialized_array($this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-data'], $value));
         }
         remove_filter('e2pdf_for_do_shortcode_data_process', array($this, 'filter_do_shortcode_data_process'));
         if (!empty($data)) {
             $index = 0;
+            $total = count($data);
             foreach ($data as $data_key => $data_value) {
-                $do = $this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-do'] . $for_index, $value);
-                $result[] = $this->apply($do, $data_key, $data_value, $index, $for, $extension);
+                $do = $this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-do'], $value);
+                $result[] = $this->apply($do, $data_key, $data_value, $index, $for, $total);
                 $index++;
             }
             $response = implode($implode, $result);
         } else {
-            $response = $this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-else'] . $for_index, $value);
+            $response = $this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-for-else'], $value);
         }
         return $response;
     }
 
-    public function apply($value, $data_key, $data_value, $index, $for = 0, $extension = null) {
+    public function apply($value, $data_key, $data_value, $index, $for = 0, $total = 0) {
         if ($value) {
             $for_index = $for ? '-' . $for : '';
             $evenodd = $index % 2 == 0 ? '0' : '1';
@@ -76,6 +67,7 @@ class Helper_E2pdf_For {
                 '[e2pdf-for-counter' . $for_index . ']' => $index + 1,
                 '[e2pdf-for-key' . $for_index . ']' => $data_key,
                 '[e2pdf-for-evenodd' . $for_index . ']' => $evenodd,
+                '[e2pdf-for-count' . $for_index . ']' => $total,
             );
             $value = str_replace(array_keys($replace), $replace, $value);
             $shortcode_tags = array(
@@ -133,21 +125,6 @@ class Helper_E2pdf_For {
                         $response = $post_meta;
                     }
                     $value = str_replace($shortcode_value, $response, $value);
-                }
-            }
-        }
-        if (false !== strpos($value, '[e2pdf-for-' . $for + 1)) {
-            $sub_shortcode_tags = array(
-                'e2pdf-for-' . $for + 1 . '',
-            );
-            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $sub_matches);
-            $sub_tagnames = array_intersect($sub_shortcode_tags, $sub_matches[1]);
-            if (!empty($sub_tagnames)) {
-                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($sub_tagnames) . '/', $value, $sub_shortcodes);
-                foreach ($sub_shortcodes[0] as $key => $sub_shortcode_value) {
-                    $sub_shortcode = $this->helper->load('shortcode')->get_shortcode($sub_shortcodes, $key);
-                    $atts = shortcode_parse_atts($sub_shortcode[3]);
-                    $value = str_replace($sub_shortcode_value, $this->do_shortcode(is_array($atts) ? $atts : array(), $sub_shortcode[5], $for + 1, $extension), $value);
                 }
             }
         }

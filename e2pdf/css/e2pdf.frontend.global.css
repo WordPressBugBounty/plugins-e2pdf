@@ -2,7 +2,8 @@ a.e2pdf-download-progress,
 a.e2pdf-download-progress:focus,
 a.e2pdf-download-progress:link,
 a.e2pdf-download-progress:visited,
-a.e2pdf-download-progress:hover
+a.e2pdf-download-progress:hover,
+#et-boc .et-l a.e2pdf-download-progress
 {
     color: #808080;
     text-decoration: none;

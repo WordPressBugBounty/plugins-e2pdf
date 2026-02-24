@@ -285,6 +285,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         add_action('check_ajax_referer', array($this, 'action_check_ajax_referer'), 10, 2);
         add_action('frm_after_create_entry', array($this, 'action_frm_default_value'), 0, 2);
         add_action('frm_after_update_entry', array($this, 'action_frm_default_value'), 0, 2);
+        add_action('frm_success_action', array($this, 'action_frm_success_action'));
 
         /* Hooks */
         add_action('frm_show_entry_sidebar', array($this, 'hook_formidable_entry_view'));
@@ -308,6 +309,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         add_filter('frm_image_html_array', array($this, 'filter_frm_image_html_array'), 10, 2);
         add_filter('frm_notification_attachment', array($this, 'filter_frm_notification_attachment'), 30, 3);
         add_filter('e2pdf_model_options_get_options_options', array($this, 'filter_e2pdf_model_options_get_options_options'));
+        add_filter('frm_main_feedback', array($this, 'filter_frm_main_feedback'));
 
         /* Replace shortcodes on Backup */
         add_filter('e2pdf_controller_templates_backup_options', array($this, 'filter_e2pdf_controller_templates_backup_options'), 10, 3);
@@ -323,6 +325,15 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
 
         /* Hooks */
         add_filter('frm_row_actions', array($this, 'hook_formidable_row_actions'), 10, 2);
+    }
+
+    public function action_frm_success_action() {
+        $this->set('iframe_download', true);
+    }
+
+    public function filter_frm_main_feedback($message) {
+        $this->set('iframe_download', false);
+        return $message;
     }
 
     /**
@@ -769,6 +780,9 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     if (!isset($atts['filter'])) {
                         $shortcode[3] .= ' filter="true"';
                     }
+                    if (!isset($atts['iframe_download']) && $this->get('iframe_download')) {
+                        $shortcode[3] .= ' iframe_download="true"';
+                    }
                     $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                 }
             }
@@ -803,6 +817,9 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     }
                     if (!isset($atts['filter'])) {
                         $shortcode[3] .= ' filter="true"';
+                    }
+                    if (!isset($atts['iframe_download'])) {
+                        $shortcode[3] .= ' iframe_download="true"';
                     }
                     $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                 }
@@ -1742,7 +1759,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
     public function action_frm_default_value($entry_id, $form_id) {
         global $wpdb;
         if ($form_id) {
-            $fields = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'frm_fields' . '` WHERE form_id = %d AND (default_value LIKE %s OR default_value LIKE %s)', $form_id, '%[e2pdf-download%', '%[e2pdf-save%'));
+            $fields = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'frm_fields` WHERE form_id = %d AND (default_value LIKE %s OR default_value LIKE %s)', $form_id, '%[e2pdf-download%', '%[e2pdf-save%'));
             if (!empty($fields)) {
                 foreach ($fields as $key => $field) {
                     $meta = FrmEntryMeta::get_entry_meta_by_field($entry_id, $field->id);
@@ -3057,7 +3074,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             if (isset($xml->formidable) && $xml->formidable) {
 
                 $tmp = tempnam($this->helper->get('tmp_dir'), 'e2pdf');
-                file_put_contents($tmp, base64_decode((string) $xml->formidable));
+                file_put_contents($tmp, base64_decode((string) $xml->formidable), LOCK_EX);
 
                 if ($new_form) {
                     add_filter('frm_match_xml_form', array($this, 'filter_frm_match_xml_form'), 10, 2);
@@ -4129,24 +4146,34 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 echo '<h3>' . apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_formidable_entry_view') . '</h3>';
                 echo '<div class="inside">';
                 foreach ($hooks as $hook) {
-                    $action = apply_filters('e2pdf_hook_action_button',
-                            array(
-                                'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $entry->id,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook
-                            ), 'hook_formidable_entry_view', $hook, $entry->id
-                    );
-                    if (!empty($action)) {
-                        echo sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $entry->id,
+                                    ],
+                                    'hook_formidable_entry_view'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $entry->id,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_formidable_entry_view', $hook, $entry->id
                         );
+                        if (!empty($action)) {
+                            echo sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
                 echo '</div>';
@@ -4161,24 +4188,34 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 echo '<h3>' . apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_formidable_entry_view') . '</h3>';
                 echo '<div class="inside">';
                 foreach ($hooks as $hook) {
-                    $action = apply_filters('e2pdf_hook_action_button',
-                            array(
-                                'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $entry->id,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook
-                            ), 'hook_formidable_entry_edit', $hook, $entry->id
-                    );
-                    if (!empty($action)) {
-                        echo sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $entry->id,
+                                    ],
+                                    'hook_formidable_entry_edit'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<div class="misc-pub-section"><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></div>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $entry->id,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_formidable_entry_edit', $hook, $entry->id
                         );
+                        if (!empty($action)) {
+                            echo sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
                 echo '</div>';
@@ -4190,24 +4227,34 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         if (!empty($entry->form_id) && !empty($entry->id)) {
             $hooks = $this->helper->load('hooks')->get('formidable', 'hook_formidable_row_actions', $entry->form_id);
             foreach ($hooks as $hook) {
-                $action = apply_filters('e2pdf_hook_action_button',
-                        array(
-                            'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
-                            'url' => $this->helper->get_url(
-                                    array(
-                                        'page' => 'e2pdf',
-                                        'action' => 'export',
-                                        'id' => $hook,
-                                        'dataset' => $entry->id,
-                                    ), 'admin.php?'
-                            ),
-                            'title' => 'PDF #' . $hook
-                        ), 'hook_formidable_row_actions', $hook, $entry->id
-                );
-                if (!empty($action)) {
-                    $actions['e2pdf_' . $hook] = sprintf(
-                            $action['html'], $action['url'], $action['title']
+                if ($this->helper->load('hooks')->process_hook(
+                                $hook,
+                                [
+                                    'dataset' => $entry->id,
+                                ],
+                                'hook_formidable_row_actions'
+                        )
+                ) {
+                    $action = apply_filters(
+                            'e2pdf_hook_action_button',
+                            array(
+                                'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $entry->id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook,
+                            ), 'hook_formidable_row_actions', $hook, $entry->id
                     );
+                    if (!empty($action)) {
+                        $actions['e2pdf_' . $hook] = sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
                 }
             }
         }

@@ -178,6 +178,8 @@ class Helper_E2pdf_Attachments {
     }
 
     public function get_extension($value = false) {
+
+        $value = trim($value);
         if (!$value) {
             return false;
         }

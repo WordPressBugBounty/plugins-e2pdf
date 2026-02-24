@@ -29,11 +29,12 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
                 return [];
             }
 
+            $api_protocol = get_option('e2pdf_api_protocol', '0');
             $api_processor = get_option('e2pdf_debug', '0') && get_option('e2pdf_processor', '0') ? get_option('e2pdf_processor', '0') : '0';
             if ($api_processor == '2') {
                 $api_version = '1.16.19';
             } else {
-                $api_version = '1.27.20';
+                $api_version = '1.32.00';
             }
 
             $data = [
@@ -41,6 +42,7 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
                 'api_license_key' => $this->get_license(),
                 'api_processor' => apply_filters('e2pdf_api_processor', $api_processor),
                 'api_version' => apply_filters('e2pdf_api_version', $api_version),
+                'api_protocol' => $api_protocol,
             ];
             if (!$api_server) {
                 $api_server = $this->get_api_server();
@@ -73,14 +75,29 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             if (defined('E2PDF_API_PROXYAUTH')) {
                 curl_setopt($ch, CURLOPT_PROXYAUTH, E2PDF_API_PROXYAUTH);
             }
+            if (class_exists('CURLFile')) {
+                if (defined('CURLOPT_SAFE_UPLOAD')) {
+                    curl_setopt($ch, CURLOPT_SAFE_UPLOAD, true);
+                }
+            } else {
+                if (defined('CURLOPT_SAFE_UPLOAD')) {
+                    curl_setopt($ch, CURLOPT_SAFE_UPLOAD, false);
+                }
+            }
+
             if (!empty($this->api->data)) {
                 $data = array_merge($data, $this->api->data);
             }
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+            if ($this->api->action === 'template/upload2') {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+            } else {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+            }
 
             $json = curl_exec($ch);
             $curl_errno = curl_errno($ch);
             $curl_error = curl_error($ch);
+            $curl_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
             $curl_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             // phpcs:enable
@@ -98,8 +115,17 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
                     return $this->request($key, $this->get_api_server($api_server));
                 }
             } else {
-                $result = json_decode($json, true);
-                $response = $result['response'];
+                if ($api_protocol == '1' && strpos($curl_type, 'application/octet-stream') !== false) {
+                    $response['file'] = $json;
+                } else {
+                    $result = json_decode($json, true);
+                    $response = isset($result['response']) ? $result['response'] : null;
+                    if (!empty($response['file'])) {
+                        // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+                        $response['file'] = base64_decode($response['file']);
+                    }
+                }
+
                 if (($this->api->action === 'common/activate' || $this->api->action === 'license/update' || $this->api->action === 'license/request') && !empty($response['license_key'])) {
                     update_option('e2pdf_license', $response['license_key']);
                 }

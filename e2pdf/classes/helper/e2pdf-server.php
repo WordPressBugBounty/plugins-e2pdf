@@ -37,6 +37,14 @@ class Helper_E2pdf_Server {
         return false;
     }
 
+    public function isSafari() {
+        $userAgent = $this->get('HTTP_USER_AGENT');
+        if (stripos($userAgent, 'AppleWebKit') !== false && stripos($userAgent, 'Safari') !== false && stripos($userAgent, 'CriOS') === false) {
+            return true;
+        }
+        return false;
+    }
+
     public function isChrome() {
         $userAgent = $this->get('HTTP_USER_AGENT');
         if (stripos($userAgent, 'CriOS') !== false || stripos($userAgent, 'Chrome') !== false) {

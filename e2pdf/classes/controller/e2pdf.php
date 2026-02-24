@@ -98,6 +98,13 @@ class Controller_E2pdf extends Helper_E2pdf_View {
      * @url admin.php?page=e2pdf&action=export
      */
     public function export_action() {
+
+        $wpml = $this->helper->load('translator')->isWPML();
+        if ($wpml) {
+            $lang = apply_filters('wpml_current_language', null);
+            do_action('wpml_switch_language', $lang);
+        }
+
         if ($this->get->get('template_id')) {
             $url = array(
                 'page' => 'e2pdf',
@@ -125,7 +132,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
 
         $atts = array(
             'user_id' => 0,
-            'inline' => $disposition == 'inline' ? 'true' : 'false',
+            'inline' => $disposition == 'inline' ? '1' : '0',
         );
 
         $args = array();
@@ -201,14 +208,14 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                 if ($template->extension()->verify()) {
 
                     if (array_key_exists('inline', $atts)) {
-                        $inline = $atts['inline'] == 'true' ? '1' : '0';
+                        $inline = $atts['inline'];
                         if ($template->get('inline') !== $inline) {
                             $entry->set_data('inline', $inline);
                         }
                     }
 
                     if (array_key_exists('flatten', $atts)) {
-                        $flatten = strval((int) $atts['flatten']);
+                        $flatten = $atts['flatten'];
                         if ($template->get('flatten') !== $flatten) {
                             $entry->set_data('flatten', $flatten);
                             $template->set('flatten', $flatten);
@@ -329,9 +336,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                         $this->render('blocks', 'notifications');
                         $this->index_action();
                     } else {
-                        $filename = $template->get_name();
-                        $file = $request['file'];
-                        $this->download_response($template->get('format'), $file, $filename, $disposition, false, true);
+                        $this->download_response($template->get('format'), $request['file'], $template->get_name(), $disposition, false, true);
                         exit;
                     }
                 } else {
@@ -500,6 +505,13 @@ class Controller_E2pdf extends Helper_E2pdf_View {
      */
     public function ajax_templates() {
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+
+            $wpml = $this->helper->load('translator')->isWPML();
+            if ($wpml) {
+                $lang = apply_filters('wpml_current_language', null);
+                do_action('wpml_switch_language', $lang);
+            }
+
             $content = array(
                 'id' => 0,
                 'datasets' => array(),
@@ -511,10 +523,22 @@ class Controller_E2pdf extends Helper_E2pdf_View {
             if ($template->load($template_id)) {
                 $content['id'] = $template_id;
                 if ($template->get('item') == '-2') {
-                    $content['datasets']['dataset'] = $this->get_datasets($template_id, $template->get('item1'), $template->get('dataset_title1'));
-                    $content['datasets']['dataset2'] = $this->get_datasets($template_id, $template->get('item2'), $template->get('dataset_title2'));
+                    $content['datasets']['dataset'] = $this->get_datasets(
+                            $template_id,
+                            $template->get('item1'),
+                            $this->helper->load('translator')->pre_translate($template->get('dataset_title1'), $template_id, 'dataset_title1', 'template')
+                    );
+                    $content['datasets']['dataset2'] = $this->get_datasets(
+                            $template_id,
+                            $template->get('item2'),
+                            $this->helper->load('translator')->pre_translate($template->get('dataset_title2'), $template_id, 'dataset_title2', 'template')
+                    );
                 } else {
-                    $content['datasets']['dataset'] = $this->get_datasets($template_id);
+                    $content['datasets']['dataset'] = $this->get_datasets(
+                            $template_id,
+                            false,
+                            $this->helper->load('translator')->pre_translate($template->get('dataset_title'), $template_id, 'dataset_title', 'template')
+                    );
                 }
                 $actions = $template->extension()->get_template_actions($template_id);
                 if (isset($actions->delete) && $actions->delete) {
@@ -533,8 +557,8 @@ class Controller_E2pdf extends Helper_E2pdf_View {
             }
 
             $content['options'] = array(
-                'name' => $template->get('name'),
-                'savename' => $template->get('savename'),
+                'name' => $this->helper->load('translator')->pre_translate($template->get('name'), $template_id, 'name', 'template'),
+                'savename' => $this->helper->load('translator')->pre_translate($template->get('savename'), $template_id, 'savename', 'template'),
                 'password' => $template->get('password'),
                 'user_id' => get_current_user_id(),
                 'flatten' => $template->get('flatten'),
@@ -724,6 +748,13 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                     $model_e2pdf_bulk = new Model_E2pdf_Bulk();
                     $model_e2pdf_bulk->set('template_id', $template->get('ID'));
                     if (isset($data['options'])) {
+                        $wpml = $this->helper->load('translator')->isWPML();
+                        if ($wpml) {
+                            $lang = apply_filters('wpml_current_language', null);
+                            if ($lang) {
+                                $data['options']['lang'] = $lang;
+                            }
+                        }
                         $data['options']['args'] = isset($data['options[args]']) ? $data['options[args]'] : array();
                         $model_e2pdf_bulk->set('options', $data['options']);
                     }
@@ -857,6 +888,8 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                                             }
                                         }
                                     }
+                                } elseif ($key == 'lang') {
+                                    do_action('wpml_switch_language', $value);
                                 } else {
                                     $atts[$key] = $value;
                                 }

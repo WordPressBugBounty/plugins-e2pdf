@@ -32,6 +32,9 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                     case 'caldera':
                         $extension_title = 'Caldera Forms';
                         break;
+                    case 'calc':
+                        $extension_title = 'Cost Calculator Builder';
+                        break;
                     case 'divi':
                         $extension_title = 'Divi Contact Forms';
                         break;
@@ -169,6 +172,17 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         ),
                     ),
                     array(
+                        'name' => __('API Transfer', 'e2pdf'),
+                        'key' => 'e2pdf_api_protocol',
+                        'value' => get_option('e2pdf_api_protocol', '0'),
+                        'default_value' => '0',
+                        'type' => 'select',
+                        'options' => array(
+                            '0' => 'Base64 Encoding',
+                            '1' => 'Raw Encoding',
+                        ),
+                    ),
+                    array(
                         'name' => __('API Connection Timout (sec)', 'e2pdf'),
                         'key' => 'e2pdf_connection_timeout',
                         'value' => get_option('e2pdf_connection_timeout', '300'),
@@ -210,7 +224,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'key' => 'e2pdf_url_format',
                         'value' => get_option('e2pdf_url_format', 'siteurl'),
                         'default_value' => 'siteurl',
-                        'type' => 'select',
+                        'type' => function_exists('pll_home_url') || (function_exists('icl_t') && !defined('POLYLANG_VERSION')) ? 'hidden' : 'select',
                         'options' => array(
                             'siteurl' => 'WordPress Address (URL)',
                             'home' => 'Site Address (URL)',
@@ -348,6 +362,15 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'placeholder' => '10',
                     ),
                     array(
+                        'name' => __('Undo Limit', 'e2pdf'),
+                        'key' => 'e2pdf_undo_limit',
+                        'value' => get_option('e2pdf_undo_limit', '20'),
+                        'default_value' => '20',
+                        'type' => 'text',
+                        'class' => 'e2pdf-numbers',
+                        'placeholder' => '0',
+                    ),
+                    array(
                         'name' => __('Revisions Limit', 'e2pdf'),
                         'key' => 'e2pdf_revisions_limit',
                         'value' => get_option('e2pdf_revisions_limit', '3'),
@@ -421,6 +444,65 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                     ),
                 ),
             ),
+            'gdrive_group' => array(
+                'name' => 'Google Drive',
+                'action' => 'gdrive',
+                'options' => array(
+                    array(
+                        'name' => 'Redirect URI',
+                        'value' =>
+                        site_url('/e2pdf-rpc/v1/gdrive/auth?api_key=' . get_option('e2pdf_gdrive_api_key')),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'readonly' => 'readonly',
+                        'class' => 'e2pdf-copy-field',
+                    ),
+                    array(
+                        'name' => 'Status',
+                        'key' => 'e2pdf_gdrive_status',
+                        'value' => get_option('e2pdf_gdrive_refresh_token') ? __('Authorized', 'e2pdf') : __('Not Authorized', 'e2pdf'),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'readonly' => 'readonly',
+                    ),
+                    array(
+                        'name' => 'Refresh Token',
+                        'key' => 'e2pdf_gdrive_refresh_token',
+                        'value' => get_option('e2pdf_gdrive_refresh_token', ''),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'placeholder' => '',
+                        'type' => get_option('e2pdf_debug', '0') ? 'text' : 'hidden',
+                        'readonly' => 'readonly',
+                    ),
+                    array(
+                        'name' => 'Access Token',
+                        'key' => 'e2pdf_gdrive_access_token',
+                        'value' => get_transient('e2pdf_gdrive_access_token') === false ? '' : get_transient('e2pdf_gdrive_access_token'),
+                        'default_value' => '',
+                        'type' => get_option('e2pdf_debug', '0') ? 'text' : 'hidden',
+                        'placeholder' => '',
+                        'readonly' => 'readonly',
+                    ),
+                    array(
+                        'header' => 'Configuration',
+                        'name' => 'Client ID',
+                        'key' => 'e2pdf_gdrive_client_id',
+                        'value' => get_option('e2pdf_gdrive_client_id', ''),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'placeholder' => '',
+                    ),
+                    array(
+                        'name' => 'Client Secret',
+                        'key' => 'e2pdf_gdrive_client_secret',
+                        'value' => get_option('e2pdf_gdrive_client_secret', ''),
+                        'default_value' => '',
+                        'type' => 'password',
+                        'placeholder' => '',
+                    ),
+                )
+            ),
             'adobesign_group' => array(
                 'name' => 'Adobe Sign',
                 'action' => 'adobesign',
@@ -467,7 +549,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'key' => 'e2pdf_adobesign_client_secret',
                         'value' => get_option('e2pdf_adobesign_client_secret') === false ? '' : get_option('e2pdf_adobesign_client_secret'),
                         'default_value' => '',
-                        'type' => 'text',
+                        'type' => 'password',
                         'placeholder' => '',
                     ),
                     array(
@@ -729,7 +811,13 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
             ),
         );
 
-        if (class_exists('TRP_Translate_Press') || class_exists('WeglotWP\Services\Translate_Service_Weglot') || $all) {
+        if (
+                class_exists('TRP_Translate_Press') ||
+                class_exists('WeglotWP\Services\Translate_Service_Weglot') ||
+                (function_exists('icl_register_string') && !defined('POLYLANG_VERSION')) ||
+                defined('POLYLANG_VERSION') ||
+                $all
+        ) {
             $options['translation_group'] = array(
                 'name' => __('Translation', 'e2pdf'),
                 'action' => 'translation',

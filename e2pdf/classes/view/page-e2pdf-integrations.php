@@ -29,13 +29,19 @@ if (!defined('ABSPATH')) {
                         <?php } ?>
                         <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_integrations'); ?>">
                         <ul class="e2pdf-options-list">
+                            <?php if (!$this->get->get('action')) { ?>
+                                <li>
+                                    <div class="e2pdf-name">Zapier App:</div><div class="e2pdf-value">
+                                        <a target="_blank" href="https://zapier.com/developer/public-invite/214896/76ba60a93b9a47be4156be6bb77b6ce9/">https://zapier.com/developer/public-invite/214896/76ba60a93b9a47be4156be6bb77b6ce9/</a>
+                                    </div>
+                                </li>
+                            <?php } ?>
                             <?php
                             $this->render('field', 'group', array(
                                 'groups' => $this->view->options
                             ));
                             ?>
                         </ul>
-
                         <?php if ($this->get->get('action')) { ?>
                             <?php submit_button(); ?>
                         <?php } ?>

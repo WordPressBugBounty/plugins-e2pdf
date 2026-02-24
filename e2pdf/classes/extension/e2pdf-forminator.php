@@ -835,6 +835,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
             } elseif (!$html) {
                 return '<div class="e2pdf-vm-error">' . __('The form could not be parsed due the incorrect HTML', 'e2pdf') . '</div>';
             } else {
+                
                 $use_labels = true;
                 if ((defined('FORMINATOR_VERSION') && version_compare(FORMINATOR_VERSION, '1.14.10', '<')) || (!empty($custom_form->settings['print_value']) && filter_var($custom_form->settings['print_value'], FILTER_VALIDATE_BOOLEAN))) {
                     $use_labels = false;
@@ -3380,13 +3381,13 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
     // submit response filter
     public function filter_forminator_custom_form_submit_response($response) {
         if (isset($response['message']) && false !== strpos($response['message'], '[') && isset($response['success']) && $response['success']) {
-            $response['message'] = $this->filter_content($response['message']);
+            $response['message'] = $this->filter_content($response['message'], 'message');
         }
         return $response;
     }
 
     // content filter
-    public function filter_content($content) {
+    public function filter_content($content, $type = '') {
 
         if (false !== strpos($content, '[')) {
             $shortcode_tags = array(
@@ -3428,6 +3429,9 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                         }
                         if (!isset($atts['filter'])) {
                             $shortcode[3] .= ' filter="true"';
+                        }
+                        if (!isset($atts['iframe_download']) && $type == 'message') {
+                            $shortcode[3] .= ' iframe_download="true"';
                         }
                         $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                         remove_filter('e2pdf_model_shortcode_extension_options', array($this, 'filter_e2pdf_model_shortcode_extension_options'), 30);

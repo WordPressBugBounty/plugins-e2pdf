@@ -1353,6 +1353,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
         }
         $shortcode_tags = array(
             'e2pdf-view',
+            'e2pdf-download',
         );
         preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $out, $matches);
         $tagnames = array_intersect($shortcode_tags, $matches[1]);
@@ -1379,6 +1380,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
             }
             $shortcode_tags = array(
                 'e2pdf-view',
+                'e2pdf-download',
             );
             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $out['html'], $matches);
             $tagnames = array_intersect($shortcode_tags, $matches[1]);
@@ -1425,7 +1427,10 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                         if (!isset($atts['apply'])) {
                             $shortcode[3] .= ' apply="true"';
                         }
-                        if ($shortcode[2] === 'e2pdf-view') {
+                        if (!isset($atts['iframe_download'])) {
+                            $shortcode[3] .= ' iframe_download="true"';
+                        }
+                        if ($shortcode[2] === 'e2pdf-view' || $shortcode[2] === 'e2pdf-download') {
                             $new_shortcode = $shortcode[2] . $shortcode[3];
                             $message = str_replace($shortcode_value, '[' . $new_shortcode . ']', $message);
                         } else {

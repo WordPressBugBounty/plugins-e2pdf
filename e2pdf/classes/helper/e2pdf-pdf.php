@@ -120,6 +120,8 @@ class Helper_E2pdf_Pdf {
     }
 
     public function get_extension($value = false) {
+
+        $value = trim($value);
         if (!$value) {
             return false;
         }

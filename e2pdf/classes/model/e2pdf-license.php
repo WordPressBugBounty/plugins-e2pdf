@@ -32,9 +32,9 @@ class Model_E2pdf_License extends Model_E2pdf_Model {
     public function load_license() {
         $model_e2pdf_api = new Model_E2pdf_Api();
         $model_e2pdf_api->set(
-                array(
+                [
                     'action' => 'license/info',
-                )
+                ]
         );
         $license = $model_e2pdf_api->request();
         $this->license = $license;
@@ -49,18 +49,18 @@ class Model_E2pdf_License extends Model_E2pdf_Model {
     public function load_templates() {
         global $wpdb;
 
-        $condition = array(
-            'activated' => array(
+        $condition = [
+            'activated' => [
                 'condition' => '=',
                 'value' => '1',
                 'type' => '%d',
-            ),
-            'uid' => array(
+            ],
+            'uid' => [
                 'condition' => '=',
                 'value' => '',
                 'type' => '%s',
-            ),
-        );
+            ],
+        ];
         $where = $this->helper->load('db')->prepare_where($condition);
         $model_e2pdf_template = new Model_E2pdf_Template();
 

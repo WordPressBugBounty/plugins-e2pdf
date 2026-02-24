@@ -307,8 +307,61 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
         add_filter('fluentform/filter_email_attachments', array($this, 'filter_email_attachments'), 10, 4);
         add_filter('fluentform/integration_data_trello', array($this, 'filter_integration_data_trello'), 10, 3);
         add_filter('fluentform/insert_response_data', array($this, 'filter_fluentform_insert_response_data'), 99, 3);
+        add_filter('fluentform/redirect_url_value', array($this, 'filter_fluentform_redirect_url_value'), 10, 3);
+        add_filter('fluentform/form_submission_confirmation', array($this, 'filter_fluentform_form_submission_confirmation'));
+        add_filter('fluentform/submission_confirmation', array($this, 'filter_fluentform_submission_confirmation'));
     }
 
+    // form submission confirmation filter
+    public function filter_fluentform_form_submission_confirmation($confirmation) {
+        $this->set('iframe_download', true);
+        return $confirmation;
+    }
+
+    // submission confirmation filter
+    public function filter_fluentform_submission_confirmation($returnData) {
+        $this->set('iframe_download', false);
+        return $returnData;
+    }
+
+    // redirect url value filter
+    public function filter_fluentform_redirect_url_value($redirectUrl, $dataset, $form) {
+        $confirmation = !empty($form->settings['confirmation']) ? $form->settings['confirmation'] : array();
+        if (
+                !empty($confirmation['customUrl']) &&
+                (false !== strpos($confirmation['customUrl'], '[e2pdf-download') || false !== strpos($confirmation['customUrl'], '[e2pdf-view')) &&
+                !empty($confirmation['redirectTo']) &&
+                $confirmation['redirectTo'] == 'customUrl'
+        ) {
+            $shortcode_tags = array(
+                'e2pdf-download',
+                'e2pdf-view',
+            );
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $confirmation['customUrl'], $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $confirmation['customUrl'], $shortcodes);
+                foreach ($shortcodes[0] as $key => $shortcode_value) {
+                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                    $atts = shortcode_parse_atts($shortcode[3]);
+                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        $atts['dataset'] = $dataset;
+                        $shortcode[3] .= ' dataset="' . $dataset . '"';
+                    }
+                    if (!isset($atts['apply'])) {
+                        $shortcode[3] .= ' apply="true"';
+                    }
+                    if (!isset($atts['filter'])) {
+                        $shortcode[3] .= ' filter="true"';
+                    }
+                    $redirectUrl = do_shortcode_tag($shortcode);
+                }
+            }
+        }
+        return $redirectUrl;
+    }
+
+    // insert response data filter
     public function filter_fluentform_insert_response_data($formData, $formId, $inputConfigs) {
         if (!empty($formData) && is_array($formData)) {
             $jsonData = json_encode($formData, JSON_UNESCAPED_UNICODE); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
@@ -384,8 +437,14 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                         }
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
-                        // Iframe onload attribute bug
-                        if ($shortcode[2] === 'e2pdf-view') {
+
+                        if (!isset($atts['iframe_download']) && $this->get('iframe_download')) {
+                            $shortcode[3] .= ' iframe_download="true"';
+                            $atts['iframe_download'] = 'true';
+                        }
+
+                        // iframe onload attribute bug
+                        if ($shortcode[2] === 'e2pdf-view' || ($shortcode[2] === 'e2pdf-download' && (isset($atts['iframe_download']) && $atts['iframe_download'] == 'true'))) {
                             $message = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $message);
                         } else {
                             $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);

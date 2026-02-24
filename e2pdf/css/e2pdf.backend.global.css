@@ -1,4 +1,5 @@
-.post-type-shop_order .wp-list-table .column-wc_actions a.button.e2pdf-wc-download-button:after {
+.post-type-shop_order .wp-list-table .column-wc_actions a.button.e2pdf-wc-download-button:after,
+.post-type-shop_subscription .wp-list-table .column-wc_actions a.button.e2pdf-wc-download-button:after {
     content: "\f190"
 }
 

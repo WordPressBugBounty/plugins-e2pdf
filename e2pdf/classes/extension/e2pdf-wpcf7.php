@@ -662,6 +662,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 // remove by class
                 $remove_by_class = array(
                     'dscf7_signature_inner',
+                    'as-signature-clear',
                 );
                 foreach ($remove_by_class as $key => $class) {
                     $elements = $xpath->query("//*[contains(@class, '{$class}')]");
@@ -679,6 +680,18 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                     $xml->set_node_value($element, 'type', 'text');
                     $xml->set_node_value($element, 'value', __('Signature', 'e2pdf'));
                 }
+
+                /*
+                 * Digital Signature Addon for Contact Form 7
+                 * https://wordpress.org/plugins/digital-signature-addon-for-contact-form-7/
+                 * The plugin is not working due to incorrect JavaScript events
+                 */
+                $signatures = $xpath->query("//*[contains(@class, 'wpcf7-as_signature')]");
+                foreach ($signatures as $element) {
+                    $xml->set_node_value($element, 'type', 'text');
+                    $xml->set_node_value($element, 'value', __('Signature', 'e2pdf'));
+                }
+
 
                 $acceptances = $xpath->query("//*[contains(@class, 'wpcf7-acceptance')]");
                 foreach ($acceptances as $acceptance) {

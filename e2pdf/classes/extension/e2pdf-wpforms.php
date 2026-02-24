@@ -1425,24 +1425,34 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                 echo '<div class="inside">';
                 echo '<div class="wpforms-entry-actions-meta">';
                 foreach ($hooks as $hook) {
-                    $action = apply_filters('e2pdf_hook_action_button',
-                            array(
-                                'html' => '<p style="padding: 6px 12px 6.5px 42px"><a class="e2pdf-download-hook" target="_blank" href="%s"><span class="dashicons dashicons-pdf"></span> %s</a></p>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $entry->entry_id,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook
-                            ), 'hook_wpforms_entry_view', $hook, $entry->entry_id
-                    );
-                    if (!empty($action)) {
-                        echo sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $entry->entry_id,
+                                    ],
+                                    'hook_wpforms_entry_view'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<p style="padding: 6px 12px 6.5px 42px"><a class="e2pdf-download-hook" target="_blank" href="%s"><span class="dashicons dashicons-pdf"></span> %s</a></p>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $entry->entry_id,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_wpforms_entry_view', $hook, $entry->entry_id
                         );
+                        if (!empty($action)) {
+                            echo sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
                 echo '</div>';
@@ -1462,24 +1472,34 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                 echo '<div class="inside">';
                 echo '<div class="wpforms-entry-actions-meta">';
                 foreach ($hooks as $hook) {
-                    $action = apply_filters('e2pdf_hook_action_button',
-                            array(
-                                'html' => '<p style="padding: 6px 12px 6.5px 42px"><a class="e2pdf-download-hook" target="_blank" href="%s"><span class="dashicons dashicons-pdf"></span> %s</a></p>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $entry->entry_id,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook
-                            ), 'hook_wpforms_entry_edit', $hook, $entry->entry_id
-                    );
-                    if (!empty($action)) {
-                        echo sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $entry->entry_id,
+                                    ],
+                                    'hook_wpforms_entry_edit'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<p style="padding: 6px 12px 6.5px 42px"><a class="e2pdf-download-hook" target="_blank" href="%s"><span class="dashicons dashicons-pdf"></span> %s</a></p>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $entry->entry_id,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_wpforms_entry_edit', $hook, $entry->entry_id
                         );
+                        if (!empty($action)) {
+                            echo sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
                 echo '</div>';
@@ -1494,24 +1514,34 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         if (!empty($entry->form_id)) {
             $hooks = $this->helper->load('hooks')->get('wpforms', 'hook_wpforms_row_actions', $entry->form_id);
             foreach ($hooks as $hook) {
-                $action = apply_filters('e2pdf_hook_action_button',
-                        array(
-                            'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
-                            'url' => $this->helper->get_url(
-                                    array(
-                                        'page' => 'e2pdf',
-                                        'action' => 'export',
-                                        'id' => $hook,
-                                        'dataset' => $entry->entry_id,
-                                    ), 'admin.php?'
-                            ),
-                            'title' => 'PDF #' . $hook
-                        ), 'hook_wpforms_row_actions', $hook, $entry->entry_id
-                );
-                if (!empty($action)) {
-                    $actions['e2pdf_' . $hook] = sprintf(
-                            $action['html'], $action['url'], $action['title']
+                if ($this->helper->load('hooks')->process_hook(
+                                $hook,
+                                [
+                                    'dataset' => $entry->entry_id,
+                                ],
+                                'hook_wpforms_row_actions'
+                        )
+                ) {
+                    $action = apply_filters(
+                            'e2pdf_hook_action_button',
+                            array(
+                                'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $entry->entry_id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook,
+                            ), 'hook_wpforms_row_actions', $hook, $entry->entry_id
                     );
+                    if (!empty($action)) {
+                        $actions['e2pdf_' . $hook] = sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
                 }
             }
         }

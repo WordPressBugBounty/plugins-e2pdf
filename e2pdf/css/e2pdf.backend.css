@@ -529,6 +529,7 @@ a.e2pdf-be:hover {
     -webkit-box-shadow: 0 1px 1px rgba(0,0,0,.04);
     box-shadow: 0 1px 1px rgba(0,0,0,.04);
     padding: 24px 24px;
+    border-radius: 24px;
     margin-bottom: 0;
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
@@ -616,8 +617,8 @@ a.e2pdf-be:hover {
 .e2pdf-dialog .ui-button.ui-dialog-titlebar-close:active,
 .e2pdf-dialog .ui-button.ui-dialog-titlebar-close:focus
 {
-    font-size: 20px;
-    line-height: 20px;
+    font-size: 20px !important;
+    line-height: 20px !important;
     background: none;
     padding: 0;
     border: 0;
@@ -2297,6 +2298,10 @@ ul.add-menu-item-tabs li, ul.category-tabs li, ul.wp-tab-bar li {
     background: #e5e5e5;
 }
 
+.e2pdf-select2[disabled="disabled"], .e2pdf-select2.e2pdf-select2-loading {
+    background: #eee;
+}
+
 .e2pdf-loading,
 .e2pdf-loading * {
     cursor: wait !important;
@@ -2379,6 +2384,31 @@ ul.add-menu-item-tabs li, ul.category-tabs li, ul.wp-tab-bar li {
     .e2pdf-tpl, .e2pdf-tpl-inner {
         position: relative;
     }
+}
+
+input[type=checkbox].e2pdf-checkbox:checked::before {
+    content: "";
+    background-image: url(data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2020%2020%27%3E%3Cpath%20d%3D%27M14.83%204.89l1.34.94-5.81%208.38H9.02L5.78%209.67l1.34-1.25%202.57%202.4z%27%20fill%3D%27%233582c4%27%2F%3E%3C%2Fsvg%3E);
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+
+}
+
+.e2pdf-bulk .spinner {
+    margin: 0;
+    margin-right: 5px;
+    margin-top: -2px;
+    padding: 0;
+    float: none;
+    display: none;
+}
+
+.e2pdf-bulk[status="pending"]  .spinner {
+    display: inline-block;
 }
 
 @media screen and (max-width: 782px) {

@@ -20,21 +20,23 @@ class Helper_E2pdf_Acfrepeater {
     }
 
     public function do_shortcode($atts = array(), $value = '', $for = 0) {
-        $response = '';
+        $result = [];
         $field = isset($atts['field']) ? $atts['field'] : null;
         $post_id = isset($atts['post_id']) ? $atts['post_id'] : null;
+        $implode = isset($atts['implode']) ? $atts['implode'] : '';
         $index = 0;
         if (function_exists('have_rows') && have_rows($field, $post_id)) {
+            $total = count(get_field($field, $post_id));
             while (have_rows($field, $post_id)) {
                 the_row();
-                $response .= $this->apply($value, $atts, $index, $for);
+                $result[] = $this->apply($value, $atts, $index, $for, $total);
                 $index++;
             }
         }
-        return $response;
+        return implode($implode, $result);
     }
 
-    public function apply($value, $atts, $index, $for = 0) {
+    public function apply($value, $atts, $index, $for = 0, $total = 0) {
         if ($value) {
 
             $field = isset($atts['field']) ? $atts['field'] : null;
@@ -46,27 +48,10 @@ class Helper_E2pdf_Acfrepeater {
                 '[e2pdf-acf-repeater-index' . $for_index . ']' => $index,
                 '[e2pdf-acf-repeater-counter' . $for_index . ']' => $index + 1,
                 '[e2pdf-acf-repeater-evenodd' . $for_index . ']' => $evenodd,
+                '[e2pdf-acf-repeater-count' . $for_index . ']' => $total,
             );
             $value = str_replace(array_keys($replace), $replace, $value);
-
-            if (false !== strpos($value, '[e2pdf-acf-repeater-' . $for + 1)) {
-                $sub_shortcode_tags = array(
-                    'e2pdf-acf-repeater-' . $for + 1 . '',
-                );
-                preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $sub_matches);
-                $sub_tagnames = array_intersect($sub_shortcode_tags, $sub_matches[1]);
-                if (!empty($sub_tagnames)) {
-                    preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($sub_tagnames) . '/', $value, $sub_shortcodes);
-                    foreach ($sub_shortcodes[0] as $key => $sub_shortcode_value) {
-                        $sub_shortcode = $this->helper->load('shortcode')->get_shortcode($sub_shortcodes, $key);
-                        $sub_atts = shortcode_parse_atts($sub_shortcode[3]);
-                        if (!isset($sub_atts['post_id']) && $post_id) {
-                            $sub_atts['post_id'] = $post_id;
-                        }
-                        $value = str_replace($sub_shortcode_value, $this->do_shortcode(is_array($sub_atts) ? $sub_atts : array(), $sub_shortcode[5], $for + 1), $value);
-                    }
-                }
-            }
+            $value = preg_replace('/\[(e2pdf-for-index|e2pdf-for-counter|e2pdf-for-key|e2pdf-for-evenodd|e2pdf-acf-repeater-index|e2pdf-acf-repeater-counter|e2pdf-acf-repeater-evenodd)(-\d+)?\]/', '#$1$2#', $value);
             $shortcode_tags = array(
                 'acf',
             );
@@ -99,6 +84,7 @@ class Helper_E2pdf_Acfrepeater {
                     }
                 }
             }
+            $value = preg_replace('/#(e2pdf-for-index|e2pdf-for-counter|e2pdf-for-key|e2pdf-for-evenodd|e2pdf-acf-repeater-index|e2pdf-acf-repeater-counter|e2pdf-acf-repeater-evenodd)(-\d+)?#/', '[$1$2]', $value);
         }
         return $value;
     }

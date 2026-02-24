@@ -53,18 +53,55 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 break;
             case 'dataset':
                 $this->set('cached_entry', false);
-                $this->set('cached_meta', array());
+                $this->set('cached_meta', []);
+                $this->set('cached_data', []);
                 if ($this->get('cached_form') && $this->get('dataset') && class_exists('ElementorPro\Modules\Forms\Submissions\Database\Query') && class_exists('ElementorPro\Modules\Forms\Classes\Form_Record')) {
                     $this->set('cached_meta', ElementorPro\Modules\Forms\Submissions\Database\Query::get_instance()->get_submission($this->get('dataset')));
-                    $post_data = array();
-                    if (!empty($this->get('cached_meta')['data']['values'])) {
-                        foreach ($this->get('cached_meta')['data']['values'] as $data) {
-                            if (isset($data['key'])) {
-                                $post_data[$data['key']] = isset($data['value']) ? $data['value'] : '';
+                    $labels = [];
+                    if (!empty($this->get('cached_meta')['data']['form']['fields'])) {
+                        foreach ($this->get('cached_meta')['data']['form']['fields'] as $field) {
+                            if (isset($field['id']) && !empty($field['options']) && is_array($field['options'])) {
+                                $labels[$field['id']] = [];
+                                foreach ($field['options'] as $option) {
+                                    $parts = explode('|', $option);
+                                    $label = reset($parts);
+                                    $value = end($parts);
+                                    if ($value) {
+                                        $labels[$field['id']][$value] = $label;
+                                    }
+                                }
                             }
                         }
                     }
-                    $this->set('cached_entry', new ElementorPro\Modules\Forms\Classes\Form_Record($post_data, $this->get('cached_form')));
+                    $cached_data = [];
+                    if (!empty($this->get('cached_meta')['data']['values'])) {
+                        foreach ($this->get('cached_meta')['data']['values'] as $data) {
+                            if (isset($data['key'])) {
+                                $value = isset($data['value']) ? $data['value'] : '';
+                                $cached_data[$data['key']] = $value;
+                                // process labels
+                                if ($value && is_string($value) && isset($labels[$data['key']])) {
+                                    if (isset($labels[$data['key']][$value])) {
+                                        $cached_data[$data['key'] . ':label'] = $labels[$data['key']][$value];
+                                    } elseif (false !== strpos($value, ', ')) {
+                                        $sub_labels = [];
+                                        $values = explode(', ', $value);
+                                        foreach ($values as $sub_value) {
+                                            if (isset($labels[$data['key']][$sub_value])) {
+                                                $sub_labels[] = $labels[$data['key']][$sub_value];
+                                            } else {
+                                                $sub_labels[] = $sub_value;
+                                            }
+                                        }
+                                        $cached_data[$data['key'] . ':label'] = implode(', ', $sub_labels);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    $this->set('cached_data', $cached_data);
+                    $this->set('cached_entry', new ElementorPro\Modules\Forms\Classes\Form_Record($this->get('cached_data'), $this->get('cached_form')));
                 }
                 break;
             default:
@@ -371,6 +408,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
             }
 
             $value = $this->get('cached_entry')->replace_setting_shortcodes($value);
+            $value = $this->replace_label_shortcodes($value);
             $value = $this->helper->load('field')->render(
                     apply_filters('e2pdf_extension_render_shortcodes_pre_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), false, false),
                     $this,
@@ -609,6 +647,17 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                                 ),
                             )
                     );
+
+                    $options = [];
+                    if (isset($field['field_options'])) {
+                        $options = array_map(
+                                function ($item) {
+                                    $parts = explode('|', $item);
+                                    return end($parts);
+                                }, preg_split("/\\r\\n|\\r|\\n/", $field['field_options'])
+                        );
+                    }
+
                     $elements[] = $this->auto_field(
                             $field,
                             array(
@@ -618,7 +667,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                                     'width' => '100%',
                                     'height' => 'auto',
                                     'multiline' => isset($field['is_multiple']) && $field['is_multiple'] ? '1' : '0',
-                                    'options' => isset($field['field_options']) ? $field['field_options'] : '',
+                                    'options' => implode("\n", $options),
                                     'value' => '[field id="' . $id . '"]',
                                     'height' => 'auto',
                                 ),
@@ -644,6 +693,8 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
 
                     if (isset($field['field_options'])) {
                         foreach (preg_split('/(\r\n|\n|\r)/', $field['field_options']) as $checkbox) {
+                            $options = explode('|', $checkbox);
+                            $option = end($options);
                             $elements[] = $this->auto_field(
                                     $field,
                                     array(
@@ -653,10 +704,13 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                                             'width' => 'auto',
                                             'height' => 'auto',
                                             'value' => '[field id="' . $id . '"]',
-                                            'option' => $checkbox,
+                                            'option' => $option ? $option : '',
                                         ),
                                     )
                             );
+
+                            $lables = explode('|', $checkbox);
+                            $label = reset($lables);
                             $elements[] = $this->auto_field(
                                     $field,
                                     array(
@@ -666,7 +720,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                                             'left' => '5',
                                             'width' => '100%',
                                             'height' => 'auto',
-                                            'value' => $checkbox,
+                                            'value' => $label ? $label : '',
                                         ),
                                     )
                             );
@@ -691,6 +745,8 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                     );
                     if (isset($field['field_options'])) {
                         foreach (preg_split('/(\r\n|\n|\r)/', $field['field_options']) as $radio) {
+                            $options = explode('|', $radio);
+                            $option = end($options);
                             $elements[] = $this->auto_field(
                                     $field,
                                     array(
@@ -700,11 +756,14 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                                             'width' => 'auto',
                                             'height' => 'auto',
                                             'value' => '[field id="' . $id . '"]',
-                                            'option' => $radio,
+                                            'option' => $option ? $option : '',
                                             'group' => '[field id="' . $id . '"]',
                                         ),
                                     )
                             );
+
+                            $lables = explode('|', $radio);
+                            $label = reset($lables);
                             $elements[] = $this->auto_field(
                                     $field,
                                     array(
@@ -714,7 +773,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                                             'left' => '5',
                                             'width' => '100%',
                                             'height' => 'auto',
-                                            'value' => $radio,
+                                            'value' => $label,
                                         ),
                                     )
                             );
@@ -1121,5 +1180,18 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
             }
         }
         return serialize($items); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+    }
+
+    // replace label shortcodes
+    public function replace_label_shortcodes($setting, $urlencode = false) {
+        return preg_replace_callback(
+                '/(\[field[^]]*id="((\w+):label)"[^]]*\])/', function ($matches) use ($urlencode) {
+                    $value = '';
+                    if (isset($this->get('cached_data')[$matches[2]])) {
+                        $value = sanitize_text_field($this->get('cached_data')[$matches[2]]);
+                    }
+                    return $value;
+                }, $setting
+        );
     }
 }

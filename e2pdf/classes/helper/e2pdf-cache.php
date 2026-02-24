@@ -2,7 +2,7 @@
 
 /**
  * File: /helper/e2pdf-cache.php
- * 
+ *
  * @package  E2Pdf
  * @license  GPLv3
  * @link     https://e2pdf.com

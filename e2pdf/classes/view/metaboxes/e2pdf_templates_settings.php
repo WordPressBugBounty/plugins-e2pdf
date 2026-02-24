@@ -254,7 +254,7 @@ if (!defined('ABSPATH')) {
                 </div>
                 <p class="post-attributes-label-wrapper">
                     <label>
-                        <?php _e('JPG Output Resolution', 'e2pdf'); ?>:
+                        <?php _e('JPG Format Output Size', 'e2pdf'); ?>:
                     </label>
                 </p>
                 <div>
@@ -266,11 +266,15 @@ if (!defined('ABSPATH')) {
                         ),
                         'value' => $this->view->template->get('resample'),
                         'options' => array(
-                            '100' => '72dpi',
-                            '125' => '90dpi',
-                            '150' => '108dpi',
-                            '175' => '126dpi',
-                            '200' => '144dpi',
+                            '100' => '100%',
+                            '125' => '125%',
+                            '150' => '150%',
+                            '175' => '175%',
+                            '200' => '200%',
+                            '225' => '225%',
+                            '250' => '250%',
+                            '275' => '275%',
+                            '300' => '300%',
                         ),
                     ));
                     ?>

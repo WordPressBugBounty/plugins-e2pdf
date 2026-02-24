@@ -49,6 +49,13 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     if ($this->get('item') == '-3') {
                         $this->set('cached_post', get_user_by('id', $this->get('dataset')));
                     } else {
+                        $pll = $this->helper->load('translator')->isPolylang();
+                        if ($pll) {
+                            $lang = pll_get_post_language($this->get('dataset'));
+                            if ($lang) {
+                                PLL()->curlang = PLL()->model->get_language($lang);
+                            }
+                        }
                         $this->set('cached_post', get_post($this->get('dataset')));
                     }
                 }
@@ -119,13 +126,27 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     }
                 }
             } else {
-                $entries = get_posts(
-                        array(
-                            'post_type' => $item_id,
-                            'numberposts' => -1,
-                            'post_status' => 'any',
-                        )
-                );
+                $wpml = $this->helper->load('translator')->isWPML();
+                if ($wpml) {
+                    $lang = apply_filters('wpml_current_language', null);
+                    $entries = get_posts(
+                            array(
+                                'post_type' => $item_id,
+                                'numberposts' => -1,
+                                'post_status' => 'any',
+                                'lang' => $lang,
+                                'suppress_filters' => false,
+                            )
+                    );
+                } else {
+                    $entries = get_posts(
+                            array(
+                                'post_type' => $item_id,
+                                'numberposts' => -1,
+                                'post_status' => 'any',
+                            )
+                    );
+                }
                 if ($entries) {
                     $this->set('item', $item_id);
                     foreach ($entries as $key => $entry) {
@@ -1458,24 +1479,34 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             $hooks = $this->helper->load('hooks')->get('wordpress', 'hook_wordpress_page_edit', $post->post_type);
             if (!empty($hooks)) {
                 foreach ($hooks as $hook) {
-                    $action = apply_filters('e2pdf_hook_action_button',
-                            array(
-                                'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $post->ID,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook,
-                            ), 'hook_wordpress_page_edit', $hook, $post->ID
-                    );
-                    if (!empty($action)) {
-                        echo sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $post->ID,
+                                    ],
+                                    'hook_wordpress_page_edit'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $post->ID,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_wordpress_page_edit', $hook, $post->ID
                         );
+                        if (!empty($action)) {
+                            echo sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
             }
@@ -1489,24 +1520,34 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
                 $hooks = $this->helper->load('hooks')->get('wordpress', 'hook_wordpress_row_actions', '-3');
                 foreach ($hooks as $hook) {
-                    $action = apply_filters('e2pdf_hook_action_button',
-                            array(
-                                'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $post->ID,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook,
-                            ), 'hook_wordpress_row_actions', $hook, $post->ID
-                    );
-                    if (!empty($action)) {
-                        $actions['e2pdf_' . $hook] = sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $post->ID,
+                                    ],
+                                    'hook_wordpress_row_actions'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $post->ID,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_wordpress_row_actions', $hook, $post->ID
                         );
+                        if (!empty($action)) {
+                            $actions['e2pdf_' . $hook] = sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
             }
@@ -1515,24 +1556,34 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
                 $hooks = $this->helper->load('hooks')->get('wordpress', 'hook_wordpress_row_actions', $post->post_type);
                 foreach ($hooks as $hook) {
-                    $action = apply_filters('e2pdf_hook_action_button',
-                            array(
-                                'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $post->ID,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook,
-                            ), 'hook_wordpress_row_actions', $hook, $post->ID
-                    );
-                    if (!empty($action)) {
-                        $actions['e2pdf_' . $hook] = sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $post->ID,
+                                    ],
+                                    'hook_wordpress_row_actions'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $post->ID,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_wordpress_row_actions', $hook, $post->ID
                         );
+                        if (!empty($action)) {
+                            $actions['e2pdf_' . $hook] = sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
             }

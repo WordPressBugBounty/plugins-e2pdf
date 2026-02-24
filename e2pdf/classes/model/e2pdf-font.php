@@ -15,6 +15,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
 
     protected $text;
     protected $ntOffset;
+    protected $regex = '/font-family:\s*["\']?(.*?)["\']?;/';
 
     public function get_font_info($font = false, $key = false, $font_path = false) {
 
@@ -134,9 +135,9 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
     }
 
     public function get_element_fonts($el_value, $all_fonts) {
-        $fonts = array();
+        $fonts = [];
         if (($el_value['type'] == 'e2pdf-html' || $el_value['type'] == 'e2pdf-page-number') && isset($el_value['value']) && $el_value['value']) {
-            preg_match_all('/font-family:[\s]+?["]?(.*?)["]?;/', htmlspecialchars_decode($el_value['value']), $matches);
+            preg_match_all($this->regex, htmlspecialchars_decode($el_value['value']), $matches);
             if (isset($matches[1]) && !empty($matches[1])) {
                 foreach ($matches[1] as $font_key => $font_value) {
                     $exist = array_search($font_value, $fonts, true);
@@ -150,7 +151,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
             }
 
             if (isset($el_value['properties']['css']) && $el_value['properties']['css']) {
-                preg_match_all('/font-family:[\s]+?["]?(.*?)["]?;/', htmlspecialchars_decode($el_value['properties']['css']), $matches);
+                preg_match_all($this->regex, htmlspecialchars_decode($el_value['properties']['css']), $matches);
                 if (isset($matches[1]) && !empty($matches[1])) {
                     foreach ($matches[1] as $font_key => $font_value) {
                         $exist = array_search($font_value, $fonts, true);
@@ -191,7 +192,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
                 }
 
                 if (($el_value['type'] == 'e2pdf-html' || $el_value['type'] == 'e2pdf-page-number') && isset($action['property']) && $action['property'] == 'value' && isset($action['change']) && $action['change']) {
-                    preg_match_all('/font-family:[\s]+?["]?(.*?)["]?;/', htmlspecialchars_decode($action['change']), $matches);
+                    preg_match_all($this->regex, htmlspecialchars_decode($action['change']), $matches);
                     if (isset($matches[1]) && !empty($matches[1])) {
                         foreach ($matches[1] as $font_key => $font_value) {
                             $exist = array_search($font_value, $fonts, true);
@@ -206,7 +207,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
                 }
 
                 if (($el_value['type'] == 'e2pdf-html' || $el_value['type'] == 'e2pdf-page-number') && isset($action['property']) && $action['property'] == 'css' && isset($action['change']) && $action['change']) {
-                    preg_match_all('/font-family:[\s]+?["]?(.*?)["]?;/', htmlspecialchars_decode($action['change']), $matches);
+                    preg_match_all($this->regex, htmlspecialchars_decode($action['change']), $matches);
                     if (isset($matches[1]) && !empty($matches[1])) {
                         foreach ($matches[1] as $font_key => $font_value) {
                             $exist = array_search($font_value, $fonts, true);
@@ -217,6 +218,24 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        return $fonts;
+    }
+
+    public function get_css_fonts($css, $all_fonts) {
+        $fonts = [];
+        preg_match_all($this->regex, htmlspecialchars_decode($css), $matches);
+        if (isset($matches[1]) && !empty($matches[1])) {
+            foreach ($matches[1] as $font_key => $font_value) {
+                $exist = array_search($font_value, $fonts, true);
+                if (!$exist) {
+                    $c_font = array_search($font_value, $all_fonts, true);
+                    if ($c_font) {
+                        $fonts[$c_font] = $font_value;
                     }
                 }
             }

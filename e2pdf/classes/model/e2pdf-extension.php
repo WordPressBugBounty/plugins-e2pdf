@@ -16,7 +16,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     private $extension;
 
     public function load($name) {
-        if (in_array($name, get_option('e2pdf_disabled_extensions', array()), true)) {
+        if (in_array($name, get_option('e2pdf_disabled_extensions', []), true)) {
             return false;
         }
         $class = 'Extension_E2pdf_' . ucfirst($name);
@@ -58,6 +58,29 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
+    public function patch($key = false, $value = false, $entry = null) {
+        if ($this->extension()) {
+            switch ($key) {
+                case 'args':
+                    if (!empty($value)) {
+                        $this->extension()->set($key, $value);
+                        if ($entry) {
+                            $entry->set_data($key, $this->extension()->get($key));
+                        }
+                    }
+                    break;
+                default:
+                    if ($value !== false) {
+                        $this->extension()->set($key, $value);
+                        if ($entry) {
+                            $entry->set_data($key, $this->extension()->get($key));
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
     public function get($attr) {
         if ($this->extension() && method_exists($this->extension(), 'get')) {
             return $this->extension()->get($attr);
@@ -72,7 +95,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    public function import($xml, $options = array()) {
+    public function import($xml, $options = []) {
         if ($this->extension() && method_exists($this->extension(), 'import')) {
             return $this->extension()->import($xml, $options);
         }
@@ -116,7 +139,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     }
 
     // render
-    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
+    public function render($value, $field = [], $convert_shortcodes = true, $raw = false) {
         if ($this->extension() && method_exists($this->extension(), 'render')) {
             $this->pre_render();
             $content = $this->extension()->render($value, $field, $convert_shortcodes, $raw);
@@ -143,39 +166,41 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     }
 
     public function pre_render() {
-        add_filter('e2pdf_pdf_render', array($this->helper, '__return_true'), 999);
+        add_filter('e2pdf_pdf_render', [$this->helper, '__return_true'], 999);
         if (class_exists('ACF')) {
             if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
-                add_filter('acf/settings/enable_shortcode', array($this->helper, '__return_true'), 999);
+                add_filter('acf/settings/enable_shortcode', [$this->helper, '__return_true'], 999);
             }
             if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
-                add_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this->helper, '__return_true'), 999);
+                add_filter('acf/shortcode/allow_in_block_themes_outside_content', [$this->helper, '__return_true'], 999);
             }
             if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
-                add_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
+                add_filter('acf/load_field', [$this, 'filter_acf_allow_in_bindings'], 999);
             }
             if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
-                add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this->helper, '__return_false'), 999);
+                add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
             }
         }
+        add_filter('jet-engine/listings/data/default-object', [$this, 'filter_jet_listings_data_default_object'], 999);
     }
 
     public function after_render() {
+        remove_filter('jet-engine/listings/data/default-object', [$this, 'filter_jet_listings_data_default_object'], 999);
         if (class_exists('ACF')) {
             if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
-                remove_filter('acf/settings/enable_shortcode', array($this->helper, '__return_true'), 999);
+                remove_filter('acf/settings/enable_shortcode', [$this->helper, '__return_true'], 999);
             }
             if (apply_filters('e2pdf_acf_allow_in_block_themes_outside_content', true)) {
-                remove_filter('acf/shortcode/allow_in_block_themes_outside_content', array($this->helper, '__return_true'), 999);
+                remove_filter('acf/shortcode/allow_in_block_themes_outside_content', [$this->helper, '__return_true'], 999);
             }
             if (apply_filters('e2pdf_acf_allow_in_bindings', false)) {
-                remove_filter('acf/load_field', array($this, 'filter_acf_allow_in_bindings'), 999);
+                remove_filter('acf/load_field', [$this, 'filter_acf_allow_in_bindings'], 999);
             }
             if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
-                remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', array($this->helper, '__return_false'), 999);
+                remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
             }
         }
-        remove_filter('e2pdf_pdf_render', array($this->helper, '__return_true'), 999);
+        remove_filter('e2pdf_pdf_render', [$this->helper, '__return_true'], 999);
     }
 
     // convert shortcodes
@@ -212,7 +237,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
 
     // extensions
     public function extensions($load = true) {
-        $list = array();
+        $list = [];
         $extentions_path = $this->helper->get('plugin_dir') . 'classes/extension/*';
         foreach (array_filter(glob($extentions_path), 'is_file') as $file) {
             $info = pathinfo($file);
@@ -283,7 +308,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
         return false;
     }
 
-    public function auto_form($template, $data = array()) {
+    public function auto_form($template, $data = []) {
         if ($this->extension() && method_exists($this->extension(), 'auto_form')) {
             return $this->extension()->auto_form($template, $data);
         }
@@ -305,7 +330,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
                 if (!$this->extension()->get('item1') && !$this->extension()->get('item2')) {
                     return false;
                 }
-                $data = array();
+                $data = [];
                 if ($this->extension()->get('item1')) {
                     $this->extension()->set('item', $this->extension()->get('item1'));
                     $data = $this->extension()->auto();
@@ -367,5 +392,15 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
             $field['allow_in_bindings'] = 1;
         }
         return $field;
+    }
+
+    // filter jet engine default object
+    public function filter_jet_listings_data_default_object($default_object) {
+        if ($this->extension instanceof Extension_E2pdf_Wordpress || $this->extension instanceof Extension_E2pdf_Woocommerce) {
+            if ($this->get('item') != '-3' && $this->get('dataset')) {
+                $default_object = get_post($this->get('dataset'));
+            }
+        }
+        return $default_object;
     }
 }

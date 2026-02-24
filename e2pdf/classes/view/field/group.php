@@ -34,6 +34,17 @@
                             'value' => $option_value['value'],
                             'prefield' => isset($option_value['prefield']) ? $option_value['prefield'] : '',
                         ));
+                    } elseif ($option_value['type'] == 'password') {
+                        $this->render('field', 'password', array(
+                            'field' => array(
+                                'name' => isset($option_value['key']) ? $option_value['key'] : '',
+                                'placeholder' => isset($option_value['placeholder']) ? $option_value['placeholder'] : '',
+                                'class' => isset($option_value['class']) ? 'e2pdf-w100 ' . $option_value['class'] : 'e2pdf-w100',
+                                'readonly' => isset($option_value['readonly']) ? $option_value['readonly'] : false,
+                            ),
+                            'value' => $option_value['value'],
+                            'prefield' => isset($option_value['prefield']) ? $option_value['prefield'] : '',
+                        ));
                     } elseif ($option_value['type'] == 'textarea') {
                         $this->render('field', 'textarea', array(
                             'field' => array(

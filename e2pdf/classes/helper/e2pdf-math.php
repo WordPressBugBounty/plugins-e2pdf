@@ -30,8 +30,8 @@ class Helper_E2pdf_Math {
         try {
             $this->stack = $this->parse($string);
             return $this->run();
-        } catch (Exception $e) {
-            return $e->getMessage();
+        } catch (Exception $ex) {
+            return $ex->getMessage();
         }
     }
 

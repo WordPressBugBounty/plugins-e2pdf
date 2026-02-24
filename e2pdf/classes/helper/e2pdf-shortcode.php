@@ -1,19 +1,23 @@
 <?php
 
 /**
- * E2pdf Shortcode Helper
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.07.02
+ * File: /helper/e2pdf-shortcode.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
 }
 
 class Helper_E2pdf_Shortcode {
+
+    private $helper;
+
+    public function __construct() {
+        $this->helper = Helper_E2pdf_Helper::instance();
+    }
 
     public function get_shortcode_regex($tagnames = null) {
         if (version_compare(get_bloginfo('version'), '4.4.0', '<')) {
@@ -24,8 +28,7 @@ class Helper_E2pdf_Shortcode {
             }
             $tagregexp = join('|', array_map('preg_quote', $tagnames));
 
-            return
-                    '\\['
+            return '\\['
                     . '(\\[?)'
                     . "($tagregexp)"
                     . '(?![\\w-])'
@@ -83,7 +86,10 @@ class Helper_E2pdf_Shortcode {
     }
 
     public function apply_path_attribute($value, $path = false, $delimiter = '.') {
-        if ((is_array($value) || is_object($value)) && $path !== false) {
+        if ($path !== false) {
+            if (!is_array($value) && !is_object($value)) {
+                $value = $this->helper->load('convert')->is_unserialized_array($value);
+            }
             $keys = explode($delimiter, $path);
             $obj = &$value;
             $found = true;
@@ -128,8 +134,154 @@ class Helper_E2pdf_Shortcode {
         }
     }
 
+    public function apply_convert_attribute($convert, $post_meta, $implode = ',') {
+        $type = false;
+        switch (true) {
+            case 0 === strpos($convert, 'term_id_to_'):
+                $type = 'term';
+                $convert = str_replace('term_id_to_', '', $convert);
+                break;
+            case 0 === strpos($convert, 'user_id_to_'):
+                $type = 'user';
+                $convert = str_replace('user_id_to_', '', $convert);
+                break;
+            case 0 === strpos($convert, 'post_id_to_'):
+                $type = 'post';
+                $convert = str_replace('post_id_to_', '', $convert);
+                break;
+        }
+        if ($type && $post_meta) {
+            $implode = $implode === false ? ',' : $implode;
+            if (!is_array($post_meta)) {
+                if (strpos($post_meta, ',') !== false) {
+                    $post_meta = explode(',', $post_meta);
+                }
+            }
+            if (is_array($post_meta)) {
+                $sub_metas = array();
+                foreach ($post_meta as $post_meta_part) {
+                    if (!is_array($post_meta_part)) {
+                        switch ($type) {
+                            case 'term':
+                                $sub_meta = get_term($post_meta_part);
+                                break;
+                            case 'user':
+                                $sub_meta = get_userdata($post_meta_part);
+                                break;
+                            case 'post':
+                                $sub_meta = get_post($post_meta_part);
+                                break;
+                        }
+                        if ($sub_meta && !is_wp_error($sub_meta)) {
+                            if ($convert == $type) {
+                                $sub_metas[] = $sub_meta;
+                            } else {
+                                if (isset($sub_meta->$convert)) {
+                                    $sub_metas[] = $sub_meta->$convert;
+                                }
+                            }
+                        }
+                    }
+                }
+                $post_meta = $sub_metas;
+            } else {
+                switch ($type) {
+                    case 'term':
+                        $sub_meta = get_term($post_meta);
+                        break;
+                    case 'user':
+                        $sub_meta = get_userdata($post_meta);
+                        break;
+                    case 'post':
+                        $sub_meta = get_post($post_meta);
+                        break;
+                }
+                if ($sub_meta && !is_wp_error($sub_meta)) {
+                    if ($convert == $type) {
+                        $post_meta = $sub_meta;
+                    } else {
+                        if (isset($sub_meta->$convert)) {
+                            $post_meta = $sub_meta->$convert;
+                        }
+                    }
+                } else {
+                    $post_meta = '';
+                }
+            }
+        }
+        return $post_meta;
+    }
+
+    public function apply_inline_shortcodes($value, $shortcode_tags, $extension) {
+        preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
+        $tagnames = array_intersect($shortcode_tags, $matches[1]);
+        if (!empty($tagnames)) {
+            preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $value, $shortcodes);
+            foreach ($shortcodes[0] as $key => $shortcode_value) {
+                $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                $atts = shortcode_parse_atts($shortcode[3]);
+                switch (true) {
+                    case (0 === strpos($shortcode[2], 'e2pdf-for')):
+                        $for_index = (0 === strpos($shortcode[2], 'e2pdf-for-')) ? str_replace('e2pdf-for-', '', $shortcode[2]) : 0;
+                        $sub_value = $this->helper->load('for')->do_shortcode($atts, $shortcode[5], $for_index, $extension);
+
+                        $sub_shortcode_tags = array_values(array_diff($shortcode_tags, [$shortcode[2]]));
+                        $sub_shortcode_tags[] = 'e2pdf-for-' . $for_index + 1;
+                        foreach ($sub_shortcode_tags as $sub_shortcode_key => $sub_shortcode_tag) {
+                            if (false === strpos($sub_value, '[' . $sub_shortcode_tag)) {
+                                unset($sub_shortcode_tags[$sub_shortcode_key]);
+                            }
+                        }
+                        if (!empty($sub_shortcode_tags)) {
+                            $sub_value = $this->apply_inline_shortcodes($sub_value, $sub_shortcode_tags, $extension);
+                        }
+                        $value = str_replace($shortcode_value, $sub_value, $value);
+                        break;
+                    case (0 === strpos($shortcode[2], 'e2pdf-acf-repeater')):
+                        if ($extension instanceof Extension_E2pdf_Wordpress) {
+                            if (!isset($atts['post_id']) && isset($extension->get('cached_post')->ID) && $extension->get('cached_post')->ID) {
+                                if ($extension->get('item') == '-3') {
+                                    $atts['post_id'] = 'user_' . $extension->get('cached_post')->ID;
+                                } else {
+                                    $atts['post_id'] = $extension->get('cached_post')->ID;
+                                }
+                            }
+                        } elseif ($extension instanceof Extension_E2pdf_Woocommerce) {
+                            if (!isset($atts['post_id']) && isset($extension->get('cached_post')->ID) && $extension->get('cached_post')->ID) {
+                                if ($extension->get('item') == 'product_variation' && isset($extension->get('cached_post')->post_parent)) {
+                                    $atts['post_id'] = $extension->get('cached_post')->post_parent;
+                                } else {
+                                    $atts['post_id'] = $extension->get('cached_post')->ID;
+                                }
+                            }
+                        }
+
+                        $acf_repeater_index = (0 === strpos($shortcode[2], 'e2pdf-acf-repeater-')) ? str_replace('e2pdf-acf-repeater-', '', $shortcode[2]) : 0;
+                        $sub_value = $this->helper->load('acfrepeater')->do_shortcode($atts, $shortcode[5], $acf_repeater_index);
+
+                        $sub_shortcode_tags = array_values(array_diff($shortcode_tags, [$shortcode[2]]));
+                        $sub_shortcode_tags[] = 'e2pdf-acf-repeater-' . $acf_repeater_index + 1;
+                        foreach ($sub_shortcode_tags as $sub_shortcode_key => $sub_shortcode_tag) {
+                            if (false === strpos($sub_value, '[' . $sub_shortcode_tag)) {
+                                unset($sub_shortcode_tags[$sub_shortcode_key]);
+                            }
+                        }
+                        if (!empty($sub_shortcode_tags)) {
+                            $sub_value = $this->apply_inline_shortcodes($sub_value, $sub_shortcode_tags, $extension);
+                        }
+                        $value = str_replace($shortcode_value, $sub_value, $value);
+                        break;
+                }
+            }
+        }
+        return $value;
+    }
+
     public function is_attachment($shortcode, $atts) {
-        if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $shortcode[2] === 'e2pdf-attachment') {
+        $true = [
+            'true', '1',
+        ];
+        if (($shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && in_array(strtolower((string) $atts['attachment']), $true, true)) || $shortcode[2] === 'e2pdf-attachment') {
             return true;
         }
         return false;

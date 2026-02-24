@@ -22,35 +22,33 @@ class Helper_E2pdf_Convert {
     }
 
     public function to_hex_color($hex = '') {
-        $color = array(
-            0x00, 0x00, 0x00
-        );
+        $color = [
+            0x00, 0x00, 0x00,
+        ];
         $hex = ltrim($hex, '#');
         if (strlen($hex) === 3) {
-            $color = array(
+            $color = [
                 hexdec(substr($hex, 0, 1)),
                 hexdec(substr($hex, 1, 1)),
-                hexdec(substr($hex, 2, 1))
-            );
+                hexdec(substr($hex, 2, 1)),
+            ];
         } elseif (strlen($hex) === 6) {
-            $color = array(
+            $color = [
                 hexdec(substr($hex, 0, 2)),
                 hexdec(substr($hex, 2, 2)),
-                hexdec(substr($hex, 4, 2))
-            );
+                hexdec(substr($hex, 4, 2)),
+            ];
         }
         return $color;
     }
 
     /**
      * Convert from bytes to Human View
-     * 
      * @param int $size - Size in Bytes
-     * 
      * @return string - Converted size
      */
     public function from_bytes($size) {
-        $unit = array('B', 'KB', 'MB', 'GB', 'TB', 'PB');
+        $unit = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
         return @round($size / pow(1024, ($i = floor(log($size, 1024)))), 2) . '' . $unit[$i];
     }
 
@@ -66,15 +64,14 @@ class Helper_E2pdf_Convert {
 
     public function to_file_dir($file_dir = '') {
         if ($file_dir) {
-            $file_dir = str_replace('./', '.', $file_dir);
+            $file_dir = str_replace(['\\', './'], ['/', '.'], $file_dir);
         }
-
         return $file_dir;
     }
 
     public function to_file_name($file_name = '') {
         if ($file_name) {
-            $search = array(
+            $search = [
                 '/',
                 '\\',
                 '"',
@@ -86,8 +83,8 @@ class Helper_E2pdf_Convert {
                 '&#93;',
                 '&amp;',
                 ';',
-            );
-            $replace = array(
+            ];
+            $replace = [
                 '',
                 '_',
                 '',
@@ -98,12 +95,10 @@ class Helper_E2pdf_Convert {
                 '[',
                 ']',
                 '&',
-                ''
-            );
-
+                '',
+            ];
             $file_name = str_replace($search, $replace, $file_name);
         }
-
         return $file_name;
     }
 
@@ -118,7 +113,7 @@ class Helper_E2pdf_Convert {
             $pos1 = 0;
             $result = $haystack;
             while (count($needle) > 0) {
-                $positions = array();
+                $positions = [];
                 foreach ($needle as $from => $to) {
                     if (($pos2 = stripos($result, $from, $pos1)) === FALSE) {
                         unset($needle[$from]);
@@ -156,16 +151,16 @@ class Helper_E2pdf_Convert {
         if (version_compare(PHP_VERSION, '7.0.0', '<')) {
             return @unserialize($value);
         } else {
-            return @unserialize($value, array('allowed_classes' => false));
+            return @unserialize($value, ['allowed_classes' => false]);
         }
     }
 
     public function is_content_key($content_key = false, $value = '') {
         $response = '';
         if ($content_key) {
-            $shortcode_tags = array(
-                'e2pdf-content'
-            );
+            $shortcode_tags = [
+                'e2pdf-content',
+            ];
             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
             $tagnames = array_intersect($shortcode_tags, $matches[1]);
             if (!empty($tagnames)) {
@@ -184,7 +179,7 @@ class Helper_E2pdf_Convert {
 
     public function is_string_array($value) {
         if (!is_array($value)) {
-            $value = !empty($value) ? (array) $value : array();
+            $value = !empty($value) ? (array) $value : [];
         }
         return $value;
     }
@@ -195,7 +190,7 @@ class Helper_E2pdf_Convert {
                 $value = $this->unserialize($value);
             }
         }
-        return is_array($value) ? $value : array();
+        return is_array($value) ? $value : [];
     }
 
     public function load_html($source, $dom, $form = false) {
@@ -218,7 +213,7 @@ class Helper_E2pdf_Convert {
             return $source;
         }
         $map = [
-            0x80, 0xFFFF, 0, 0xFFFF
+            0x80, 0xFFFF, 0, 0xFFFF,
         ];
         try {
             return mb_encode_numericentity($source, $map, 'UTF-8');

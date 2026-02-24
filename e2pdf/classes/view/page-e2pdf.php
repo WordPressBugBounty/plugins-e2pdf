@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
     <?php $this->render('blocks', 'notifications'); ?>
     <h3 class="nav-tab-wrapper wp-clearfix">
         <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf')); ?>" class="nav-tab <?php if (!($this->get->get('action'))) { ?>nav-tab-active<?php } ?>"><?php echo _e('Create PDF', 'e2pdf'); ?></a>
-        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'bulk') { ?>nav-tab-active<?php } ?>"><?php _e('Create PDFs in Bulk', 'e2pdf'); ?></a>
+        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'bulk') { ?>nav-tab-active<?php } ?>"><?php _e('Bulk Create PDFs', 'e2pdf'); ?></a>
     </h3>
 
     <?php if (!$this->get->get('action')) { ?>
@@ -50,6 +50,7 @@ if (!defined('ABSPATH')) {
                             $this->render('field', 'text', array(
                                 'field' => array(
                                     'class' => 'e2pdf-w100 e2pdf-select2',
+                                    'disabled' => 'disabled',
                                     'placeholder' => __('--- Select ---', 'e2pdf'),
                                 ),
                             ));
@@ -283,6 +284,7 @@ if (!defined('ABSPATH')) {
                             $this->render('field', 'text', array(
                                 'field' => array(
                                     'class' => 'e2pdf-w100 e2pdf-select2',
+                                    'disabled' => 'disabled',
                                     'placeholder' => __('--- Select ---', 'e2pdf'),
                                 ),
                             ));
@@ -351,13 +353,13 @@ if (!defined('ABSPATH')) {
                             </div>
                             <div class="e2pdf-grid">
                                 <div class="e2pdf-ib e2pdf-w30 e2pdf-pr10">
-                                    <?php _e('PDF Local Name', 'e2pdf'); ?>:
+                                    <?php _e('PDF Name', 'e2pdf'); ?>:
                                 </div><div class="e2pdf-ib e2pdf-w70 e2pdf-pl10">
                                     <?php
                                     $this->render('field', 'text', array(
                                         'field' => array(
                                             'name' => 'options[savename]',
-                                            'placeholder' => __('PDF Local Name', 'e2pdf'),
+                                            'placeholder' => __('PDF Name', 'e2pdf'),
                                             'class' => 'e2pdf-w100 e2pdf-export-option'
                                         ),
                                         'value' => '',
@@ -464,7 +466,7 @@ if (!defined('ABSPATH')) {
                     </div>
                 </div>
                 <div class="e2pdf-center">
-                    <input type="button" form-id="e2pdf-export-form"  action="e2pdf_bulk_create" disabled="disabled" class="e2pdf-submit-form e2pdf-export-form-submit button-primary button-large" value="<?php _e('Create PDFs in Bulk', 'e2pdf'); ?>" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>">
+                    <input type="button" form-id="e2pdf-export-form"  action="e2pdf_bulk_create" disabled="disabled" class="e2pdf-submit-form e2pdf-export-form-submit button-primary button-large" value="<?php _e('Bulk Create PDFs', 'e2pdf'); ?>" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>">
                 </div>
             </form>
         </div>
@@ -489,7 +491,7 @@ if (!defined('ABSPATH')) {
                                 <?php echo $bulk->get('template_id'); ?>
                             <?php } ?>
                         </div><div class="e2pdf-ib e2pdf-w20">
-                            <span class="e2pdf-bulk-count"><?php echo $bulk->get('count'); ?></span>/<?php echo $bulk->get('total'); ?></div><div class="e2pdf-ib e2pdf-w10">
+                            <span class="spinner is-active"></span><span class="e2pdf-bulk-count"><?php echo $bulk->get('count'); ?></span>/<?php echo $bulk->get('total'); ?></div><div class="e2pdf-ib e2pdf-w10">
                             <?php if ($bulk->get('status') == 'completed') { ?>
                                 <a class="e2pdf-link" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk', 'uid' => $bulk->get('uid'))); ?>"><i class="dashicons dashicons-download"></i></a>
                             <?php } ?>

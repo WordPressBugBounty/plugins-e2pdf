@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Frontend Download Controller
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /controller/frontend/e2pdf-download.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -14,10 +13,7 @@ if (!defined('ABSPATH')) {
 
 class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
 
-    /**
-     * Frontend download action
-     * @url page=e2pdf-download&uid=$uid
-     */
+    // url: page=e2pdf-download&uid=$uid
     public function index_action() {
         global $wp_query;
 
@@ -32,10 +28,23 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
 
         $entry = new Model_E2pdf_Entry();
         if ($uid && $entry->load_by_uid($uid)) {
+
             $template = new Model_E2pdf_Template();
-            if ($entry->get_data('pdf') || $entry->get_data('attachment_id')) {
-                $pdf = $entry->get_data('pdf') ? $entry->get_data('pdf') : get_attached_file($entry->get_data('attachment_id'));
-                if (file_exists($pdf) && $this->helper->load('filter')->is_downloadable($pdf)) {
+            if ($entry->get_data('file_id') || $entry->get_data('pdf') || $entry->get_data('attachment_id')) {
+                $downloadable = false;
+                if ($entry->get_data('file_id')) {
+                    $stream = (new Model_E2pdf_Gdrive())->download($entry->get_data('file_id'));
+                    $pdf = is_array($stream) && isset($stream['name']) ? $stream['name'] : '';
+                    if ($pdf) {
+                        $downloadable = true;
+                    }
+                } else {
+                    $pdf = $entry->get_data('pdf') ? $entry->get_data('pdf') : get_attached_file($entry->get_data('attachment_id'));
+                    $downloadable = file_exists($pdf) && $this->helper->load('filter')->is_downloadable($pdf);
+                }
+
+                $downloadable = apply_filters('e2pdf_pdf_downloadable', $downloadable, $uid, $entry->get('entry'));
+                if ($downloadable) {
                     $disposition = 'attachment';
                     if ($entry->get_data('inline')) {
                         $disposition = 'inline';
@@ -47,50 +56,69 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                         $download_name = basename($pdf, '.' . $ext);
                     }
                     $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $download_name, $entry->get('uid'), $entry->get('entry'));
+                    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                     if ($disposition == 'inline' && !isset($_GET['v'])) {
                         if (get_option('e2pdf_download_inline_chrome_ios_fix', '0') == '1' && $this->helper->load('server')->isIOS() && $this->helper->load('server')->isChrome()) {
-                            $url_data = array(
+                            $url_data = [
                                 'page' => 'e2pdf-download',
                                 'uid' => $uid,
                                 'download_name' => rawurlencode($download_name . '.' . (strtolower($ext) == 'jpg' ? 'jpg' : 'pdf')),
                                 'v' => $this->helper->get('version'),
-                            );
+                            ];
                             $url = $this->helper->get_frontend_pdf_url(
                                     $url_data, false,
-                                    array(
+                                    [
                                         'e2pdf_model_shortcode_site_url',
                                         'e2pdf_model_shortcode_e2pdf_redirect_site_url',
-                                    )
+                                    ]
                             );
+                            // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
                             wp_redirect($url);
                             exit;
                         } elseif (get_option('e2pdf_download_inline_fallback_viewer', '0') == '1' && !$this->helper->load('server')->isViewerSupported() && strtolower($ext) == 'pdf') {
-                            $url_data = array(
+                            $url_data = [
                                 'page' => 'e2pdf-download',
                                 'uid' => $uid,
                                 'v' => $this->helper->get('version'),
-                            );
+                            ];
                             $url = $this->helper->get_frontend_pdf_url(
                                     $url_data, false,
-                                    array(
+                                    [
                                         'e2pdf_model_shortcode_site_url',
                                         'e2pdf_model_shortcode_e2pdf_redirect_site_url',
-                                    )
+                                    ]
                             );
+                            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
                             $file = urlencode($url);
-                            $classes = array(
+                            $classes = [
                                 'e2pdf-hide-print',
                                 'e2pdf-hide-editor',
-                                'e2pdf-hide-secondary-toolbar'
+                                'e2pdf-hide-secondary-toolbar',
+                            ];
+                            $viewer_url = add_query_arg(
+                                    [
+                                        'class' => implode(';', $classes),
+                                        'file' => $file,
+                                    ],
+                                    plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))
                             );
-                            $viewer_url = add_query_arg(array('class' => implode(';', $classes), 'file' => $file), plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path')));
+                            // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
                             wp_redirect($viewer_url);
                             exit;
                         }
                     }
-                    $file = base64_encode(file_get_contents($pdf));
+
+                    if ($entry->get_data('file_id')) {
+                        $file = $stream['file'];
+                    } else {
+                        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+                        $file = file_get_contents($pdf);
+                    }
                     $this->download_response(strtolower($ext), $file, $download_name, $disposition);
-                    do_action('e2pdf_controller_frontend_e2pdf_download_success', $uid, $entry->get('entry'), $file);
+                    if (has_action('e2pdf_controller_frontend_e2pdf_download_success')) {
+                        // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+                        do_action('e2pdf_controller_frontend_e2pdf_download_success', $uid, $entry->get('entry'), base64_encode($file));
+                    }
                     exit;
                 }
             } elseif ($entry->get_data('template_id') && ($entry->get_data('dataset') || $entry->get_data('dataset2')) && $template->load($entry->get_data('template_id'))) {
@@ -125,7 +153,8 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                     $template->extension()->set('args', $entry->get_data('args'));
                 }
 
-                if ($template->extension()->verify()) {
+                $downloadable = apply_filters('e2pdf_pdf_downloadable', true, $uid, $entry->get('entry'));
+                if ($downloadable && $template->extension()->verify()) {
                     if ($template->get('actions')) {
                         $model_e2pdf_action = new Model_E2pdf_Action();
                         $model_e2pdf_action->load($template->extension());
@@ -133,20 +162,20 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                         foreach ($actions as $action) {
                             if (isset($action['action'])) {
                                 switch (true) {
-                                    case $action['action'] == 'restrict_access_by_url' && isset($action['success']):
-                                    case $action['action'] == 'access_by_url' && !isset($action['success']):
+                                    case $action['action'] == 'disable_access_by_url' && isset($action['success']):
+                                    case $action['action'] == 'enable_access_by_url' && !isset($action['success']):
                                         $error_message = '';
                                         if (!empty($action['error_message'])) {
                                             $error_message = $template->extension()->render($action['error_message']);
                                         }
                                         $error_message = $error_message ? $error_message : __('Access Denied!', 'e2pdf');
                                         if (isset($_SERVER['HTTP_X_E2PDF_REQUEST'])) {
-                                            $response = array(
-                                                'error' => $error_message
-                                            );
+                                            $response = [
+                                                'error' => $error_message,
+                                            ];
                                             $this->json_response_ajax($response, 403);
                                         } else {
-                                            wp_die($error_message, '', array('exit' => true));
+                                            wp_die($error_message, '', ['exit' => true]);
                                         }
                                         break;
                                     case $action['action'] == 'redirect_access_by_url' && isset($action['success']):
@@ -157,12 +186,13 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                                         if ($redirect_url) {
                                             $redirect_url = apply_filters('e2pdf_download_redirect_access_by_url', esc_url_raw($redirect_url), $entry);
                                             if (isset($_SERVER['HTTP_X_E2PDF_REQUEST'])) {
-                                                $response = array(
+                                                $response = [
                                                     'redirect_url' => $redirect_url,
                                                     'redirect_error_message' => !empty($action['redirect_error_message']) ? str_replace('%s', $redirect_url, $action['redirect_error_message']) : 'Access denied. Please, click <a href="' . $redirect_url . '" target="_blank">here</a> for more details...',
-                                                );
+                                                ];
                                                 $this->json_response_ajax($response, 303);
                                             } else {
+                                                // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
                                                 wp_redirect($redirect_url);
                                                 exit;
                                             }
@@ -228,7 +258,23 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                     if ($entry->get_data('name') !== false) {
                         $template->set('name', $entry->get_data('name'));
                     } else {
-                        $template->set('name', $template->extension()->render($template->get('name')));
+                        $template->set(
+                                'name',
+                                $template->extension()->render(
+                                        $this->helper->load('translator')->pre_translate($template->get('name'), $template->get('ID'), 'name', 'template')
+                                )
+                        );
+                    }
+                    if (!$template->get('name')) {
+                        $template->set(
+                                'name',
+                                $template->extension()->render(
+                                        $this->helper->load('translator')->pre_translate($template->get('title'), $template->get('ID'), 'title', 'template')
+                                )
+                        );
+                    }
+                    if (!$template->get('name')) {
+                        $template->set(__('(no title)', 'e2pdf'));
                     }
 
                     $disposition = 'attachment';
@@ -241,57 +287,57 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                     }
 
                     /* Bug-fix with on the Chrome + iOS PDF inline download */
+                    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
                     if ($disposition == 'inline' && !isset($_GET['v'])) {
                         if (get_option('e2pdf_download_inline_chrome_ios_fix', '0') == '1' && $this->helper->load('server')->isIOS() && $this->helper->load('server')->isChrome()) {
-                            if ($template->get('name')) {
-                                $download_name = $template->get('name');
-                            } else {
-                                $download_name = $template->extension()->render($template->get_name());
-                            }
-                            $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $download_name, $entry->get('uid'), $entry->get('entry'));
-                            $url_data = array(
+                            $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $template->get('name'), $entry->get('uid'), $entry->get('entry'));
+                            $url_data = [
                                 'page' => 'e2pdf-download',
                                 'uid' => $uid,
                                 'download_name' => rawurlencode($download_name . '.' . ($template->get('format') == 'jpg' ? 'jpg' : 'pdf')),
                                 'v' => $this->helper->get('version'),
-                            );
+                            ];
                             $url = $this->helper->get_frontend_pdf_url(
                                     $url_data, false,
-                                    array(
+                                    [
                                         'e2pdf_model_shortcode_site_url',
                                         'e2pdf_model_shortcode_e2pdf_redirect_site_url',
-                                    )
+                                    ]
                             );
+                            // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
                             wp_redirect($url);
                             exit;
                         } elseif (get_option('e2pdf_download_inline_fallback_viewer', '0') == '1' && !$this->helper->load('server')->isViewerSupported() && $template->get('format') == 'pdf') {
-                            if ($template->get('name')) {
-                                $download_name = $template->get('name');
-                            } else {
-                                $download_name = $template->extension()->render($template->get_name());
-                            }
-                            $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $download_name, $entry->get('uid'), $entry->get('entry'));
-                            $url_data = array(
+                            $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $template->get('name'), $entry->get('uid'), $entry->get('entry'));
+                            $url_data = [
                                 'page' => 'e2pdf-download',
                                 'uid' => $uid,
                                 'v' => $this->helper->get('version'),
-                            );
+                            ];
                             $url = $this->helper->get_frontend_pdf_url(
                                     $url_data, false,
-                                    array(
+                                    [
                                         'e2pdf_model_shortcode_site_url',
                                         'e2pdf_model_shortcode_e2pdf_redirect_site_url',
-                                    )
+                                    ]
                             );
+                            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
                             $file = urlencode($url);
 
-                            $classes = array(
+                            $classes = [
                                 'e2pdf-hide-print',
                                 'e2pdf-hide-editor',
-                                'e2pdf-hide-secondary-toolbar'
-                            );
+                                'e2pdf-hide-secondary-toolbar',
+                            ];
 
-                            $viewer_url = add_query_arg(array('class' => implode(';', $classes), 'file' => $file), plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path')));
+                            $viewer_url = add_query_arg(
+                                    [
+                                        'class' => implode(';', $classes),
+                                        'file' => $file,
+                                    ],
+                                    plugins_url('assets/pdf.js/web/viewer.html', $this->helper->get('plugin_file_path'))
+                            );
+                            // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
                             wp_redirect($viewer_url);
                             exit;
                         }
@@ -307,17 +353,12 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                     } else {
                         $entry->set('pdf_num', $entry->get('pdf_num') + 1);
                         $entry->save();
-
-                        if ($template->get('name')) {
-                            $download_name = $template->get('name');
-                        } else {
-                            $download_name = $template->extension()->render($template->get_name());
+                        $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $template->get('name'), $entry->get('uid'), $entry->get('entry'));
+                        $this->download_response($template->get('format'), $request['file'], $download_name, $disposition);
+                        if (has_action('e2pdf_controller_frontend_e2pdf_download_success')) {
+                            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+                            do_action('e2pdf_controller_frontend_e2pdf_download_success', $uid, $entry->get('entry'), base64_encode($request['file']));
                         }
-                        $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $download_name, $entry->get('uid'), $entry->get('entry'));
-
-                        $file = $request['file'];
-                        $this->download_response($template->get('format'), $file, $download_name, $disposition);
-                        do_action('e2pdf_controller_frontend_e2pdf_download_success', $uid, $entry->get('entry'), $file);
                         exit;
                     }
                 }

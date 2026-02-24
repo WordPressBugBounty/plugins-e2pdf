@@ -6,3 +6,17 @@
 .wpcf7-textarea {
     width: 100%;
 }
+
+.as-signature-input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top:0;
+    text-align: center;
+}
+
+.as-signature-wrapper {
+    display: inline-block;
+    position: relative;
+}

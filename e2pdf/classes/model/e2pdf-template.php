@@ -46,7 +46,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             if ($revision->load($template_id, false, $revision_id)) {
                 $template = array_replace($template, $revision->template());
             } else {
-                $template = array();
+                $template = [];
             }
         }
 
@@ -123,7 +123,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
     public function set($key, $value) {
         switch ($key) {
             case 'format':
-                if (in_array($value, array('pdf', 'jpg'), true)) {
+                if (in_array($value, ['pdf', 'jpg'], true)) {
                     $this->template[$key] = $value;
                     return true;
                 } else {
@@ -132,7 +132,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                 break;
             case 'permissions':
                 if (!is_array($value)) {
-                    $this->template[$key] = array('printing');
+                    $this->template[$key] = ['printing'];
                 } else {
                     $this->template[$key] = $value;
                 }
@@ -141,7 +141,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             case 'properties':
             case 'actions':
                 if (!is_array($value)) {
-                    $this->template[$key] = array();
+                    $this->template[$key] = [];
                 } else {
                     $this->template[$key] = $value;
                 }
@@ -167,9 +167,9 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             return $value;
         } elseif (isset($this->template[$key])) {
             if ($key == 'revisions') {
-                $value = array(
+                $value = [
                     '0' => __('Latest', 'e2pdf'),
-                );
+                ];
                 if (is_array($this->template[$key])) {
                     foreach ($this->template[$key] as $revision) {
                         // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
@@ -217,18 +217,16 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                     $value = 'left';
                     break;
                 case 'permissions':
-                    $value = array(
+                    $value = [
                         'printing',
-                    );
+                    ];
                     break;
                 case 'fonts':
                 case 'properties':
                 case 'actions':
-                    $value = array();
-                    break;
                 case 'pages':
                 case 'revisions':
-                    $value = array();
+                    $value = [];
                     break;
                 case 'name':
                 case 'savename':
@@ -274,9 +272,9 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             $tpl_dir = $this->helper->get('tpl_dir') . $this->get('ID') . '/';
             $this->helper->delete_dir($tpl_dir);
 
-            $where = array(
+            $where = [
                 'ID' => $this->get('ID'),
-            );
+            ];
             $wpdb->delete($this->get_table(), $where);
 
             foreach ($this->get('pages') as $page) {
@@ -290,11 +288,16 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                 wp_cache_delete($this->get('ID'), 'e2pdf_pages');
                 wp_cache_delete($this->get('ID'), 'e2pdf_revisions');
             }
+
+            $translator = $this->helper->load('translator');
+            if ($translator) {
+                $translator->flush($this->get('ID'));
+            }
         }
     }
 
     // update
-    public function update($keys = array()) {
+    public function update($keys = []) {
         global $wpdb;
         if ($this->get('ID') && !empty($keys)) {
             $show_errors = false;
@@ -305,9 +308,9 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             foreach ($keys as $key) {
                 $template[$key] = $this->get($key);
             }
-            $where = array(
+            $where = [
                 'ID' => $this->get('ID'),
-            );
+            ];
             $success = $wpdb->update($this->get_table(), $template, $where);
             if ($success === false) {
                 $this->helper->load('db')->db_init($wpdb->prefix);
@@ -355,15 +358,18 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                 }
                 $revision->flush();
             }
-            $where = array(
+            $where = [
                 'ID' => $this->get('ID'),
-            );
+            ];
             $success = $wpdb->update($this->get_table(), $template, $where);
             if ($success === false) {
                 $this->helper->load('db')->db_init($wpdb->prefix);
                 $wpdb->update($this->get_table(), $template, $where);
             }
         } else {
+            if ($this->get('TMP_ID')) {
+                $template['ID'] = $this->get('TMP_ID');
+            }
             $success = $wpdb->insert($this->get_table(), $template);
             if ($success === false) {
                 $this->helper->load('db')->db_init($wpdb->prefix);
@@ -377,13 +383,25 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
         }
 
         if ($this->get('ID') && $rebuild) {
+
+            $translator = $this->helper->load('translator');
+            if ($translator) {
+                $translator->update_translation($template['title'], $this->get('ID'), 'title', 'template');
+                $translator->update_translation($template['dataset_title'], $this->get('ID'), 'dataset_title', 'template');
+                $translator->update_translation($template['dataset_title1'], $this->get('ID'), 'dataset_title1', 'template');
+                $translator->update_translation($template['dataset_title2'], $this->get('ID'), 'dataset_title2', 'template');
+                $translator->update_translation($template['button_title'], $this->get('ID'), 'button_title', 'template');
+                $translator->update_translation($template['name'], $this->get('ID'), 'name', 'template');
+                $translator->update_translation($template['savename'], $this->get('ID'), 'savename', 'template');
+            }
+
             foreach ($this->get('pages') as $page_key => $page) {
                 $new_page = new Model_E2pdf_Page();
                 foreach ($page as $page_set_key => $page_set_value) {
                     $new_page->set($page_set_key, $page_set_value);
                 }
                 if (!isset($page['actions'])) {
-                    $page_actions = array();
+                    $page_actions = [];
                 } else {
                     $page_actions = $page['actions'];
                 }
@@ -396,14 +414,38 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                         $new_element = new Model_E2pdf_Element();
                         foreach ($element as $element_set_key => $element_set_value) {
                             $new_element->set($element_set_key, $element_set_value);
+                            if ($translator) {
+                                if ($element_set_key == 'value') {
+                                    $translator->update_translation($element_set_value, $this->get('ID'), $element['element_id'], $element_set_key);
+                                }
+                            }
                         }
-                        $new_element->set('properties', isset($element['properties']) ? $element['properties'] : array());
-                        $new_element->set('actions', isset($element['actions']) ? $element['actions'] : array());
+
+                        if ($translator) {
+                            if (!empty($element['properties']['option'])) {
+                                $translator->update_translation($element['properties']['option'], $this->get('ID'), $element['element_id'], 'option');
+                            }
+                            if (!empty($element['properties']['options'])) {
+                                $translator->update_translation($element['properties']['options'], $this->get('ID'), $element['element_id'], 'options');
+                            }
+                            if (!empty($element['actions'])) {
+                                foreach ($element['actions'] as $action_key => $action) {
+                                    if ($action['action'] == 'change' && isset($action['property']) && $action['property'] == 'value' && isset($action['change'])) {
+                                        $translator->update_translation($action['change'], $this->get('ID'), $element['element_id'], 'value_action_' . $action_key . '_change');
+                                    }
+                                }
+                            }
+                        }
+                        $new_element->set('properties', isset($element['properties']) ? $element['properties'] : []);
+                        $new_element->set('actions', isset($element['actions']) ? $element['actions'] : []);
                         $new_element->set('page_id', $new_page->get('page_id'));
                         $new_element->set('template_id', $this->get('ID'));
                         $new_element->save();
                     }
                 }
+            }
+            if ($translator) {
+                $translator->flush($this->get('ID'));
             }
         }
 
@@ -418,7 +460,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
 
     // pre save
     public function load_fonts() {
-        $fonts = array();
+        $fonts = [];
         $model_e2pdf_font = new Model_E2pdf_Font();
         $all_fonts = $model_e2pdf_font->get_fonts();
         $c_font = array_search($this->get('font'), $all_fonts, true);
@@ -435,13 +477,21 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                 }
             }
         }
+
+        if (isset($this->get('properties')['css']) && $this->get('properties')['css']) {
+            $tmp_fonts = $model_e2pdf_font->get_css_fonts($this->get('properties')['css'], $all_fonts);
+            if (!empty($tmp_fonts)) {
+                $fonts = array_merge($fonts, $tmp_fonts);
+            }
+        }
+
         $this->set('fonts', $fonts);
     }
 
     // pre save
     public function pre_save() {
         $this->load_fonts();
-        $template = array(
+        $template = [
             'uid' => $this->get('uid'),
             'activated' => $this->get('activated'),
             'title' => $this->get('title'),
@@ -492,7 +542,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             'properties' => serialize($this->get('properties')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
             'actions' => serialize($this->get('actions')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
             'attachments' => $this->get('attachments'),
-        );
+        ];
 
         if (!$this->get('ID')) {
             $template['created_at'] = current_time('mysql', 1);
@@ -504,18 +554,18 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
     // fill
     public function fill() {
 
-        add_filter('e2pdf_pdf_fill', array($this->helper, '__return_true'), 999);
-        do_action('e2pdf_model_template_fill_pre', $this, $this->extension());
+        add_filter('e2pdf_pdf_fill', [$this->helper, '__return_true'], 999);
+        do_action('e2pdf_model_template_fill_pre', $this, $this->extension);
 
         $action = new Model_E2pdf_Action();
-        $action->load($this->extension());
+        $action->load($this->extension);
         $pages = $this->get('pages');
-        $changed_elements = array();
+        $changed_elements = [];
         foreach ($pages as $key => $value) {
             $changed_elements = array_merge($changed_elements, $action->process_page_id($value));
         }
 
-        $changed_pages = array();
+        $changed_pages = [];
         if (!empty($changed_elements)) {
             foreach ($changed_elements as $element) {
                 $changed_pages[$element['page_id']][] = $element;
@@ -530,37 +580,53 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             $pages[$page_key] = $page = $action->process_actions($page);
             if (isset($page['hidden']) && $page['hidden']) {
                 $pages[$page_key]['page_id'] = '0';
-                $pages[$page_key]['elements'] = array();
+                $pages[$page_key]['elements'] = [];
             } else {
                 if (!empty($page['elements'])) {
                     $pages[$page_key]['elements'] = $page['elements'];
                     foreach ($page['elements'] as $element_key => $element) {
                         if (isset($element['type'])) {
+                            $rendered = isset($element['rendered']) ? $element['rendered'] : false;
                             switch ($element['type']) {
                                 case 'e2pdf-checkbox':
                                 case 'e2pdf-radio':
+                                    if (isset($element['properties']['option'])) {
+                                        $element['properties']['option'] = $this->helper->load('translator')->pre_translate($element['properties']['option'], $element['template_id'], $element['element_id'], 'option');
+                                    }
                                     $pages[$page_key]['elements'][$element_key]['properties']['option'] = $this->extension()->render(
                                             isset($element['properties']['option']) ? $element['properties']['option'] : ''
                                     );
-                                    $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
-                                            $element['value'], $element
-                                    );
+                                    if (!$rendered) {
+                                        $element['value'] = $this->helper->load('translator')->pre_translate($element['value'], $element['template_id'], $element['element_id'], 'value');
+                                        $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
+                                                $element['value'], $element
+                                        );
+                                    }
                                     break;
                                 case 'e2pdf-select':
+                                    if (isset($element['properties']['options'])) {
+                                        $element['properties']['options'] = $this->helper->load('translator')->pre_translate($element['properties']['options'], $element['template_id'], $element['element_id'], 'options');
+                                    }
                                     $pages[$page_key]['elements'][$element_key]['properties']['options'] = $this->extension()->render(
                                             isset($element['properties']['options']) ? $element['properties']['options'] : ''
                                     );
-                                    $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
-                                            $element['value'], $element
-                                    );
+                                    if (!$rendered) {
+                                        $element['value'] = $this->helper->load('translator')->pre_translate($element['value'], $element['template_id'], $element['element_id'], 'value');
+                                        $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
+                                                $element['value'], $element
+                                        );
+                                    }
                                     break;
                                 case 'e2pdf-html':
                                 case 'e2pdf-page-number':
-                                    $pages[$page_key]['elements'][$element_key]['value'] = $this->helper->load('filter')->filter_html_tags(
-                                            $this->extension()->render(
-                                                    $element['value'], $element
-                                            )
-                                    );
+                                    if (!$rendered) {
+                                        $element['value'] = $this->helper->load('translator')->pre_translate($element['value'], $element['template_id'], $element['element_id'], 'value');
+                                        $pages[$page_key]['elements'][$element_key]['value'] = $this->helper->load('filter')->filter_html_tags(
+                                                $this->extension()->render(
+                                                        $element['value'], $element
+                                                )
+                                        );
+                                    }
                                     break;
                                 case 'e2pdf-image':
                                 case 'e2pdf-signature':
@@ -569,19 +635,22 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                                         $element['properties']['quality'] = $this->get('optimization');
                                         $pages[$page_key]['elements'][$element_key]['properties']['quality'] = $this->get('optimization');
                                     }
-                                    $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
-                                            $element['value'], $element
-                                    );
+                                    if (!$rendered) {
+                                        $element['value'] = $this->helper->load('translator')->pre_translate($element['value'], $element['template_id'], $element['element_id'], 'value');
+                                        $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
+                                                $element['value'], $element
+                                        );
+                                    }
                                     if (!empty($element['properties']['link_url'])) {
                                         $pages[$page_key]['elements'][$element_key]['properties']['link_url'] = $this->extension()->render(
                                                 $element['properties']['link_url']
                                         );
                                         if (!empty($pages[$page_key]['elements'][$element_key]['properties']['link_url']) && !empty($element['properties']['link_type']) && $element['properties']['link_type'] == 'attachment') {
-                                            $source = $this->helper->load('attachments')->get_file(trim($pages[$page_key]['elements'][$element_key]['properties']['link_url']), $this->extension());
+                                            $source = $this->helper->load('attachments')->get_file(trim($pages[$page_key]['elements'][$element_key]['properties']['link_url']), $this->extension);
                                             if ($source) {
                                                 $pages[$page_key]['elements'][$element_key]['attachment']['value'] = $source;
-                                                $pages[$page_key]['elements'][$element_key]['attachment']['name'] = $this->helper->load('attachments')->get_attachment_name($pages[$page_key]['elements'][$element_key]['properties']['link_url'], $this->extension(), $element['value']);
-                                                $pages[$page_key]['elements'][$element_key]['attachment']['description'] = $this->helper->load('attachments')->get_attachment_description($pages[$page_key]['elements'][$element_key]['properties']['link_url'], $this->extension(), $element['value']);
+                                                $pages[$page_key]['elements'][$element_key]['attachment']['name'] = $this->helper->load('attachments')->get_attachment_name($pages[$page_key]['elements'][$element_key]['properties']['link_url'], $this->extension, $element['value']);
+                                                $pages[$page_key]['elements'][$element_key]['attachment']['description'] = $this->helper->load('attachments')->get_attachment_description($pages[$page_key]['elements'][$element_key]['properties']['link_url'], $this->extension, $element['value']);
                                             }
                                         }
                                     }
@@ -594,18 +663,21 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                                             !empty($element['properties']['link_label']) ? $element['properties']['link_label'] : ''
                                     );
                                     if (!empty($pages[$page_key]['elements'][$element_key]['value']) && !empty($element['properties']['link_type']) && $element['properties']['link_type'] == 'attachment') {
-                                        $source = $this->helper->load('attachments')->get_file(trim($pages[$page_key]['elements'][$element_key]['value']), $this->extension());
+                                        $source = $this->helper->load('attachments')->get_file(trim($pages[$page_key]['elements'][$element_key]['value']), $this->extension);
                                         if ($source) {
                                             $pages[$page_key]['elements'][$element_key]['attachment']['value'] = $source;
-                                            $pages[$page_key]['elements'][$element_key]['attachment']['name'] = $this->helper->load('attachments')->get_attachment_name($pages[$page_key]['elements'][$element_key]['value'], $this->extension(), $element['value']);
-                                            $pages[$page_key]['elements'][$element_key]['attachment']['description'] = $this->helper->load('attachments')->get_attachment_description($pages[$page_key]['elements'][$element_key]['value'], $this->extension(), $element['value']);
+                                            $pages[$page_key]['elements'][$element_key]['attachment']['name'] = $this->helper->load('attachments')->get_attachment_name($pages[$page_key]['elements'][$element_key]['value'], $this->extension, $element['value']);
+                                            $pages[$page_key]['elements'][$element_key]['attachment']['description'] = $this->helper->load('attachments')->get_attachment_description($pages[$page_key]['elements'][$element_key]['value'], $this->extension, $element['value']);
                                         }
                                     }
                                     break;
                                 default:
-                                    $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
-                                            $element['value'], $element
-                                    );
+                                    if (!$rendered) {
+                                        $element['value'] = $this->helper->load('translator')->pre_translate($element['value'], $element['template_id'], $element['element_id'], 'value');
+                                        $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
+                                                $element['value'], $element
+                                        );
+                                    }
                                     break;
                             }
                         }
@@ -615,8 +687,8 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
         }
         $this->set('pages', $pages);
 
-        do_action('e2pdf_model_template_fill_after', $this, $this->extension());
-        remove_filter('e2pdf_pdf_fill', array($this->helper, '__return_true'), 999);
+        do_action('e2pdf_model_template_fill_after', $this, $this->extension);
+        remove_filter('e2pdf_pdf_fill', [$this->helper, '__return_true'], 999);
     }
 
     // pre render
@@ -652,36 +724,36 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
         $model_e2pdf_api = new Model_E2pdf_Api();
         $model_e2pdf_font = new Model_E2pdf_Font();
 
-        $fonts = array();
+        $fonts = [];
         if (get_option('e2pdf_cache_fonts', '1') && $type != 'php') {
-            $cached_fonts = get_option('e2pdf_cached_fonts', array());
+            $cached_fonts = get_option('e2pdf_cached_fonts', []);
             if ($this->get('fonts')) {
-                $uncached_fonts = array();
+                $uncached_fonts = [];
                 foreach ($this->get('fonts') as $key => $value) {
                     $md5 = $model_e2pdf_font->get_font($key, true);
                     if ($md5 && in_array($md5, $cached_fonts, true)) {
-                        $fonts[] = array(
+                        $fonts[] = [
                             'name' => $value,
                             'md5' => $md5,
                             'cache' => true,
-                        );
+                        ];
                     } else {
                         $uncached_fonts[] = $md5;
-                        $fonts[] = array(
+                        $fonts[] = [
                             'name' => $value,
                             'value' => $model_e2pdf_font->get_font($key),
                             'cache' => true,
-                        );
+                        ];
                     }
                 }
                 if (!empty($uncached_fonts)) {
                     $model_e2pdf_api->set(
-                            array(
+                            [
                                 'action' => 'cache/fonts',
-                                'data' => array(
+                                'data' => [
                                     'fonts' => $uncached_fonts,
-                                ),
-                            )
+                                ],
+                            ]
                     );
                     $request = $model_e2pdf_api->request();
                     if (isset($request['fonts']) && is_array($request['fonts'])) {
@@ -693,17 +765,17 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
         } else {
             if ($this->get('fonts')) {
                 foreach ($this->get('fonts') as $key => $value) {
-                    $fonts[] = array(
+                    $fonts[] = [
                         'name' => $value,
                         'value' => $model_e2pdf_font->get_font($key),
-                    );
+                    ];
                 }
             }
         }
 
         $pages = $this->pre_render();
 
-        $settings = array(
+        $settings = [
             'uid' => $this->get('uid'),
             'activated' => $this->get('activated'),
             'title' => $this->get_name(),
@@ -731,7 +803,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             'font_processor' => apply_filters('e2pdf_font_processor', $this->get('font_processor'), $this->get('ID')),
             'created_at' => $this->get('created_at'),
             'updated_at' => $this->get('updated_at'),
-        );
+        ];
 
         if ($this->get('dpdf')) {
             $dpdf = $this->helper->load('pdf')->get_pdf($this->get('dpdf'));
@@ -747,12 +819,12 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             }
         }
 
-        $data = array(
+        $data = [
             'settings' => $settings,
             'pages' => $pages,
             'fonts' => $fonts,
-            'attachments' => $this->helper->load('attachments')->get_attachments($this->get('attachments'), $this->extension()),
-        );
+            'attachments' => $this->helper->load('attachments')->get_attachments($this->get('attachments'), $this->extension),
+        ];
 
         if ($type == 'php') {
             $model_e2pdf_convert = new Model_E2pdf_Convert();
@@ -764,8 +836,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             $file .= 'return $template;' . PHP_EOL;
             $file .= '}';
             if ($file) {
-                // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
-                $response['file'] = base64_encode($file);
+                $response['file'] = $file;
             } else {
                 $response['error'] = __('Something went wrong!', 'e2pdf');
             }
@@ -777,39 +848,39 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
         $request = $this->helper->load('cache')->get_cached_pdf($cached_pdf);
         if (empty($request['file'])) {
             $model_e2pdf_api->set(
-                    array(
+                    [
                         'action' => 'template/build',
                         'data' => $data,
-                    )
+                    ]
             );
             $request = $model_e2pdf_api->request();
         }
 
         if (isset($request['error']) && $request['error'] == 'cache_error') {
-            update_option('e2pdf_cached_fonts', array());
-            $fonts = array();
+            update_option('e2pdf_cached_fonts', []);
+            $fonts = [];
             if ($this->get('fonts')) {
                 foreach ($this->get('fonts') as $key => $value) {
-                    $fonts[] = array(
+                    $fonts[] = [
                         'name' => $value,
                         'value' => $model_e2pdf_font->get_font($key),
-                    );
+                    ];
                 }
             }
-            $data = array(
+            $data = [
                 'settings' => $settings,
                 'pages' => $pages,
                 'fonts' => $fonts,
-            );
+            ];
             // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
             $cached_pdf = md5(json_encode($data));
             $request = $this->helper->load('cache')->get_cached_pdf($cached_pdf);
             if (empty($request['file'])) {
                 $model_e2pdf_api->set(
-                        array(
+                        [
                             'action' => 'template/build',
                             'data' => $data,
-                        )
+                        ]
                 );
                 $request = $model_e2pdf_api->request();
             }
@@ -819,12 +890,11 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
     }
 
     public function get_name() {
+        $name = __('(no title)', 'e2pdf');
         if ($this->get('name')) {
             $name = $this->get('name');
         } elseif ($this->get('title')) {
             $name = $this->get('title');
-        } else {
-            $name = __('(no title)', 'e2pdf');
         }
         return $name;
     }
@@ -844,40 +914,40 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
     public function activate() {
         if ($this->get('ID')) {
             if ($this->get('activated', true)) {
-                $request = array(
+                $request = [
                     'template_id' => $this->get('ID'),
                     'template_uid' => $this->get('uid'),
-                );
+                ];
             } else {
                 $model_e2pdf_api = new Model_E2pdf_Api();
                 $model_e2pdf_api->set(
-                        array(
+                        [
                             'action' => 'template/activate',
-                            'data' => array(
+                            'data' => [
                                 'template_id' => $this->get('ID'),
                                 'template_uid' => $this->get('uid'),
                                 'template_title' => $this->get('title'),
                                 'template_extension' => $this->get('extension'),
-                            ),
-                        )
+                            ],
+                        ]
                 );
                 $request = $model_e2pdf_api->request();
                 if (!isset($request['error'])) {
                     $this->set('activated', '1');
                     $this->set('uid', $request['template_uid']);
-                    $this->update(array('activated', 'uid'));
+                    $this->update(['activated', 'uid']);
                 } else {
                     $this->set('activated', '0');
-                    $this->update(array('activated'));
+                    $this->update(['activated']);
                 }
                 if ($this->helper->get('cache')) {
                     wp_cache_delete($this->get('ID'), 'e2pdf_templates');
                 }
             }
         } else {
-            $request = array(
+            $request = [
                 'error' => __('Something went wrong!', 'e2pdf'),
-            );
+            ];
         }
         return $request;
     }
@@ -885,34 +955,93 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
     public function deactivate() {
         if ($this->get('ID')) {
             if (!$this->get('activated', true)) {
-                $request = array(
+                $request = [
                     'success' => __('Template Deactivated', 'e2pdf'),
-                );
+                ];
             } else {
                 $model_e2pdf_api = new Model_E2pdf_Api();
                 $model_e2pdf_api->set(
-                        array(
+                        [
                             'action' => 'template/deactivate',
-                            'data' => array(
+                            'data' => [
                                 'template_id' => $this->get('ID'),
                                 'template_uid' => $this->get('uid'),
-                            ),
-                        )
+                            ],
+                        ]
                 );
                 $request = $model_e2pdf_api->request();
                 if (!isset($request['error'])) {
                     $this->set('activated', '0');
-                    $this->update(array('activated'));
+                    $this->update(['activated']);
                 }
                 if ($this->helper->get('cache')) {
                     wp_cache_delete($this->get('ID'), 'e2pdf_templates');
                 }
             }
         } else {
-            $request = array(
+            $request = [
                 'error' => __('Something went wrong!', 'e2pdf'),
-            );
+            ];
         }
         return $request;
+    }
+
+    public function patch($key, $value = false, $entry = null, $filter = false) {
+        if ($value !== false) {
+            $this->set($key, $filter ? $this->extension()->convert_shortcodes($value, true) : $this->extension()->render($value));
+            if ($entry) {
+                $entry->set_data($key, $this->get($key));
+            }
+        } else {
+            switch ($key) {
+                case 'meta_title':
+                case 'meta_subject':
+                case 'meta_author':
+                case 'meta_keywords':
+                    $value = $this->extension()->render(
+                            $this->helper->load('translator')->pre_translate(
+                                    $this->get($key), $this->get('ID'), $key, 'template'
+                            )
+                    );
+                    $this->set($key, $value);
+                    break;
+                case 'name':
+                    if ($this->get('name')) {
+                        $value = $this->extension()->render(
+                                $this->helper->load('translator')->pre_translate(
+                                        $this->get('name'), $this->get('ID'), 'name', 'template'
+                                )
+                        );
+                    }
+                    if (!trim($value) && $this->get('title')) {
+                        $value = $this->extension()->render(
+                                $this->helper->load('translator')->pre_translate(
+                                        $this->get('title'), $this->get('ID'), 'title', 'template'
+                                )
+                        );
+                    }
+                    if (!trim($value)) {
+                        $value = __('(no title)', 'e2pdf');
+                    }
+                    $this->set($key, $value);
+                    break;
+                case 'savename':
+                    if ($this->get('savename')) {
+                        $value = $this->extension()->render(
+                                $this->helper->load('translator')->pre_translate(
+                                        $this->get('savename'), $this->get('ID'), 'savename', 'template'
+                                )
+                        );
+                    }
+                    if (!trim($value)) {
+                        $value = $this->get('name');
+                    }
+                    $this->set($key, $value);
+                    break;
+                default:
+                    $this->set($key, $this->extension()->render($this->get($key)));
+                    break;
+            }
+        }
     }
 }

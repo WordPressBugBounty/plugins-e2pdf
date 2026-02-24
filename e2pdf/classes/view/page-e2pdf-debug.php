@@ -117,18 +117,25 @@ if (!defined('ABSPATH')) {
                     <?php } ?> 
                 </li>
                 <li>
+                    <?php if (class_exists('XMLReader')) { ?>
+                        <span class="e2pdf-color-green">[OK]</span>
+                    <?php } else { ?>
+                        <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span>
+                    <?php } ?> XMLReader
+                </li>
+                <li>
                     <?php if (extension_loaded('simplexml')) { ?>
                         <span class="e2pdf-color-green">[OK]</span>
                     <?php } else { ?>
                         <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span>
-                    <?php } ?> SIMPLEXML
+                    <?php } ?> SimpleXML
                 </li>
                 <li>
                     <?php if (extension_loaded('libxml')) { ?>
                         <span class="e2pdf-color-green">[OK]</span>
                     <?php } else { ?>
                         <span class="e2pdf-color-red"><?php _e('[ERROR]', 'e2pdf'); ?></span>
-                    <?php } ?> LIBXML
+                    <?php } ?> LibXML
                 </li>
                 <li>
                     <?php if (extension_loaded('Dom')) { ?>

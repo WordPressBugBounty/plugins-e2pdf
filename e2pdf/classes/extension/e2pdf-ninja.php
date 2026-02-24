@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Fluent Forms Extension
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPL v2
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.07.04
+ * File: /extension/e2pdf-ninja.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -20,11 +19,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         'title' => 'Ninja Forms',
     );
 
-    /**
-     * Get info about extension
-     * @param string $key - Key to get assigned extension info value
-     * @return array|string - Extension Key and Title or Assigned extension info value
-     */
+    // info
     public function info($key = false) {
         if ($key && isset($this->info[$key])) {
             return $this->info[$key];
@@ -35,10 +30,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Check if needed plugin active
-     * @return bool - Activated/Not Activated plugin
-     */
+    // active
     public function active() {
         if (defined('E2PDF_NINJA_EXTENSION') || $this->helper->load('extension')->is_plugin_active('ninja-forms/ninja-forms.php')) {
             return true;
@@ -46,12 +38,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Set option
-     * @param string $key - Key of option
-     * @param string $value - Value of option
-     * @return bool - Status of setting option
-     */
+    // set
     public function set($key, $value) {
         if (!isset($this->options)) {
             $this->options = new stdClass();
@@ -111,7 +98,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                                             $list_fields_types = array('listcheckbox', 'listmultiselect', 'listradio', 'listselect');
                                             $field['value_label'] = $field['value'];
                                             foreach ($form_field->get_setting('fields') as $sub_field) {
-                                                if (in_array($sub_field['type'], $list_fields_types)) {
+                                                if (in_array($sub_field['type'], $list_fields_types, false)) {
                                                     foreach ($field['value_label'] as $sub_value_key => $sub_value) {
                                                         if (0 === strpos($sub_value['id'], $sub_field['id'] . '_')) {
                                                             $sub_field['value'] = $sub_value['value'];
@@ -164,7 +151,8 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                                                                 function ($v) {
                                                                     return $v['value'];
                                                                 }, $options
-                                                        )
+                                                        ),
+                                                        false
                                                 );
 
                                                 $label = isset($options[$key]['label']) ? $options[$key]['label'] : '';
@@ -233,11 +221,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return true;
     }
 
-    /**
-     * Get option by key
-     * @param string $key - Key to get assigned option value
-     * @return mixed
-     */
+    // get
     public function get($key) {
         if (isset($this->options->$key)) {
             $value = $this->options->$key;
@@ -254,10 +238,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Get items to work with
-     * @return array() - List of available items
-     */
+    // items
     public function items() {
         $items = array();
         if (function_exists('Ninja_Forms')) {
@@ -271,11 +252,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $items;
     }
 
-    /**
-     * Get item
-     * @param int $item_id - Item ID
-     * @return object - Item
-     */
+    // item
     public function item($item_id = false) {
         $item_id = (int) $item_id;
         if (!$item_id && $this->get('item')) {
@@ -303,12 +280,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $item;
     }
 
-    /**
-     * Get entries for export
-     * @param int $item_id - Form ID
-     * @param string $name - Entries names
-     * @return array() - Entries list
-     */
+    // datasets
     public function datasets($item_id = false, $name = false) {
         $item_id = (int) $item_id;
         $datasets = array();
@@ -332,11 +304,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $datasets;
     }
 
-    /**
-     * Get Dataset Actions
-     * @param int $dataset_id - Dataset ID
-     * @return object
-     */
+    // get dataset actions
     public function get_dataset_actions($dataset_id = false) {
         $dataset_id = (int) $dataset_id;
         if (!$dataset_id) {
@@ -354,11 +322,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $actions;
     }
 
-    /**
-     * Get Template Actions
-     * @param int $template - Template ID
-     * @return object
-     */
+    // get template actions
     public function get_template_actions($template = false) {
         $template = (int) $template;
         if (!$template) {
@@ -369,13 +333,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $actions;
     }
 
-    /**
-     * Render value according to content
-     * @param string $value - Content
-     * @param string $type - Type of rendering value
-     * @param array $field - Field details
-     * @return string - Fully rendered value
-     */
+    // render
     public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
         if (!$raw) {
@@ -386,33 +344,31 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Load actions for this extension
-     */
+    // load actions
     public function load_actions() { // phpcs:ignore Squiz.WhiteSpace.SuperfluousWhitespace.EndLine
     }
 
-    /**
-     * Load filters for this extension
-     */
+    // load filters
     public function load_filters() {
         add_filter('ninja_forms_run_action_settings', array($this, 'filter_ninja_forms_run_action_settings'), 10, 4);
         add_filter('ninja_forms_post_run_action_type_save', array($this, 'filter_ninja_forms_post_run_action_type_save'));
         add_filter('ninja_forms_post_run_action_type_email', array($this, 'filter_ninja_forms_post_run_action_type_email'));
         add_filter('ninja_forms_action_email_attachments', array($this, 'filter_ninja_forms_action_email_attachments'), 10, 3);
         add_filter('ninja_forms_action_email_message', array($this, 'filter_ninja_forms_action_email_message'), 10, 3);
-        /* 1.25.14 - Trigger Email Action Fix */
+        // 1.25.14 trigger email action fix
         add_filter('rest_dispatch_request', array($this, 'filter_rest_dispatch_request'), 10, 3);
     }
 
+    // run action settings filter
     public function filter_ninja_forms_run_action_settings($settings, $form_id, $action_id, $form_data) {
         $type = isset($settings['type']) ? $settings['type'] : false;
         if ($type == 'successmessage' && isset($settings['success_msg'])) {
-            $settings['success_msg'] = $this->filter_content($settings['success_msg'], $this->get('dataset'));
+            $settings['success_msg'] = $this->filter_content($settings['success_msg'], $this->get('dataset'), false, 'message');
         }
         return $settings;
     }
 
+    // post run action type save filter
     public function filter_ninja_forms_post_run_action_type_save($data) {
         $dataset_id = isset($data['actions']['save']['sub_id']) ? $data['actions']['save']['sub_id'] : false;
         if ($dataset_id) {
@@ -421,6 +377,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $data;
     }
 
+    // post run action type email filter
     public function filter_ninja_forms_post_run_action_type_email($data) {
         $files = $this->helper->get('ninja_attachments');
         if (is_array($files) && !empty($files)) {
@@ -432,6 +389,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $data;
     }
 
+    // email attachments filter
     public function filter_ninja_forms_action_email_attachments($attachments, $data, $action_settings) {
         $message = isset($action_settings['email_message']) ? $action_settings['email_message'] : '';
         if (false !== strpos($message, '[')) {
@@ -491,15 +449,17 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $attachments;
     }
 
+    // email message filter
     public function filter_ninja_forms_action_email_message($message, $data, $action_settings) {
         $dataset_id = isset($data['actions']['save']['sub_id']) ? $data['actions']['save']['sub_id'] : false;
         if (!$dataset_id) {
             $dataset_id = isset($action_settings['sub_id']) ? $action_settings['sub_id'] : false;
         }
-        $message = $this->filter_content($message, $dataset_id);
+        $message = $this->filter_content($message, $dataset_id, true);
         return $message;
     }
 
+    // rest dispatch request filter
     public function filter_rest_dispatch_request($result, $request, $route) {
         if ($route && false !== strpos($route, '/ninja-forms-submissions/email-action')) {
             $data = json_decode($request->get_body());
@@ -511,7 +471,8 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $result;
     }
 
-    public function filter_content($message, $dataset_id) {
+    // filter content
+    public function filter_content($message, $dataset_id, $filter, $type = '') {
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-download',
@@ -539,8 +500,11 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                     if (!isset($atts['apply'])) {
                         $shortcode[3] .= ' apply="true"';
                     }
-                    if (!isset($atts['filter'])) {
+                    if (!isset($atts['filter']) && $filter) {
                         $shortcode[3] .= ' filter="true"';
+                    }
+                    if (!isset($atts['iframe_download']) && $type == 'message') {
+                        $shortcode[3] .= ' iframe_download="true"';
                     }
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                         $message = str_replace($shortcode_value, '', $message);
@@ -553,13 +517,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $message;
     }
 
-    /**
-     * Render shortcodes which available in this extension
-     * @param string $value - Content
-     * @param string $type - Type of rendering value
-     * @param array $field - Field details
-     * @return string - Value with rendered shortcodes
-     */
+    // render shortcodes
     public function render_shortcodes($value, $field = array()) {
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
         if ($this->verify()) {
@@ -581,23 +539,14 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         );
     }
 
-    /**
-     * Strip unused shortcodes
-     * @param string $value - Content
-     * @return string - Value with removed unused shortcodes
-     */
+    // strip shortcodes
     public function strip_shortcodes($value) {
         $value = preg_replace('~(?:\[/?)[^/\]]+/?\]~s', '', $value);
         $value = preg_replace('~a\:\d+\:{[^}]*}(*SKIP)(*FAIL)|{[^}]*}~', '', $value);
         return $value;
     }
 
-    /**
-     * Convert "shortcodes" inside value string
-     * @param string $value - Value string
-     * @param bool $to - Convert From/To
-     * @return string - Converted value
-     */
+    // convert shortcodes
     public function convert_shortcodes($value, $to = false, $html = false) {
         if ($value) {
             if ($to) {
@@ -616,10 +565,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Auto Generate of Template for this extension
-     * @return array - List of elements
-     */
+    // auto
     public function auto() {
         $elements = array();
         if ($this->get('cached_form')) {
@@ -662,13 +608,11 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                                     ),
                                 )
                         );
-
                         foreach ($field['fields'] as $sub_field) {
                             list($field_id, $sub_field_id) = explode('.', $sub_field['id']);
                             $sub_field['key'] = $field['key'] . ':0_' . $sub_field_id;
                             $elements = $this->auto_fields($elements, $sub_field);
                         }
-
                         $elements[] = $this->auto_field(
                                 $field,
                                 array(
@@ -705,6 +649,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $response;
     }
 
+    // auto fields
     public function auto_fields($elements, $field) {
         $width = '100';
         switch ($field['type']) {
@@ -1041,6 +986,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $elements;
     }
 
+    // auto field
     public function auto_field($field = false, $element = array()) {
         if (!$field) {
             return false;
@@ -1048,10 +994,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return $element;
     }
 
-    /**
-     * Verify if item and dataset exists
-     * @return bool - item and dataset exists
-     */
+    // verify
     public function verify() {
         if ($this->get('cached_form') && $this->get('cached_entry')) {
             return true;
@@ -1059,10 +1002,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Init Visual Mapper data
-     * @return bool|string - HTML data source for Visual Mapper
-     */
+    // visual mapper
     public function visual_mapper() {
         $html = '';
         if ($this->get('item')) {
@@ -1114,16 +1054,11 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Load additional shortcodes for this extension
-     */
+    // load shortcodes
     public function load_shortcodes() { // phpcs:ignore Squiz.WhiteSpace.SuperfluousWhitespace.EndLine
     }
 
-    /**
-     * Get styles for generating Map Field function
-     * @return array - List of css files to load
-     */
+    // styles
     public function styles($item_id = false) {
         $styles = array();
         $styles[] = plugins_url('css/extension/ninja.css?v=' . time(), $this->helper->get('plugin_file_path'));

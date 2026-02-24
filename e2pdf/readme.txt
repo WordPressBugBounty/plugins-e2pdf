@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 6.9
 Requires PHP: 5.4
-Stable tag: 1.28.15
+Stable tag: 1.32.00
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -76,6 +76,7 @@ Easily create, populate, and email PDFs using popular form builders and platform
 * [Forminator Forms](https://e2pdf.com/docs/extensions/forminator-forms): [Demo](https://e2pdf.com/demo/forminator-forms)
 * [Gravity Forms](https://e2pdf.com/docs/extensions/gravity-forms): [Demo](https://e2pdf.com/demo/gravity-forms)
 * [JetFormBuilder](https://e2pdf.com/docs/extensions/jetformbuilder): [Demo](https://e2pdf.com/demo/jetformbuilder)
+* [MetForm](https://e2pdf.com/docs/extensions/metform): [Demo](https://e2pdf.com/demo/metform)
 * [Ninja Forms PDF](https://e2pdf.com/docs/extensions/ninja-forms): [Demo](https://e2pdf.com/demo/ninja-forms)
 * [WooCommerce Order / Product](https://e2pdf.com/docs/extensions/woocommerce) : [Demo](https://e2pdf.com/demo/woocommerce)
 * [WordPress / Post / Meta / ACF](https://e2pdf.com/docs/extensions/wordpress): [Demo](https://e2pdf.com/demo/wordpress)
@@ -138,47 +139,98 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
+= 1.32.00 =
+*Release Date - February 24, 2026*
+
+* Add: MetForm support
+* Add: Elementor Forms label output support
+* Add: Fluent Forms redirect to PDF support
+* Add: WooCommerce subscriptions support
+* Add: WooCommerce filters
+* Add: WooCommerce get_items_ids
+* Add: WooCommerce additional shortcode attributes
+* Add: WPML Translation support
+* Add: Polylang 3.7 translation support
+* Add: Google Drive integration
+* Add: Raw Encoding transfer protocol
+* Add: HTML Worker 2.0: margin and padding support for list elements
+* Add: HTML "char-fill" and "line-fill" attributes support
+* Add: CSS list-style-type-color support
+* Add: CSS list-style-type-size support
+* Add: CSS text-transform support
+* Add: CSS global fonts load
+* Add: Text to image RTL support
+* Add: Signature opacity and rotation support
+* Add: Image custom font, font size and font color support
+* Add: Required attribute for signature field
+* Add: SVG inline and base64 support
+* Add: Justify All alignment
+* Add: Quick Props
+* Add: Zapier App
+* Add: Actions global undo
+* Add: Action pre-replace 
+* Add: Action global redirect 
+* Add: Option to return Attachment ID upon saving to Media
+* Add: pdf.js redirect, error message support
+* Add: Import options
+* Add: Import backup pdf files support
+* Add: [e2pdf-translate] shortcode
+* Add: [jet_engine_data] shortcode
+* Add: [e2pdf-if] nested shortcode
+* Add: [e2pdf-for-count] shortcode for [e2pdf-for]
+* Add: [e2pdf-acf-repeater-count] shortcode for [e2pdf-acf-repeater]
+* Add: [e2pdf-frm-field-value] shortcode for Formidable Forms dynamic field
+* Add: [e2pdf-if] strict comparators [===] [!==]
+* Add: [e2pdf-acf-repeater] implode attribute
+* Fix: WooCommerce User Order List hook global actions
+* Fix: WooCommerce Empty My Orders actions
+* Fix: JetFormBuilder link and frame class
+* Fix: Formidable Forms 5.x backward compatibility
+* Fix: Ninja Forms dynamic values in the Success Message
+* Fix: Checkout Field Editor block fields fail to retrieve labels
+* Fix: CSS fatal error by unsupported selectors
+* Fix: Shortcodes fail to render in some cases
+* Fix: Compatibility fix with Image Optimizer, Resizer and CDN – Sirv
+* Fix: Nested lists render
+* Fix: Some fonts fail to render
+* Fix: E2Pdf URLs fail to load in some cases
+* Fix: Incorrect HTML list style
+* Fix: Safari iOS Auto download
+* Fix: Safari iOS Ajax loader PDF download
+* Fix: Safari <= 17.3 pdf.js loading
+* Fix: HTML Worker 2.0 unexpected spaces
+* Fix: HTML Worker 2.0 "ol" tags render
+* Fix: HTML Worker 2.0 incorrect table spacing when using margins on elements inside rows
+* Fix: [e2pdf-for], [e2pdf-acf-repeater] nested shortcodes render
+* Fix: Minor PHP notices
+* Improvement: Gravity Forms Visual Mapper
+* Improvement: Visual Mapper
+* Improvement: PDF Render Engine
+* Improvement: PDF Upload
+* Improvement: Translator
+* Improvement: Translation
+* Improvement: Memory usage
+* Improvement: TranslatePress support
+* Improvement: Shortcodes processing
+* Improvement: Shortcodes load optimization
+* Improvement: HTML render
+* Improvement: HTML Worker 3.0
+* Improvement: HTML tables render
+* Improvement: Auto download
+* Improvement: Global actions
+* Improvement: SVG render
+* Improvement: pdf.js update
+* Improvement: UI/UX
+* Improvement: WYSIWYG
+* Improvement: CSS load
+* Improvement: Backup import
+* Improvement: "convert" attribute
+* Security: [e2pdf-frm-field-value] restriction outside PDF context
+* Security: Shortcodes usage limitations
+* Security: Attributes filtering
+
 = 1.28.15 =
 *Release Date - February 10, 2026*
-
-* Fix: Visual Mapper does not correctly set some values
-* Fix: Bulk PDF generation fails in certain case
-* Improvement: Parent option
-* Improvement: Timeouts
-
-= 1.28.14 =
-*Release Date - November 07, 2025*
-
-* Fix: Gravity Forms incorrect value mapping when using separate values
-
-= 1.28.13 =
-*Release Date - October 25, 2025*
-
-* Fix: Checkbox and Select compatibility with Forminator 1.48.x
-
-= 1.28.12 =
-*Release Date - October 08, 2025*
-
-* Fix: Gravity Forms Visual Mapper
-* Fix: Clear cache upon settings change
-
-= 1.28.11 =
-*Release Date - September 30, 2025*
-
-* Fix: Docket Cache compatibility
-* Fix: Everest Forms email templates
-
-= 1.28.10 =
-*Release Date - September 23, 2025*
-
-* Add: Checkout Field Editor (Checkout Manager) for WooCommerce support
-* Add: get_items_category, get_items_category_ids keys for WooCommerce
-* Fix: Compatibility fix with Foxtool All-in-One: Contact chat button, Custom login, Media optimize images
-* Security: Cross Site Scripting (XSS)
-* Security: HTML filter
-
-= 1.28.09 =
-*Release Date - September 13, 2025*
 
 * Add: JetFormBuilder revision form entries
 * Add: WPForms Likert Scale support
@@ -186,165 +238,50 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Add: Gravity Forms json value format support
 * Add: [e2pdf-format-output] sreplace filter
 * Add: [e2pdf-math] modulo operator
-* Fix: Gravity Forms signature and hidden fields Visual Mapper
-* Fix: Fatal error on JetFormBuilder no entries
-* Fix: PHP 8.x deprecation notice
-* Improvement: truncate_html, truncate_ishtml, extract_by_tag, extract_by_id, extract_by_class, remove_by_tag, remove_by_id, remove_by_class html entities
-* Improvement: Visual Mapper
-
-= 1.28.08 =
-*Release Date - September 11, 2025*
-
-* Fix: PHP 8.x deprecation notice
-
-= 1.28.07 =
-*Release Date - July 17, 2025*
-
-* Fix: Fatal Error upon save to Media
-
-= 1.28.06 =
-*Release Date - June 30, 2025*
-
-* Fix: Dataset titles
-
-= 1.28.05 =
-*Release Date - May 13, 2025*
-
-* Fix: Backward compatibility with Formidable Forms 5.x
-
-= 1.28.04 =
-*Release Date - May 07, 2025*
-
+* Add: Checkout Field Editor (Checkout Manager) for WooCommerce support
+* Add: get_items_category, get_items_category_ids keys for WooCommerce
 * Add: Additional actions and filters
 * Add: [e2pdf-acf-repeater] nested shortcodes support
 * Add: Fluent Forms hidden field default value support
 * Add: MemberPress custom thank you message shortcodes support
 * Add: User Registration & Membership – Custom Registration Form, Login Form, and User Profile mail support
+* Fix: Visual Mapper does not correctly set some values
+* Fix: Bulk PDF generation fails in certain case
+* Fix: Gravity Forms incorrect value mapping when using separate values
+* Fix: Checkbox and Select compatibility with Forminator 1.48.x
+* Fix: Gravity Forms Visual Mapper
+* Fix: Clear cache upon settings change
+* Fix: Docket Cache compatibility
+* Fix: Everest Forms email templates
+* Fix: Compatibility fix with Foxtool All-in-One: Contact chat button, Custom login, Media optimize images
+* Fix: Gravity Forms signature and hidden fields Visual Mapper
+* Fix: Fatal error on JetFormBuilder no entries
+* Fix: Fatal Error upon save to Media
+* Fix: Dataset titles
 * Fix: Download PDF Ajax Loader redirect, error message
 * Fix: Fluent Forms checkbox, dropdown, country, repeater fields render
 * Fix: Fluent Forms [e2pdf-view] shortcode fails to load correctly
 * Fix: Elementor Forms Repeater Fields compatibility fix
 * Fix: Incorrect DB collation
 * Fix: PHP 8.x deprecation notice
+* Improvement: truncate_html, truncate_ishtml, extract_by_tag, extract_by_id, extract_by_class, remove_by_tag, remove_by_id, remove_by_class html entities
+* Improvement: Parent option
+* Improvement: Timeouts
+* Improvement: Visual Mapper
 * Improvement: Backup import
 * Improvement: Actions can't have empty conditions
 * Improvement: Checkbox, Select and Multiline select render
 * Improvement: Everest Forms shortcodes process
 * Improvement: JetFormBuilder shortcodes process
 * Improvement: Elementor Widget shortcodes process
+* Security: Cross Site Scripting (XSS)
+* Security: HTML filter
 
 = 1.28.00 =
 *Release Date - April 08, 2025*
 
-* Add: E2Pdf Template search by ID
-* Add: Everest Forms support
-* Add: JetFormBuilder support
-* Add: PDF Attachments
-* Add: Global Hooks
-* Add: Global Properties
-* Add: HTML Worker v3 (Beta)
-* Add: WPForms Repeater full support
-* Add: Fluent Forms Trello support
-* Add: WooCommerce ACF shortcodes support
-* Add: The rotate property for BarCode
-* Add: Page number adjust for Page Number object
-* Add: Grid display for PDF render in the Image object
-* Add: Image with Link
-* Add: Link Label
-* Add: Dynamic Line / Stroke / Marker color Graph settings
-* Add: Complex SVG Images can be optimized
-* Add: [e2pdf-wp-posts], [e2pdf-wp-users], [e2pdf-userid], [e2pdf-usercurrentid] shortcodes
-* Add: [e2pdf-download] "print" attribute
-* Add: [e2pdf-save] "media" attribute
-* Add: [e2pdf-view] "print_resolution" attribute
-* Add: [e2pdf-user] "convert" attribute
-* Add: [acf] "repeater" attribute
-* Add: [e2pdf-for] shortcode [e2pdf-acf-repeater] sub-shortcode
-* Add: [e2pdf-if] shortcode [in_list], [not_in_list] sub-shortcodes
-* Add: Checkout Field Editor (Checkout Manager) for WooCommerce support
-* Add: Not In Array, In List, Not In List, Array Key Not Exists for conditional logic
-* Add: Preload Images for the HTML object
-* Add: CSS render for the HTML objects
-* Add: WYSIWYG Table
-* Add: PDF Download Ajax Loader
-* Add: PDF Download Inline Fallback Viewer
-* Add: Temporary files check and cleanup
-* Add: Translation
-* Fix: Compatibility fix for W3 Total Cache / WP Rocket + OVH
-* Fix: PHP 8.x deprecation notice
-* Fix: [e2pdf-format-date] error in some cases
-* Fix: [e2pdf-if], [e2pdf-math] shortcodes inside Formidable Forms [foreach] loop
-* Fix: [e2pdf-acf-repeater] shortcode [e2pdf-user] sub-shortcode 
-* Fix: [e2pdf-arg] shortcode
-* Fix: Contact Form 7 _format_ shortcode
-* Fix: Forminator Forms foreach field slug fails in some cases
-* Fix: Forminator Forms Datetime field hours and minutes display
-* Fix: WooCommerce Product PDFs Customer download links
-* Fix: Minor bug-fixes to SVG render
-* Fix: Incorrect duplicate page position with "multipage" option in some cases
-* Fix: Incorrect PDF render in the Image object
-* Fix: Incorrect render when mixed fonts used
-* Fix: Incorrect added filters
-* Fix: Justify fails in some cases
-* Fix: Complex fonts fail to render in some cases
-* Fix: [e2pdf-for] shortcode fails in some cases
-* Fix: SQL requests fail in some cases
-* Fix: Error during upgrade in some cases
-* Fix: Visual Mapper fails in some cases
-* Fix: Trigger Email Action for Ninja Forms
-* Fix: DateTime on bulk export page
-* Fix: Field names in Element Actions
-* Fix: Error 404 if dataset not found
-* Improvement: Visual Mapper
-* Improvement: Creating PDFs in admin dashboard
-* Improvement: Datasets load in admin dashboard
-* Improvement: WPBakery Page Builder integration
-* Improvement: ACF Shortcodes enabled by default in PDF
-* Improvement: HTML elements load
-* Improvement: PDF Standards
-* Improvement: Full flatten
-* Improvement: Optimization
-* Improvement: WYSIWYG
-* Improvement: UI/UX
-
 = 1.25.15 =
 *Release Date - January 02, 2025*
-
-* Add: ACF shortcodes support for WooCommerce
-* Add: [e2pdf-acf-repeater-index] shortcode
-* Add: Visual Mapper and Auto Sliders support for Forminator Forms
-* Add: [not_in_array], [not_isset], [array_key_not_exists] for [e2pdf-if] shortcode
-* Add: PDFs Cache
-* Add: Image view preload
-* Add: [e2pdf-format-output] explode_limit
-* Add: Support for Signature field for Elementor Forms
-* Add: Additional Filters
-* Add: Formidable Forms child forms support
-* Fix: Some PDFs fail to upload
-* Fix: WooCommerce "parent" attribute
-* Fix: Ninja Forms checkbox and radio fields Visual Mapper
-* Fix: WPForms PDF attachments with Optimize Email Sending option
-* Fix: Contact Form 7 Fatal Error in some cases
-* Fix: HTML margin-top / margin-bottom fails in some cases
-* Fix: Clear PDFs Cache
-* Fix: WooCommerce Product details when the "order" attribute is used
-* Fix: Ultimate Addons for Contact Form 7 Digital Signature support
-* Fix: Elementor Forms Signature Field from dynamic.ooo
-* Fix: Serialized values for Fluent Forms, Forminator Forms, Gravity Forms, Ninja Form, WPForms
-* Fix: Compatibility fix for Elementor Loop Items Template
-* Fix: GravityView backend shortcode compatibility
-* Fix: Visual Mapper for Fluent Forms repeater field
-* Fix: Conflict with WPForms Multilingual WPML
-* Fix: Contact Form 7 duplicated entries
-* Fix: WPForms checkboxes, multi-selects, and payment checkboxes in email PDF attachments
-* Improvement: [e2pdf-acf-repeater]
-* Improvement: [e2pdf-for], [e2pdf-if] syntax update for nested shortcodes
-* Improvement: Coping and pasting between E2Pdf Templates
-* Improvement: WooCommerce minor bug fixes and improvements
-* Improvement: Cache, Bulk Export, Visual Mapper for Forminator Forms
-* Improvement: Templates activation process
-* Improvement: pdf.js v4.3.136
-* Improvement: Optimization
 
 = 1.24.00 =
 *Release Date - May 15, 2024*

@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2Pdf Helper
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /helper/e2pdf-helper.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -27,11 +26,34 @@ class Helper_E2pdf_Helper {
         return self::$instance;
     }
 
-    /**
-     * Set option by Key
-     * @param string $key - Key of option
-     * @param mixed $value - Value of option
-     */
+    public function __construct() {
+        $this->set('upload_dir', $this->get_wp_upload_dir('basedir') . '/e2pdf/');
+        $this->set('tmp_dir', $this->get('upload_dir') . 'tmp/');
+        $this->set('cache_dir', $this->get('upload_dir') . 'tmp/cache/');
+        $this->set('pdf_dir', $this->get('upload_dir') . 'pdf/');
+        $this->set('fonts_dir', $this->get('upload_dir') . 'fonts/');
+        $this->set('tpl_dir', $this->get('upload_dir') . 'tpl/');
+        $this->set('viewer_dir', $this->get('upload_dir') . 'viewer/');
+        $this->set('bulk_dir', $this->get('upload_dir') . 'bulks/');
+        $this->set('wpcf7_dir', $this->get('upload_dir') . 'wpcf7/');
+        if (defined('E2PDF_ROOT_FILE')) {
+            $info = get_file_data(E2PDF_ROOT_FILE, ['version' => 'Version'], false);
+            $this->set('version', $info['version']);
+            $this->set('plugin_dir', plugin_dir_path(E2PDF_ROOT_FILE));
+            $this->set('plugin_file_path', E2PDF_ROOT_FILE);
+            $this->set('plugin', plugin_basename(E2PDF_ROOT_FILE));
+            $this->set('slug', dirname(plugin_basename(E2PDF_ROOT_FILE)));
+        }
+        $this->set('cache', get_option('e2pdf_cache', '1'));
+        $parse_args = wp_parse_args(home_url(add_query_arg(null, null)));
+        $this->set('page', reset($parse_args));
+        if (get_option('e2pdf_memory_time', '0')) {
+            $this->set('memory_debug', memory_get_usage());
+            $this->set('time_debug', microtime(true));
+        }
+    }
+
+    // set
     public function set($key, $value) {
         if (!$this->helper) {
             $this->helper = new stdClass();
@@ -39,11 +61,7 @@ class Helper_E2pdf_Helper {
         $this->helper->$key = $value;
     }
 
-    /**
-     * Add value to option by Key
-     * @param string $key - Key of option
-     *  @param mixed $value - Value of option
-     */
+    // add
     public function add($key, $value) {
         if (!$this->helper) {
             $this->helper = new stdClass();
@@ -54,26 +72,19 @@ class Helper_E2pdf_Helper {
                 array_push($this->helper->$key, $value);
             }
         } else {
-            $this->helper->$key = array();
+            $this->helper->$key = [];
             array_push($this->helper->$key, $value);
         }
     }
 
-    /**
-     * Unset option
-     * @param string $key - Key of option
-     */
+    // deset
     public function deset($key) {
         if (isset($this->helper->$key)) {
             unset($this->helper->$key);
         }
     }
 
-    /**
-     * Set option
-     * @param string $key - Key of option
-     * @return mixed - Get value of option by Key
-     */
+    // get
     public function get($key) {
         if (isset($this->helper->$key)) {
             return $this->helper->$key;
@@ -82,52 +93,23 @@ class Helper_E2pdf_Helper {
         }
     }
 
-    /**
-     * Get url path
-     * @param string $url - Url path
-     * @return string - Url path
-     */
+    // get url path
     public function get_url_path($url) {
         return plugins_url($url, $this->get('plugin_file_path'));
     }
 
-    /**
-     * Get url
-     * @param array $data - Array list of url params
-     * @param string $prefix -  Prefix of url
-     * @return string Url
-     */
-    public function get_url($data = array(), $prefix = 'admin.php?') {
+    // get url
+    public function get_url($data = [], $prefix = 'admin.php?') {
         $url = $prefix . http_build_query($data);
         return admin_url($url);
     }
 
-    /**
-     * Get Ip address
-     * @return mixed - IP address or FALSE
-     */
-    public function get_ip() {
-        if (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-            $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
-        } elseif (isset($_SERVER['REMOTE_ADDR'])) {
-            $ip = $_SERVER['REMOTE_ADDR'];
-        } else {
-            $ip = false;
-        }
-        return $ip;
-    }
-
-    /**
-     * Remove dir and its content
-     * @param string $dir - Path of directory to remove
-     */
+    // delete dir
     public function delete_dir($dir) {
         if (!is_dir($dir)) {
             return;
         }
-        if (substr($dir, strlen($dir) - 1, 1) != '/') {
-            $dir .= '/';
-        }
+        $dir = trailingslashit($dir);
         $files = glob($dir . '*', GLOB_MARK);
         foreach ($files as $file) {
             if (is_dir($file)) {
@@ -142,6 +124,7 @@ class Helper_E2pdf_Helper {
         rmdir($dir);
     }
 
+    // create dir
     public function create_dir($dir = false, $recursive = false, $create_index = true, $create_htaccess = false) {
         if ($dir && !file_exists($dir)) {
             if (mkdir($dir, self::CHMOD_DIR, $recursive)) {
@@ -162,15 +145,21 @@ class Helper_E2pdf_Helper {
         return is_dir($dir);
     }
 
+    // create file
     public function create_file($file = false, $content = '') {
-        if ($file && !file_exists($file)) {
-            if (file_put_contents($file, $content)) {
-                chmod($file, self::CHMOD_FILE);
+        $dir = dirname($file);
+        if (is_dir($dir) && is_writable($dir)) {
+            if ($file && !file_exists($file)) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
+                if (file_put_contents($file, $content, LOCK_EX)) {
+                    chmod($file, self::CHMOD_FILE);
+                }
             }
         }
         return is_file($file);
     }
 
+    // get wp upload dir
     public function get_wp_upload_dir($key = 'basedir') {
 
         $wp_upload_dir = wp_upload_dir();
@@ -218,8 +207,8 @@ class Helper_E2pdf_Helper {
 
             $basedir = $dir;
             $baseurl = $url;
-
             $subdir = '';
+
             if (get_option('uploads_use_yearmonth_folders')) {
                 $time = current_time('mysql');
                 $y = substr($time, 0, 4);
@@ -234,14 +223,14 @@ class Helper_E2pdf_Helper {
                 $this->create_dir($basedir, true, false, false);
             }
 
-            $wp_upload_dir = array(
+            $wp_upload_dir = [
                 'path' => $dir,
                 'url' => $url,
                 'subdir' => $subdir,
                 'basedir' => $basedir,
                 'baseurl' => $baseurl,
                 'error' => false,
-            );
+            ];
         }
 
         if ($key && isset($wp_upload_dir[$key])) {
@@ -251,6 +240,7 @@ class Helper_E2pdf_Helper {
         }
     }
 
+    // get upload url
     public function get_upload_url($path = false) {
         if ($path) {
             return $this->get_wp_upload_dir('baseurl') . '/' . basename(untrailingslashit($this->get('upload_dir'))) . '/' . $path;
@@ -259,10 +249,7 @@ class Helper_E2pdf_Helper {
         }
     }
 
-    /**
-     * Check if array is multidimensional
-     * @return boolean
-     */
+    // is multidimensional array
     public function is_multidimensional($a) {
         if (is_array($a)) {
             foreach ($a as $v) {
@@ -274,40 +261,34 @@ class Helper_E2pdf_Helper {
         return false;
     }
 
-    /**
-     * Get Capabilities
-     * @return array()
-     */
+    // get caps
     public function get_caps() {
-        $caps = array(
-            'e2pdf' => array(
+        $caps = [
+            'e2pdf' => [
                 'name' => __('Create PDF', 'e2pdf'),
                 'cap' => 'e2pdf',
-            ),
-            'e2pdf_templates' => array(
+            ],
+            'e2pdf_templates' => [
                 'name' => __('Templates', 'e2pdf'),
                 'cap' => 'e2pdf_templates',
-            ),
-            'e2pdf_settings' => array(
+            ],
+            'e2pdf_settings' => [
                 'name' => __('Settings', 'e2pdf'),
                 'cap' => 'e2pdf_settings',
-            ),
-            'e2pdf_license' => array(
+            ],
+            'e2pdf_license' => [
                 'name' => __('License', 'e2pdf'),
                 'cap' => 'e2pdf_license',
-            ),
-            'e2pdf_debug' => array(
+            ],
+            'e2pdf_debug' => [
                 'name' => __('Debug', 'e2pdf'),
                 'cap' => 'e2pdf_debug',
-            ),
-        );
+            ],
+        ];
         return $caps;
     }
 
-    /**
-     * Load sub-helper
-     * @return object
-     */
+    // load
     public function load($helper) {
         $model = null;
         $class = 'Helper_E2pdf_' . ucfirst($helper);
@@ -320,19 +301,19 @@ class Helper_E2pdf_Helper {
         return $model;
     }
 
-    /**
-     * Get Frontend Site URL
-     * @return string
-     */
+    // get frontend site url
     public function get_frontend_site_url() {
+        if (function_exists('pll_home_url')) {
+            return pll_home_url();
+        }
+        if (function_exists('icl_t') && !defined('POLYLANG_VERSION')) {
+            return home_url('/');
+        }
         return get_option('e2pdf_url_format', 'siteurl') === 'home' ? home_url('/') : site_url('/');
     }
 
-    /**
-     * Get Frontend PDF URL
-     * @return string
-     */
-    public function get_frontend_pdf_url($url_data = array(), $site_url = false, $filters = array()) {
+    // get frontend pdf url
+    public function get_frontend_pdf_url($url_data = [], $site_url = false, $filters = []) {
 
         if ($site_url === false) {
             $site_url = $this->get_frontend_site_url();
@@ -386,7 +367,8 @@ class Helper_E2pdf_Helper {
         return $this->load('translator')->translate_url($url);
     }
 
-    public function get_frontend_local_pdf_url($pdf, $site_url = false, $filters = array()) {
+    // get frontend local pdf url
+    public function get_frontend_local_pdf_url($pdf, $site_url = false, $filters = []) {
         if ($site_url === false) {
             $site_url = $this->get_frontend_site_url();
         }
@@ -401,15 +383,19 @@ class Helper_E2pdf_Helper {
         return $site_url . str_replace(ABSPATH, '', $pdf);
     }
 
-    /**
-     * Get Domain
-     * @return string - Domain
-     */
+    // get site url
     public function get_site_url() {
         $site_url = false;
         if (class_exists('SitePress')) {
             $settings = get_option('icl_sitepress_settings');
             if (isset($settings['language_negotiation_type']) && $settings['language_negotiation_type'] == '2') {
+                global $wpdb;
+                $site_url = $wpdb->get_var($wpdb->prepare('SELECT option_value FROM `' . $wpdb->options . '` WHERE option_name = %s LIMIT 1', 'siteurl'));
+            }
+        }
+        if (function_exists('pll_home_url')) {
+            $settings = get_option('polylang');
+            if (isset($settings['force_lang']) && ($settings['force_lang'] == '2' || $settings['force_lang'] == '3')) {
                 global $wpdb;
                 $site_url = $wpdb->get_var($wpdb->prepare('SELECT option_value FROM `' . $wpdb->options . '` WHERE option_name = %s LIMIT 1', 'siteurl'));
             }
@@ -420,11 +406,12 @@ class Helper_E2pdf_Helper {
         return $site_url;
     }
 
+    // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodDoubleUnderscore
     public function __return_true() {
         return true;
     }
 
-    // return false
+    // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodDoubleUnderscore
     public function __return_false() {
         return false;
     }
@@ -433,9 +420,49 @@ class Helper_E2pdf_Helper {
     public function set_time_limit($timeout = 0) {
         $timeout = (int) $timeout;
         if (function_exists('set_time_limit') && is_callable('set_time_limit')) {
+            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
             @set_time_limit($timeout);
         } elseif (function_exists('ini_set') && is_callable('ini_set')) {
+            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.IniSet.max_execution_time_Blacklisted
             @ini_set('max_execution_time', $timeout);
         }
+    }
+
+    // shortcodes
+    public function shortcodes() {
+        return [
+            'e2pdf-download',
+            'e2pdf-view',
+            'e2pdf-save',
+            'e2pdf-zapier',
+            'e2pdf-adobesign',
+            'e2pdf-attachment',
+            'e2pdf-vc-download',
+            'e2pdf-vc-download-item',
+            'e2pdf-vc-view',
+            'e2pdf-vc-view-item',
+            'e2pdf-format-number',
+            'e2pdf-format-date',
+            'e2pdf-format-output',
+            'e2pdf-frm-field-value',
+            'e2pdf-translate',
+            'e2pdf-math',
+            'e2pdf-content',
+            'e2pdf-exclude',
+            'e2pdf-filter',
+            'e2pdf-page-number',
+            'e2pdf-page-total',
+            'e2pdf-user',
+            'e2pdf-wp',
+            'e2pdf-wp-term',
+            'e2pdf-wp-posts',
+            'e2pdf-wp-users',
+            'e2pdf-wc-product',
+            'e2pdf-wc-order',
+            'e2pdf-wc-cart',
+            'e2pdf-wc-customer',
+            'e2pdf-foreach',
+            'e2pdf-acf-repeater',
+        ];
     }
 }

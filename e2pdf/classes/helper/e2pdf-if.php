@@ -37,7 +37,9 @@ class Helper_E2pdf_If {
     public function get_comparators() {
         return array(
             '[==]',
+            '[===]',
             '[!=]',
+            '[!==]',
             '[>]',
             '[>=]',
             '[<]',
@@ -60,18 +62,19 @@ class Helper_E2pdf_If {
         return array_merge($this->get_delimiters(), $this->get_brackets(), $this->get_comparators());
     }
 
-    public function do_shortcode($atts = array(), $value = '', $extension = null) {
+    public function do_shortcode($atts = array(), $value = '', $if = 0, $extension = null) {
+        $if_index = $if ? '-' . $if : '';
         $tags = array(
-            'e2pdf-if-condition' => 'e2pdf-if-condition',
-            'e2pdf-if-do' => 'e2pdf-if-do',
-            'e2pdf-if-else' => 'e2pdf-if-else'
+            'e2pdf-if-condition' => 'e2pdf-if-condition' . $if_index,
+            'e2pdf-if-do' => 'e2pdf-if-do' . $if_index,
+            'e2pdf-if-else' => 'e2pdf-if-else' . $if_index,
         );
         /* Backward compatibility */
         if (false === strpos($value, '[e2pdf-if-condition')) {
             $tags = array(
-                'e2pdf-if-condition' => 'e2pdf-condition',
-                'e2pdf-if-do' => 'e2pdf-do',
-                'e2pdf-if-else' => 'e2pdf-else'
+                'e2pdf-if-condition' => 'e2pdf-condition' . $if_index,
+                'e2pdf-if-do' => 'e2pdf-do' . $if_index,
+                'e2pdf-if-else' => 'e2pdf-else' . $if_index,
             );
         }
         $comparators = $this->get_shortcodes();
@@ -89,6 +92,20 @@ class Helper_E2pdf_If {
             $response = $this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-if-do'], $value);
         } else {
             $response = $this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-if-else'], $value);
+        }
+        if ($response && false !== strpos($response, '[e2pdf-if-' . $if + 1)) {
+            $shortcode_tags = array(
+                'e2pdf-if-' . $if + 1,
+            );
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $response, $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $response, $shortcodes);
+                foreach ($shortcodes[0] as $key => $shortcode_value) {
+                    $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                    $response = str_replace($shortcode_value, $this->do_shortcode(shortcode_parse_atts($shortcode[3]), $shortcode[5], $if + 1, $extension), $response);
+                }
+            }
         }
         return $response;
     }
@@ -136,8 +153,14 @@ class Helper_E2pdf_If {
                     case '[==]':
                         $result = $if == $value ? true : false;
                         break;
+                    case '[===]':
+                        $result = $if === $value ? true : false;
+                        break;
                     case '[!=]':
                         $result = $if != $value ? true : false;
+                        break;
+                    case '[!==]':
+                        $result = $if !== $value ? true : false;
                         break;
                     case '[>]':
                         $result = $if > $value ? true : false;

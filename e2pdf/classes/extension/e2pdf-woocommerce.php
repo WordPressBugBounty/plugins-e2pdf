@@ -100,10 +100,14 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             'product',
             'product_variation',
             'shop_order',
+            'shop_subscription',
             'cart',
         );
         foreach ($forms as $form) {
-            $items[] = $this->item($form);
+            $item = $this->item($form);
+            if (!empty($item->id)) {
+                $items[] = $this->item($form);
+            }
         }
         return $items;
     }
@@ -263,53 +267,9 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         );
 
         foreach ($email_actions as $email_action) {
-            add_action($email_action . '_notification', array($this, 'action_after_email'), 99, 2);
+            add_action($email_action . '_notification', array($this, 'action_after_email'), 99);
         }
-        add_action('woocommerce_after_resend_order_email', array($this, 'action_after_email'), 99, 2);
-
-        if (get_option('e2pdf_wc_cart_template_id', '0')) {
-            add_action('woocommerce_proceed_to_checkout', array($this, 'action_e2pdf_wc_cart_template_id'), (int) get_option('e2pdf_wc_cart_template_id_priority', '10'));
-        }
-
-        if (get_option('e2pdf_wc_checkout_template_id', '0') && get_option('e2pdf_wc_checkout_template_id_hook', 'woocommerce_review_order_before_submit') &&
-                in_array(
-                        get_option('e2pdf_wc_checkout_template_id_hook', 'woocommerce_review_order_before_submit'),
-                        array(
-                            'woocommerce_review_order_before_submit',
-                            'woocommerce_review_order_after_submit',
-                        )
-                )) {
-            add_action(get_option('e2pdf_wc_checkout_template_id_hook', 'woocommerce_review_order_before_submit'), array($this, 'action_e2pdf_wc_checkout_template_id'), (int) get_option('e2pdf_wc_checkout_template_id_priority', '10'));
-        }
-
-        if (get_option('e2pdf_wc_order_details_template_id', '0') && get_option('e2pdf_wc_order_details_template_id_hook', 'woocommerce_order_details_before_order_table') &&
-                in_array(
-                        get_option('e2pdf_wc_order_details_template_id_hook', 'woocommerce_order_details_before_order_table'),
-                        array(
-                            'woocommerce_order_details_before_order_table',
-                            'woocommerce_order_details_before_order_table_items',
-                            'woocommerce_order_details_after_order_table_items',
-                            'woocommerce_order_details_after_order_table',
-                            'woocommerce_after_order_details',
-                        )
-                )) {
-            add_action(get_option('e2pdf_wc_order_details_template_id_hook', 'woocommerce_order_details_before_order_table'), array($this, 'action_e2pdf_wc_order_details_template_id'), (int) get_option('e2pdf_wc_order_details_template_id_priority', '10'));
-        }
-
-        if (get_option('e2pdf_wc_admin_order_actions_template_id', '0') && get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end') &&
-                in_array(
-                        get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end'),
-                        array(
-                            'woocommerce_admin_order_actions_start',
-                            'woocommerce_admin_order_actions_end',
-                        )
-                )) {
-            add_action(get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end'), array($this, 'action_e2pdf_wc_admin_order_actions_template_id'), (int) get_option('e2pdf_wc_admin_order_actions_template_id_priority', '10'));
-        }
-
-        if (get_option('e2pdf_wc_admin_order_details_template_id', '0')) {
-            add_action('add_meta_boxes', array($this, 'action_add_meta_boxes'));
-        }
+        add_action('woocommerce_after_resend_order_email', array($this, 'action_after_email'), 99);
 
         /* Compatibility fix with Enforcing Rules enabled */
         add_action('woocommerce_settings_products', array($this, 'action_enforcing_rules_enabled_check'), -10);
@@ -325,10 +285,45 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         /* Temporary solution for File Downloads in WC Admin Order page */
         add_action('add_meta_boxes_woocommerce_page_wc-orders', array($this, 'action_add_meta_boxes_woocommerce_page_wc_orders'));
         add_action('add_meta_boxes_shop_order', array($this, 'action_add_meta_boxes_woocommerce_page_wc_orders'));
+        add_action('add_meta_boxes_shop_subscription', array($this, 'action_add_meta_boxes_woocommerce_page_wc_orders'));
 
-        /* Hooks */
+        /* Order Hooks */
         add_action('add_meta_boxes', array($this, 'hook_woocommerce_order_edit'));
         add_action('woocommerce_admin_order_actions_end', array($this, 'hook_woocommerce_order_row_actions'));
+        add_action('woocommerce_order_details_before_order_table', array($this, 'hook_woocommerce_order_details'));
+        add_action('woocommerce_order_details_before_order_table_items', array($this, 'hook_woocommerce_order_details'));
+        add_action('woocommerce_order_details_after_order_table_items', array($this, 'hook_woocommerce_order_details'));
+        add_action('woocommerce_order_details_after_order_table', array($this, 'hook_woocommerce_order_details'));
+        add_action('woocommerce_after_order_details', array($this, 'hook_woocommerce_order_details'));
+        add_action('woocommerce_proceed_to_checkout', array($this, 'hook_woocommerce_proceed_to_checkout'));
+        add_action('woocommerce_review_order_before_submit', array($this, 'hook_woocommerce_review_order'));
+        add_action('woocommerce_review_order_after_submit', array($this, 'hook_woocommerce_review_order'));
+
+        /* Subscription Hooks */
+        add_action('add_meta_boxes', array($this, 'hook_woocommerce_subscription_edit'));
+        add_action('woocommerce_subscription_before_actions', array($this, 'hook_woocommerce_subscription_details'));
+        add_action('woocommerce_subscription_after_actions', array($this, 'hook_woocommerce_subscription_details'));
+        add_action('wcs_subscription_details_table_before_dates', array($this, 'hook_woocommerce_subscription_details'));
+        add_action('wcs_subscription_details_table_before_payment_method', array($this, 'hook_woocommerce_subscription_details'));
+        add_action('wcs_subscription_details_table_after_dates', array($this, 'hook_woocommerce_subscription_details'));
+
+        //phpcs:disable
+        if (get_option('e2pdf_wc_cart_template_id', '0')) {
+            add_action('woocommerce_proceed_to_checkout', array($this, 'action_e2pdf_wc_cart_template_id'), (int) get_option('e2pdf_wc_cart_template_id_priority', '10'));
+        }
+        if (get_option('e2pdf_wc_checkout_template_id', '0') && get_option('e2pdf_wc_checkout_template_id_hook', 'woocommerce_review_order_before_submit') && in_array(get_option('e2pdf_wc_checkout_template_id_hook', 'woocommerce_review_order_before_submit'), array('woocommerce_review_order_before_submit', 'woocommerce_review_order_after_submit'))) {
+            add_action(get_option('e2pdf_wc_checkout_template_id_hook', 'woocommerce_review_order_before_submit'), array($this, 'action_e2pdf_wc_checkout_template_id'), (int) get_option('e2pdf_wc_checkout_template_id_priority', '10'));
+        }
+        if (get_option('e2pdf_wc_order_details_template_id', '0') && get_option('e2pdf_wc_order_details_template_id_hook', 'woocommerce_order_details_before_order_table') && in_array(get_option('e2pdf_wc_order_details_template_id_hook', 'woocommerce_order_details_before_order_table'), array('woocommerce_order_details_before_order_table', 'woocommerce_order_details_before_order_table_items', 'woocommerce_order_details_after_order_table_items', 'woocommerce_order_details_after_order_table', 'woocommerce_after_order_details'))) {
+            add_action(get_option('e2pdf_wc_order_details_template_id_hook', 'woocommerce_order_details_before_order_table'), array($this, 'action_e2pdf_wc_order_details_template_id'), (int) get_option('e2pdf_wc_order_details_template_id_priority', '10'));
+        }
+        if (get_option('e2pdf_wc_admin_order_actions_template_id', '0') && get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end') && in_array(get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end'), array('woocommerce_admin_order_actions_start', 'woocommerce_admin_order_actions_end'))) {
+            add_action(get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end'), array($this, 'action_e2pdf_wc_admin_order_actions_template_id'), (int) get_option('e2pdf_wc_admin_order_actions_template_id_priority', '10'));
+        }
+        if (get_option('e2pdf_wc_admin_order_details_template_id', '0')) {
+            add_action('add_meta_boxes', array($this, 'action_add_meta_boxes'));
+        }
+        //phpcs:enable
     }
 
     public function load_filters() {
@@ -339,13 +334,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         add_filter('woocommerce_mail_content', array($this, 'filter_woocommerce_mail_content'), 99);
         add_filter('woocommerce_display_product_attributes', array($this, 'filter_woocommerce_display_product_attributes'), 10, 2);
         add_filter('e2pdf_model_shortcode_wc_product_get_attribute_value', array($this, 'filter_e2pdf_model_shortcode_wc_product_get_attribute_value'), 10, 2);
-        add_filter('e2pdf_model_options_get_options_options', array($this, 'filter_e2pdf_model_options_get_options_options'));
         add_filter('woocommerce_customer_available_downloads', array($this, 'filter_download_urls'));
         add_filter('woocommerce_order_get_downloadable_items', array($this, 'filter_download_urls'));
-
-        if (get_option('e2pdf_wc_my_orders_actions_template_id', '0')) {
-            add_filter('woocommerce_my_account_my_orders_actions', array($this, 'filter_woocommerce_my_account_my_orders_actions'), (int) get_option('e2pdf_wc_checkout_template_id_priority', '10'), 2);
-        }
 
         /* Flatsome theme global tab content */
         add_filter('theme_mod_tab_content', array($this, 'filter_content_custom'));
@@ -365,14 +355,24 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
          */
         add_filter('cs_element_pre_render', array($this, 'filter_cs_element_pre_render'));
 
-        /* Hooks */
+        /* Order Hooks */
         add_filter('manage_edit-shop_order_columns', array($this, 'hook_woocommerce_order_row_column'));
+        add_filter('woocommerce_my_account_my_orders_actions', array($this, 'hook_woocommerce_my_account_my_orders_actions'), 10, 2);
+
+        /* Subscription Hooks */
+        add_filter('manage_edit-shop_subscription_columns', array($this, 'hook_woocommerce_subscription_row_column'), 11);
+        add_filter('wcs_view_subscription_actions', array($this, 'hook_wcs_view_subscription_actions'), 11, 2);
+
+        //phpcs:disable
+        if (get_option('e2pdf_wc_my_orders_actions_template_id', '0')) {
+            add_filter('woocommerce_my_account_my_orders_actions', array($this, 'filter_woocommerce_my_account_my_orders_actions'), (int) get_option('e2pdf_wc_checkout_template_id_priority', '10'), 2);
+        }
+        add_filter('e2pdf_model_options_get_options_options', array($this, 'filter_e2pdf_model_options_get_options_options'));
+        //phpcs:enable
     }
 
-    /**
-     * Delete attachments that were sent by email
-     */
-    public function action_after_email($order_id, $order = false) {
+    // action after email
+    public function action_after_email() {
         $files = $this->helper->get('woocommerce_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
@@ -380,76 +380,6 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             }
             $this->helper->deset('woocommerce_attachments');
         }
-    }
-
-    public function action_e2pdf_wc_cart_template_id() {
-        if (!is_cart() || WC()->cart->is_empty()) {
-            return;
-        }
-        echo apply_filters(
-                'e2pdf_wc_action_e2pdf_wc_cart_template_id',
-                do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_cart_template_id', '0') . '" dataset="' . wc_get_page_id('cart') . '" class="button e2pdf-wc-download-button e2pdf-wc-download-cart-button"]')
-        );
-    }
-
-    public function action_e2pdf_wc_checkout_template_id() {
-        if (!is_checkout() || WC()->cart->is_empty()) {
-            return;
-        }
-        echo apply_filters(
-                'e2pdf_wc_action_e2pdf_wc_checkout_template_id',
-                do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_checkout_template_id', '0') . '" dataset="' . wc_get_page_id('cart') . '" class="button e2pdf-wc-download-button e2pdf-wc-download-checkout-button"]')
-        );
-    }
-
-    public function action_e2pdf_wc_order_details_template_id($order) {
-        $statuses = get_option('e2pdf_wc_order_details_template_id_status', array('any'));
-        if (is_array($statuses) && (in_array($order->get_status(), $statuses) || in_array('wc-' . $order->get_status(), $statuses) || in_array('any', $statuses))) {
-            echo apply_filters(
-                    'e2pdf_wc_action_e2pdf_wc_order_details_template_id',
-                    do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_order_details_template_id', '0') . '" dataset="' . $order->get_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
-                    $order
-            );
-        }
-    }
-
-    public function action_e2pdf_wc_admin_order_actions_template_id($order) {
-        $statuses = get_option('e2pdf_wc_admin_order_actions_template_id_status', array('any'));
-        if (is_array($statuses) && (in_array($order->get_status(), $statuses) || in_array('wc-' . $order->get_status(), $statuses) || in_array('any', $statuses))) {
-            echo apply_filters(
-                    'e2pdf_wc_action_e2pdf_wc_admin_order_actions_template_id',
-                    do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_admin_order_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
-                    $order
-            );
-        }
-    }
-
-    public function action_e2pdf_wc_admin_order_details_template_id() {
-        global $post;
-        if (function_exists('wc_get_order') && isset($post->ID)) {
-            $order = wc_get_order($post->ID);
-            if ($order) {
-                $statuses = get_option('e2pdf_wc_admin_order_details_template_id_status', array('any'));
-                if (is_array($statuses) && (in_array($order->get_status(), $statuses) || in_array('wc-' . $order->get_status(), $statuses) || in_array('any', $statuses))) {
-                    echo apply_filters(
-                            'e2pdf_wc_action_e2pdf_wc_admin_order_details_template_id',
-                            do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_admin_order_details_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
-                            $order
-                    );
-                }
-            }
-        }
-    }
-
-    public function action_add_meta_boxes() {
-        add_meta_box(
-                'woocommerce-order-my-custom',
-                'E2Pdf',
-                array($this, 'action_e2pdf_wc_admin_order_details_template_id'),
-                'shop_order',
-                'side',
-                'high'
-        );
     }
 
     public function action_enforcing_rules_enabled_check() {
@@ -496,7 +426,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
     public function action_add_meta_boxes_woocommerce_page_wc_orders($post) {
         if (class_exists('Automattic\WooCommerce\Utilities\OrderUtil') && method_exists('Automattic\WooCommerce\Utilities\OrderUtil', 'is_order_edit_screen') && class_exists('WC_Data_Store')) {
-            if (Automattic\WooCommerce\Utilities\OrderUtil::is_order_edit_screen()) {
+            if (Automattic\WooCommerce\Utilities\OrderUtil::is_order_edit_screen() || Automattic\WooCommerce\Utilities\OrderUtil::is_order_edit_screen('shop_subscription')) {
                 if ($post instanceof WC_Order) {
                     $order_id = $post->get_id();
                 } else {
@@ -676,12 +606,12 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             if (isset($atts['products']) && $atts['products']) {
                                                 $attachment = false;
                                                 $products = explode(',', $atts['products']);
-                                                if (in_array($item, $products)) {
+                                                if (in_array($item, $products, false)) {
                                                     $attachment = true;
                                                 } else {
                                                     $product = wc_get_product($item);
                                                     if ($product && method_exists($product, 'get_parent_id')) {
-                                                        if (in_array($product->get_parent_id(), $products)) {
+                                                        if (in_array($product->get_parent_id(), $products, false)) {
                                                             $attachment = true;
                                                         }
                                                     }
@@ -715,7 +645,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                 $item_shortcode[3] .= ' filter="true"';
                                             }
                                             $item_shortcode[3] .= ' dataset="' . $linked_entry_id . '"';
-                                            if (($item_shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $item_shortcode[2] === 'e2pdf-attachment') {
+                                            if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
                                                     $tmp = false;
@@ -764,12 +694,12 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             if (isset($atts['products']) && $atts['products']) {
                                                 $attachment = false;
                                                 $products = explode(',', $atts['products']);
-                                                if (in_array($item, $products)) {
+                                                if (in_array($item, $products, false)) {
                                                     $attachment = true;
                                                 } else {
                                                     $product = wc_get_product($item);
                                                     if ($product && method_exists($product, 'get_parent_id')) {
-                                                        if (in_array($product->get_parent_id(), $products)) {
+                                                        if (in_array($product->get_parent_id(), $products, false)) {
                                                             $attachment = true;
                                                         }
                                                     }
@@ -803,7 +733,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                 $item_shortcode[3] .= ' filter="true"';
                                             }
                                             $item_shortcode[3] .= ' dataset="' . $_formidable_form_data . '"';
-                                            if (($item_shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $item_shortcode[2] === 'e2pdf-attachment') {
+                                            if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
                                                     $tmp = false;
@@ -827,7 +757,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                     }
                                 }
                             }
-                        } elseif ($wc_email_id == 'ywgc-email-send-gift-card' && $template->get('extension') === 'wordpress') {
+                        } elseif ($wc_email_id == 'ywgc-email-send-gift-card' && $template->get('extension') === 'wordpress') {  // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
                             if ($template->get('item') == 'gift_card') {
                                 if (isset($atts['dataset'])) {
                                     foreach ($items_product as $item_id => $item) {
@@ -860,7 +790,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                     $item_shortcode[3] .= ' filter="true"';
                                                 }
                                                 $item_shortcode[3] .= ' dataset="' . $ywgc_gift_post_id . '"';
-                                                if (($item_shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $item_shortcode[2] === 'e2pdf-attachment') {
+                                                if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
                                                     $file = do_shortcode_tag($item_shortcode);
                                                     if ($file) {
                                                         $tmp = false;
@@ -909,7 +839,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             if (isset($atts['products']) && $atts['products']) {
                                                 $attachment = false;
                                                 $products = explode(',', $atts['products']);
-                                                if (in_array($item, $products)) {
+                                                if (in_array($item, $products, false)) {
                                                     $attachment = true;
                                                 }
                                             }
@@ -941,7 +871,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                 $item_shortcode[3] .= ' filter="true"';
                                             }
                                             $item_shortcode[3] .= ' dataset="' . $ywgc_gift_post_id . '"';
-                                            if (($item_shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $item_shortcode[2] === 'e2pdf-attachment') {
+                                            if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
                                                     $tmp = false;
@@ -1004,7 +934,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                     $item_shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
                                                 }
 
-                                                if (($item_shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $item_shortcode[2] === 'e2pdf-attachment') {
+                                                if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
                                                     $file = do_shortcode_tag($item_shortcode);
                                                     if ($file) {
                                                         $tmp = false;
@@ -1053,7 +983,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             if (isset($atts['products']) && $atts['products']) {
                                                 $attachment = false;
                                                 $products = explode(',', $atts['products']);
-                                                if (in_array($item, $products)) {
+                                                if (in_array($item, $products, false)) {
                                                     $attachment = true;
                                                 }
                                             }
@@ -1091,7 +1021,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                 $item_shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
                                             }
                                             $item_shortcode[3] .= ' dataset="' . $item . '"';
-                                            if (($item_shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $item_shortcode[2] === 'e2pdf-attachment') {
+                                            if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
                                                     $tmp = false;
@@ -1148,7 +1078,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                 if (!isset($atts['wc_product_item_id'])) {
                                                     $item_shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
                                                 }
-                                                if (($item_shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $item_shortcode[2] === 'e2pdf-attachment') {
+                                                if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
                                                     $file = do_shortcode_tag($item_shortcode);
                                                     if ($file) {
                                                         $tmp = false;
@@ -1193,12 +1123,12 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             if (isset($atts['products']) && $atts['products']) {
                                                 $attachment = false;
                                                 $products = explode(',', $atts['products']);
-                                                if (in_array($item, $products)) {
+                                                if (in_array($item, $products, false)) {
                                                     $attachment = true;
                                                 } else {
                                                     $product = wc_get_product($item);
                                                     if ($product && method_exists($product, 'get_parent_id')) {
-                                                        if (in_array($product->get_parent_id(), $products)) {
+                                                        if (in_array($product->get_parent_id(), $products, false)) {
                                                             $attachment = true;
                                                         }
                                                     }
@@ -1238,7 +1168,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                 $item_shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
                                             }
                                             $item_shortcode[3] .= ' dataset="' . $item . '"';
-                                            if (($item_shortcode[2] === 'e2pdf-save' && isset($atts['attachment']) && $atts['attachment'] == 'true') || $item_shortcode[2] === 'e2pdf-attachment') {
+                                            if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
                                                     $tmp = false;
@@ -1257,6 +1187,107 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                                 }
                                             } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                 do_shortcode_tag($item_shortcode);
+                                            }
+                                        }
+                                    }
+                                }
+                            } elseif ($template->get('item') == 'shop_subscription' && function_exists('wcs_get_subscriptions_for_order')) {
+                                $subscriptions = wcs_get_subscriptions_for_order($order->get_id());
+                                foreach ($subscriptions as $subscription) {
+                                    if (!isset($atts['dataset'])) {
+                                        $attachment = true;
+                                        if ($attachment) {
+                                            if (!empty($attributes)) {
+                                                $attachment = false;
+                                                foreach ($items_product as $item_id => $item) {
+                                                    $product = wc_get_product($item);
+                                                    if ($product) {
+                                                        foreach ($attributes as $attribute_key => $attribute) {
+                                                            if ($product->get_attribute($attribute_key) != $attribute) {
+                                                                $attachment = true;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                if (!$attachment) {
+                                                    foreach ($items_variation as $item_id => $item) {
+                                                        $product = wc_get_product($item);
+                                                        if ($product) {
+                                                            foreach ($attributes as $attribute_key => $attribute) {
+                                                                if ($product->get_attribute($attribute_key) == $attribute) {
+                                                                    $attachment = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if ($attachment) {
+                                            if (isset($atts['products']) && $atts['products']) {
+                                                $attachment = false;
+                                                $products = explode(',', $atts['products']);
+                                                foreach ($products as $product_id) {
+                                                    if (in_array($product_id, $items, false) || in_array($product_id, $items_variation, false)) {
+                                                        $attachment = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if ($attachment) {
+                                            if (isset($atts['categories']) && $atts['categories']) {
+                                                $attachment = false;
+                                                $categories = explode(',', $atts['categories']);
+                                                foreach ($items as $item) {
+                                                    if (has_term($categories, 'product_cat', $item)) {
+                                                        $attachment = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if ($attachment) {
+                                            if (isset($atts['tags']) && $atts['tags']) {
+                                                $attachment = false;
+                                                $tags = explode(',', $atts['tags']);
+                                                foreach ($items as $item) {
+                                                    if (has_term($tags, 'product_tag', $item)) {
+                                                        $attachment = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if ($attachment) {
+                                            if (!isset($atts['apply'])) {
+                                                $shortcode[3] .= ' apply="true"';
+                                            }
+                                            if (!isset($atts['filter'])) {
+                                                $shortcode[3] .= ' filter="true"';
+                                            }
+                                            $shortcode[3] .= ' dataset="' . $subscription->get_id() . '"';
+                                            if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                                                $file = do_shortcode_tag($shortcode);
+                                                if ($file) {
+                                                    $tmp = false;
+                                                    if (substr($file, 0, 4) === 'tmp:') {
+                                                        $file = substr($file, 4);
+                                                        $tmp = true;
+                                                    }
+                                                    if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                        if ($tmp) {
+                                                            $this->helper->add('woocommerce_attachments', $file);
+                                                        }
+                                                    } else {
+                                                        $this->helper->add('woocommerce_attachments', $file);
+                                                    }
+                                                    $attachments[] = $file;
+                                                }
+                                            } elseif ($shortcode[2] === 'e2pdf-zapier' || $shortcode[2] === 'e2pdf-save') {
+                                                do_shortcode_tag($shortcode);
                                             }
                                         }
                                     }
@@ -1298,7 +1329,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             $attachment = false;
                                             $products = explode(',', $atts['products']);
                                             foreach ($products as $product_id) {
-                                                if (in_array($product_id, $items) || in_array($product_id, $items_variation)) {
+                                                if (in_array($product_id, $items, false) || in_array($product_id, $items_variation, false)) {
                                                     $attachment = true;
                                                     break;
                                                 }
@@ -1485,6 +1516,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     } else {
                         $item_ids = array();
                     }
+                    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
                     $item_id = $wpdb->get_var($wpdb->prepare('SELECT `items`.`order_item_id` FROM `' . $wpdb->prefix . 'woocommerce_order_items` `items` INNER JOIN `' . $wpdb->prefix . "woocommerce_order_itemmeta` `itemmeta` ON `itemmeta`.`order_item_id` = `items`.`order_item_id` AND (`itemmeta`.`meta_key` = '_product_id' OR `itemmeta`.`meta_key` = '_variation_id' ) AND `itemmeta`.`meta_value` = %d WHERE `items`.`order_id` = %d and `items`.`order_item_type` = 'line_item' and `items`.`order_item_id` NOT IN ( '" . implode("','", $item_ids) . "' ) ORDER BY `items`.`order_item_id` ASC", $download['product_id'], $download['order_id']));
                     if ($item_id) {
                         $downloads[$key]['download_url'] = add_query_arg(
@@ -1571,6 +1603,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                     }
                                     break;
                                 case 'shop_order':
+                                case 'shop_subscription':
                                     if (!isset($atts['wc_order_id']) && isset($this->get('cached_post')->ID) && $this->get('cached_post')->ID) {
                                         $shortcode[3] .= ' wc_order_id=' . $this->get('cached_post')->ID . '';
                                     }
@@ -1599,6 +1632,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                     }
                                     break;
                                 case 'shop_order':
+                                case 'shop_subscription':
                                     if (!isset($atts['id']) && isset($this->get('cached_post')->ID) && $this->get('cached_post')->ID) {
                                         $shortcode[3] .= ' id=' . $this->get('cached_post')->ID . '';
                                     }
@@ -1913,7 +1947,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                     . '</table>' . "\r\n",
                 ),
             );
-        } elseif ($this->get('item') == 'shop_order') {
+        } elseif ($this->get('item') == 'shop_order' || $this->get('item') == 'shop_subscription') {
             $elements[] = array(
                 'type' => 'e2pdf-html',
                 'block' => true,
@@ -2371,8 +2405,19 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                 }
                             }
                         } elseif ($template->get('extension') === 'woocommerce') {
-                            if (!isset($atts['dataset']) && $template->get('item') == 'shop_order' && function_exists('wc_get_order') && isset($_GET['order'])) {
+                            if (!isset($atts['dataset']) && ($template->get('item') == 'shop_order' || $template->get('item') == 'shop_subscription') && function_exists('wc_get_order') && isset($_GET['order'])) {
                                 $order_id = wc_get_order_id_by_order_key(wc_clean(wp_unslash($_GET['order'])));
+
+                                if (function_exists('wcs_get_subscription') && $template->get('item') == 'shop_order' && get_post_type($order_id) == 'shop_subscription') {
+                                    $subscription = wcs_get_subscription($order_id);
+                                    if ($subscription) {
+                                        $subscription_order = $subscription->get_parent();
+                                        if ($subscription_order) {
+                                            $order_id = $subscription_order->get_id();
+                                        }
+                                    }
+                                }
+
                                 if ($order_id) {
                                     $atts['dataset'] = $order_id;
                                     $shortcode[3] .= ' dataset="' . $order_id . '"';
@@ -2419,256 +2464,6 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             }
         }
         return $content;
-    }
-
-    /**
-     * Add options for WooCommerce extension
-     * @param array $options - List of options
-     * @return array - Updated options list
-     */
-    public function filter_e2pdf_model_options_get_options_options($options = array()) {
-        global $wpdb;
-
-        $model_e2pdf_template = new Model_E2pdf_Template();
-
-        $order_templates = array(
-            '0' => __('--- Select ---', 'e2pdf'),
-        );
-        $templates = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $model_e2pdf_template->get_table() . '` WHERE extension = %s AND item = %s AND activated = %s ORDER BY ID ASC', 'woocommerce', 'shop_order', '1'), ARRAY_A);
-        if (!empty($templates)) {
-            foreach ($templates as $template) {
-                $order_templates[$template['ID']] = $template['title'];
-            }
-        }
-
-        $cart_templates = array(
-            '0' => __('--- Select ---', 'e2pdf'),
-        );
-        $templates = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $model_e2pdf_template->get_table() . '` WHERE extension = %s AND item = %s AND activated = %s ORDER BY ID ASC', 'woocommerce', 'cart', '1'), ARRAY_A);
-
-        if (!empty($templates)) {
-            foreach ($templates as $template) {
-                $cart_templates[$template['ID']] = $template['title'];
-            }
-        }
-
-        $options['woocommerce_group'] = array(
-            'name' => 'WooCommerce',
-            'action' => 'extension',
-            'group' => 'woocommerce_group',
-            'options' => array(
-                array(
-                    'header' => __('User Order List', 'e2pdf'),
-                    'name' => __('Template', 'e2pdf'),
-                    'key' => 'e2pdf_wc_my_orders_actions_template_id',
-                    'value' => get_option('e2pdf_wc_my_orders_actions_template_id', '0'),
-                    'default_value' => '0',
-                    'type' => 'select',
-                    'options' => $order_templates,
-                ),
-                array(
-                    'name' => __('Order Status', 'e2pdf'),
-                    'key' => 'e2pdf_wc_my_orders_actions_template_id_status',
-                    'type' => 'checkbox_list',
-                    'options' => $this->get_status_options('e2pdf_wc_my_orders_actions_template_id'),
-                ),
-                array(
-                    'name' => __('Priority', 'e2pdf'),
-                    'key' => 'e2pdf_wc_my_orders_actions_template_id_priority',
-                    'value' => get_option('e2pdf_wc_my_orders_actions_template_id_priority', '10'),
-                    'default_value' => '10',
-                    'type' => 'text',
-                    'class' => 'e2pdf-numbers',
-                    'placeholder' => '0',
-                ),
-                array(
-                    'header' => __('User Order Details', 'e2pdf'),
-                    'name' => __('Template', 'e2pdf'),
-                    'key' => 'e2pdf_wc_order_details_template_id',
-                    'value' => get_option('e2pdf_wc_order_details_template_id', '0'),
-                    'default_value' => '0',
-                    'type' => 'select',
-                    'options' => $order_templates,
-                ),
-                array(
-                    'name' => __('Order Status', 'e2pdf'),
-                    'key' => 'e2pdf_wc_order_details_template_id_status',
-                    'type' => 'checkbox_list',
-                    'options' => $this->get_status_options('e2pdf_wc_order_details_template_id'),
-                ),
-                array(
-                    'name' => __('Hook', 'e2pdf'),
-                    'key' => 'e2pdf_wc_order_details_template_id_hook',
-                    'value' => get_option('e2pdf_wc_order_details_template_id_hook', 'woocommerce_order_details_before_order_table'),
-                    'default_value' => 'woocommerce_order_details_before_order_table',
-                    'type' => 'select',
-                    'options' => array(
-                        'woocommerce_order_details_before_order_table' => 'woocommerce_order_details_before_order_table',
-                        'woocommerce_order_details_before_order_table_items' => 'woocommerce_order_details_before_order_table_items',
-                        'woocommerce_order_details_after_order_table_items' => 'woocommerce_order_details_after_order_table_items',
-                        'woocommerce_order_details_after_order_table' => 'woocommerce_order_details_after_order_table',
-                        'woocommerce_after_order_details' => 'woocommerce_after_order_details',
-                    ),
-                ),
-                array(
-                    'name' => __('Priority', 'e2pdf'),
-                    'key' => 'e2pdf_wc_order_details_template_id_priority',
-                    'value' => get_option('e2pdf_wc_order_details_template_id_priority', '10'),
-                    'default_value' => '10',
-                    'type' => 'text',
-                    'class' => 'e2pdf-numbers',
-                    'placeholder' => '0',
-                ),
-                array(
-                    'header' => __('User Cart', 'e2pdf'),
-                    'name' => __('Template', 'e2pdf'),
-                    'key' => 'e2pdf_wc_cart_template_id',
-                    'value' => get_option('e2pdf_wc_cart_template_id', '0'),
-                    'default_value' => '0',
-                    'type' => 'select',
-                    'options' => $cart_templates,
-                ),
-                array(
-                    'name' => __('Priority', 'e2pdf'),
-                    'key' => 'e2pdf_wc_cart_template_id_priority',
-                    'value' => get_option('e2pdf_wc_cart_template_id_priority', '10'),
-                    'default_value' => '10',
-                    'type' => 'text',
-                    'class' => 'e2pdf-numbers',
-                    'placeholder' => '0',
-                ),
-                array(
-                    'header' => __('User Checkout', 'e2pdf'),
-                    'name' => __('Template', 'e2pdf'),
-                    'key' => 'e2pdf_wc_checkout_template_id',
-                    'value' => get_option('e2pdf_wc_checkout_template_id', '0'),
-                    'default_value' => '0',
-                    'type' => 'select',
-                    'options' => $cart_templates,
-                ),
-                array(
-                    'name' => __('Hook', 'e2pdf'),
-                    'key' => 'e2pdf_wc_checkout_template_id_hook',
-                    'value' => get_option('e2pdf_wc_checkout_template_id_hook', 'woocommerce_review_order_before_submit'),
-                    'default_value' => 'woocommerce_review_order_before_submit',
-                    'type' => 'select',
-                    'options' => array(
-                        'woocommerce_review_order_before_submit' => 'woocommerce_review_order_before_submit',
-                        'woocommerce_review_order_after_submit' => 'woocommerce_review_order_after_submit',
-                    ),
-                ),
-                array(
-                    'name' => __('Priority', 'e2pdf'),
-                    'key' => 'e2pdf_wc_checkout_template_id_priority',
-                    'value' => get_option('e2pdf_wc_checkout_template_id_priority', '10'),
-                    'default_value' => '10',
-                    'type' => 'text',
-                    'class' => 'e2pdf-numbers',
-                    'placeholder' => '0',
-                ),
-            ),
-        );
-
-        /* Deprecate and move to Hooks */
-        //if (get_option('e2pdf_wc_admin_order_actions_template_id', '0')) {
-        $options['woocommerce_group']['options'][] = array(
-            'header' => __('Admin Order List', 'e2pdf'),
-            'name' => __('Template', 'e2pdf'),
-            'key' => 'e2pdf_wc_admin_order_actions_template_id',
-            'value' => get_option('e2pdf_wc_admin_order_actions_template_id', '0'),
-            'default_value' => '0',
-            'type' => 'select',
-            'options' => $order_templates,
-        );
-        $options['woocommerce_group']['options'][] = array(
-            'name' => __('Hook', 'e2pdf'),
-            'key' => 'e2pdf_wc_admin_order_actions_template_id_hook',
-            'value' => get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end'),
-            'default_value' => 'woocommerce_admin_order_actions_end',
-            'type' => 'select',
-            'options' => array(
-                'woocommerce_admin_order_actions_start' => 'woocommerce_admin_order_actions_start',
-                'woocommerce_admin_order_actions_end' => 'woocommerce_admin_order_actions_end',
-            ),
-        );
-        $options['woocommerce_group']['options'][] = array(
-            'name' => __('Order Status', 'e2pdf'),
-            'key' => 'e2pdf_wc_admin_order_actions_template_id_status',
-            'type' => 'checkbox_list',
-            'options' => $this->get_status_options('e2pdf_wc_admin_order_actions_template_id'),
-        );
-        $options['woocommerce_group']['options'][] = array(
-            'name' => __('Priority', 'e2pdf'),
-            'key' => 'e2pdf_wc_admin_order_actions_template_id_priority',
-            'value' => get_option('e2pdf_wc_admin_order_actions_template_id_priority', '10'),
-            'default_value' => '10',
-            'type' => 'text',
-            'class' => 'e2pdf-numbers',
-            'placeholder' => '0',
-        );
-        //}
-        //if (get_option('e2pdf_wc_admin_order_details_template_id', '0')) {
-        $options['woocommerce_group']['options'][] = array(
-            'header' => __('Admin Order Details', 'e2pdf'),
-            'name' => __('Template', 'e2pdf'),
-            'key' => 'e2pdf_wc_admin_order_details_template_id',
-            'value' => get_option('e2pdf_wc_admin_order_details_template_id', '0'),
-            'default_value' => '0',
-            'type' => 'select',
-            'options' => $order_templates,
-        );
-        $options['woocommerce_group']['options'][] = array(
-            'name' => __('Order Status', 'e2pdf'),
-            'key' => 'e2pdf_wc_admin_order_details_template_id_status',
-            'type' => 'checkbox_list',
-            'options' => $this->get_status_options('e2pdf_wc_admin_order_details_template_id'),
-        );
-        // }
-
-        return $options;
-    }
-
-    public function get_status_options($key) {
-        $statuses = get_option($key . '_status', array('any'));
-        $order_statuses = array();
-        if (function_exists('wc_get_order_statuses')) {
-            $order_statuses = wc_get_order_statuses();
-        }
-        $status_options = array();
-        foreach ($order_statuses as $order_status_key => $order_status) {
-            $status_options[] = array(
-                'name' => $order_status,
-                'key' => $key . '_status[]',
-                'value' => is_array($statuses) && in_array($order_status_key, $statuses) ? $order_status_key : '',
-                'checkbox_value' => $order_status_key,
-                'placeholder' => $order_status,
-                'type' => 'checkbox',
-                'default_value' => '',
-            );
-        }
-
-        $status_options[] = array(
-            'name' => 'Any',
-            'key' => $key . '_status[]',
-            'value' => is_array($statuses) && in_array('any', $statuses) ? 'any' : '',
-            'checkbox_value' => 'any',
-            'placeholder' => __('Any', 'e2pdf'),
-            'type' => 'checkbox',
-            'default_value' => '',
-        );
-
-        return $status_options;
-    }
-
-    public function filter_woocommerce_my_account_my_orders_actions($actions, $order) {
-        $statuses = get_option('e2pdf_wc_my_orders_actions_template_id_status', array('any'));
-        if (is_array($statuses) && (in_array($order->get_status(), $statuses) || in_array('wc-' . $order->get_status(), $statuses) || in_array('any', $statuses))) {
-            $actions['e2pdf_invoice'] = array(
-                'url' => do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_my_orders_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" output="url"]'),
-                'name' => apply_filters('e2pdf_wc_my_account_my_orders_actions_invoice_title', do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_my_orders_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" output="button_title"]')),
-            );
-        }
-        return apply_filters('e2pdf_wc_filter_woocommerce_my_account_my_orders_actions', $actions, $order);
     }
 
     public function filter_woocommerce_product_downloads_approved_directory_validation_for_shortcodes($enabled) {
@@ -2848,8 +2643,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             $vc .= '</div>';
         }
 
-        if ($this->get('item') == 'shop_order') {
-            $vc .= $this->get_vm_order();
+        if ($this->get('item') == 'shop_order' || $this->get('item') == 'shop_subscription') {
+            $vc .= $this->get_vm_order($this->get('item'));
             $vc .= '<h3 class="e2pdf-plr5">Order Common</h3>';
             $vc .= '<div class="e2pdf-grid">';
             $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('ID', 'e2pdf-wc-order key="id"') . '</div>';
@@ -2908,6 +2703,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 $groups = acf_get_field_groups(array('post_type' => 'product'));
             } elseif ($this->get('item') == 'shop_order') {
                 $groups = acf_get_field_groups(array('post_type' => 'shop_order'));
+            } elseif ($this->get('item') == 'shop_subscription') {
+                $groups = acf_get_field_groups(array('post_type' => 'shop_subscription'));
             } else {
                 $groups = array();
             }
@@ -2916,7 +2713,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 foreach ($groups as $group_key => $group) {
                     $post_id = '';
                     if (!empty($user_groups)) {
-                        if (in_array($group['key'], $user_groups)) {
+                        if (in_array($group['key'], $user_groups, false)) {
                             if ($this->get('item') == '-3') {
                                 $post_id = ' post_id="user_[e2pdf-dataset]"';
                             } else {
@@ -2979,7 +2776,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                         $meta_keys[] = $meta['meta_key'];
                     }
                 } else {
-                    $field_key = array_search($meta['order_item_type'], array_column($meta_keys, 'meta_key'));
+                    $field_key = array_search($meta['order_item_type'], array_column($meta_keys, 'meta_key'), false);
                     if ($field_key === false) {
                         $meta_keys[] = array(
                             'meta_key' => $meta['order_item_type'],
@@ -3007,6 +2804,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 'order' => 'desc',
             );
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
             $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `taxonomy` FROM `' . $wpdb->term_taxonomy . '` `t` ' . $orderby . '', ''));
         }
 
@@ -3022,12 +2820,13 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         $meta_keys = array();
         if ($item || $post_id) {
-            if ($item == 'shop_order' && get_option('woocommerce_custom_orders_table_enabled') === 'yes' && get_option('woocommerce_custom_orders_table_data_sync_enabled') !== 'yes') {
+            if (($item == 'shop_order' || $item == 'shop_subscription') && get_option('woocommerce_custom_orders_table_enabled') === 'yes' && get_option('woocommerce_custom_orders_table_data_sync_enabled') !== 'yes') {
                 $order_condition = array(
                     'orderby' => 'meta_key',
                     'order' => 'desc',
                 );
                 $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
                 $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->prefix . 'wc_orders_meta` `pm` ' . $orderby . ''));
                 if (class_exists('WC_Order_Data_Store_CPT')) {
                     $internal_meta_keys = (new WC_Order_Data_Store_CPT())->get_internal_meta_keys();
@@ -3059,6 +2858,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 );
                 $where = $this->helper->load('db')->prepare_where($condition);
                 $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
                 $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->postmeta . '` `pm` LEFT JOIN `' . $wpdb->posts . '` `p` ON (`p`.`ID` = `pm`.`post_ID`) ' . $where['sql'] . $orderby . '', $where['filter']));
             }
         }
@@ -3093,7 +2893,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         $where = $this->helper->load('db')->prepare_where($condition);
         $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
-
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
         $custom_meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_value` FROM `' . $wpdb->postmeta . '` `pm`' . $where['sql'] . $orderby . '', $where['filter']));
         foreach ($custom_meta_keys as $custom_meta_key) {
             $custom_metas = $this->helper->load('convert')->unserialize($custom_meta_key);
@@ -3101,7 +2901,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 foreach ($custom_metas as $custom_metas_key => $custom_metas_value) {
                     if (isset($custom_metas_value['is_taxonomy']) && $custom_metas_value['is_taxonomy']) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
-                        $in_array = array_search($custom_metas_key, array_column($meta_keys, 'id'));
+                        $in_array = array_search($custom_metas_key, array_column($meta_keys, 'id'), false);
                         if ($in_array === false && isset($custom_metas_value['name'])) {
                             $meta_keys[] = array(
                                 'id' => $custom_metas_key,
@@ -3127,7 +2927,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
     private function get_vm_product() {
 
         $index = '';
-        if ($this->get('item') == 'shop_order' || $this->get('item') == 'cart') {
+        if ($this->get('item') == 'shop_order' || $this->get('item') == 'shop_subscription' || $this->get('item') == 'cart') {
             $index = ' index="0"';
         }
 
@@ -3177,7 +2977,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Category IDs', 'e2pdf-wc-product key="get_category_ids"' . $index) . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Tag IDs', 'e2pdf-wc-product key="get_tag_ids"' . $index) . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Virtual', 'e2pdf-wc-product key="get_virtual"' . $index) . '</div>';
-        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Gallery Image Ids', 'e2pdf-wc-product key="get_gallery_image_ids"' . $index) . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Gallery Image IDs', 'e2pdf-wc-product key="get_gallery_image_ids"' . $index) . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Shipping Class ID', 'e2pdf-wc-product key="get_shipping_class_id"' . $index) . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Downloads', 'e2pdf-wc-product key="get_downloads"' . $index) . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Download Expiry', 'e2pdf-wc-product key="get_download_expiry"' . $index) . '</div>';
@@ -3266,7 +3066,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         if (!empty($meta_keys2)) {
             foreach ($meta_keys2 as $meta_key) {
-                if (!in_array($meta_key, $meta_keys)) {
+                if (!in_array($meta_key, $meta_keys, false)) {
                     $meta_keys[] = $meta_key;
                 }
             }
@@ -3300,7 +3100,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
     private function get_vm_product_order() {
         $index = '';
-        if ($this->get('item') == 'shop_order' || $this->get('item') == 'cart') {
+        if ($this->get('item') == 'shop_order' || $this->get('item') == 'shop_subscription' || $this->get('item') == 'cart') {
             $index = ' index="0"';
         }
 
@@ -3350,7 +3150,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
     private function get_vm_product_order_item_meta() {
 
         $index = '';
-        if ($this->get('item') == 'shop_order' || $this->get('item') == 'cart') {
+        if ($this->get('item') == 'shop_order' || $this->get('item') == 'shop_subscription' || $this->get('item') == 'cart') {
             $index = ' index="0"';
         }
 
@@ -3370,7 +3170,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         return $vc;
     }
 
-    private function get_vm_order() {
+    private function get_vm_order($post_type = 'shop_order') {
 
         $vc = '';
         $vc .= '<h3 class="e2pdf-plr5">Order</h3>';
@@ -3446,6 +3246,9 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('View Order URL', 'e2pdf-wc-order key="get_view_order_url"') . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Edit Order URL', 'e2pdf-wc-order key="get_edit_order_url"') . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Status', 'e2pdf-wc-order key="get_status"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Items IDs', 'e2pdf-wc-order key="get_items_ids"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Items Category', 'e2pdf-wc-order key="get_items_category"') . '</div>';
+        $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Items Category IDs', 'e2pdf-wc-order key="get_items_category_ids"') . '</div>';
         $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element('Cart', 'e2pdf-wc-order key="cart"') . '</div>';
         $vc .= '</div>';
 
@@ -3456,7 +3259,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         $vc .= '</div>';
 
-        $meta_keys = $this->get_post_meta_keys('shop_order');
+        $meta_keys = $this->get_post_meta_keys($post_type);
         if (!empty($meta_keys)) {
             $vc .= '<h3 class="e2pdf-plr5">Order Meta Keys</h3>';
             $vc .= '<div class="e2pdf-grid">';
@@ -3568,9 +3371,333 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 'order' => 'desc',
             );
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
             $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->usermeta . '` ' . $orderby . ''));
         }
         return $meta_keys;
+    }
+
+    public function action_e2pdf_wc_cart_template_id() {
+        if (!is_cart() || WC()->cart->is_empty()) {
+            return;
+        }
+        echo apply_filters(
+                'e2pdf_wc_action_e2pdf_wc_cart_template_id',
+                do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_cart_template_id', '0') . '" dataset="' . wc_get_page_id('cart') . '" class="button e2pdf-wc-download-button e2pdf-wc-download-cart-button"]')
+        );
+    }
+
+    public function action_e2pdf_wc_checkout_template_id() {
+        if (!is_checkout() || WC()->cart->is_empty()) {
+            return;
+        }
+        echo apply_filters(
+                'e2pdf_wc_action_e2pdf_wc_checkout_template_id',
+                do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_checkout_template_id', '0') . '" dataset="' . wc_get_page_id('cart') . '" class="button e2pdf-wc-download-button e2pdf-wc-download-checkout-button"]')
+        );
+    }
+
+    public function action_e2pdf_wc_order_details_template_id($order) {
+        $statuses = get_option('e2pdf_wc_order_details_template_id_status', array('any'));
+        if (is_array($statuses) && (in_array($order->get_status(), $statuses, false) || in_array('wc-' . $order->get_status(), $statuses, false) || in_array('any', $statuses, false))) {
+            echo apply_filters(
+                    'e2pdf_wc_action_e2pdf_wc_order_details_template_id',
+                    do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_order_details_template_id', '0') . '" dataset="' . $order->get_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
+                    $order
+            );
+        }
+    }
+
+    public function action_e2pdf_wc_admin_order_actions_template_id($order) {
+        $statuses = get_option('e2pdf_wc_admin_order_actions_template_id_status', array('any'));
+        if (is_array($statuses) && (in_array($order->get_status(), $statuses, false) || in_array('wc-' . $order->get_status(), $statuses, false) || in_array('any', $statuses, false))) {
+            echo apply_filters(
+                    'e2pdf_wc_action_e2pdf_wc_admin_order_actions_template_id',
+                    do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_admin_order_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
+                    $order
+            );
+        }
+    }
+
+    public function action_add_meta_boxes() {
+        add_meta_box(
+                'woocommerce-order-my-custom',
+                'E2Pdf',
+                array($this, 'action_e2pdf_wc_admin_order_details_template_id'),
+                'shop_order',
+                'side',
+                'high'
+        );
+    }
+
+    public function action_e2pdf_wc_admin_order_details_template_id() {
+        global $post;
+        if (function_exists('wc_get_order') && isset($post->ID)) {
+            $order = wc_get_order($post->ID);
+            if ($order) {
+                $statuses = get_option('e2pdf_wc_admin_order_details_template_id_status', array('any'));
+                if (is_array($statuses) && (in_array($order->get_status(), $statuses, false) || in_array('wc-' . $order->get_status(), $statuses, false) || in_array('any', $statuses, false))) {
+                    echo apply_filters(
+                            'e2pdf_wc_action_e2pdf_wc_admin_order_details_template_id',
+                            do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_admin_order_details_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
+                            $order
+                    );
+                }
+            }
+        }
+    }
+
+    public function filter_woocommerce_my_account_my_orders_actions($actions, $order) {
+        $statuses = get_option('e2pdf_wc_my_orders_actions_template_id_status', array('any'));
+        if (is_array($statuses) && (in_array($order->get_status(), $statuses, false) || in_array('wc-' . $order->get_status(), $statuses, false) || in_array('any', $statuses, false))) {
+            $url = do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_my_orders_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" output="url"]');
+            if ($url) {
+                $actions['e2pdf_invoice'] = array(
+                    'url' => $url,
+                    'name' => apply_filters('e2pdf_wc_my_account_my_orders_actions_invoice_title', do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_my_orders_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" output="button_title"]')),
+                );
+            }
+            $actions = apply_filters('e2pdf_wc_action_e2pdf_wc_my_orders_actions_template_id', $actions, $order);
+        }
+        return apply_filters('e2pdf_wc_filter_woocommerce_my_account_my_orders_actions', $actions, $order);
+    }
+
+    /**
+     * Add options for WooCommerce extension
+     * @param array $options - List of options
+     * @return array - Updated options list
+     */
+    public function filter_e2pdf_model_options_get_options_options($options = array()) {
+        global $wpdb;
+
+        $model_e2pdf_template = new Model_E2pdf_Template();
+
+        $order_templates = array(
+            '0' => __('--- Select ---', 'e2pdf'),
+        );
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $templates = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $model_e2pdf_template->get_table() . '` WHERE extension = %s AND item = %s AND activated = %s ORDER BY ID ASC', 'woocommerce', 'shop_order', '1'), ARRAY_A);
+        if (!empty($templates)) {
+            foreach ($templates as $template) {
+                $order_templates[$template['ID']] = $template['title'];
+            }
+        }
+
+        $cart_templates = array(
+            '0' => __('--- Select ---', 'e2pdf'),
+        );
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $templates = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $model_e2pdf_template->get_table() . '` WHERE extension = %s AND item = %s AND activated = %s ORDER BY ID ASC', 'woocommerce', 'cart', '1'), ARRAY_A);
+
+        if (!empty($templates)) {
+            foreach ($templates as $template) {
+                $cart_templates[$template['ID']] = $template['title'];
+            }
+        }
+
+        $options['woocommerce_group'] = array(
+            'name' => 'WooCommerce',
+            'action' => 'extension',
+            'group' => 'woocommerce_group',
+            'options' => array(
+                array(
+                    'header' => __('User Order List', 'e2pdf'),
+                    'name' => __('Template', 'e2pdf'),
+                    'key' => 'e2pdf_wc_my_orders_actions_template_id',
+                    'value' => get_option('e2pdf_wc_my_orders_actions_template_id', '0'),
+                    'default_value' => '0',
+                    'type' => 'select',
+                    'options' => $order_templates,
+                ),
+                array(
+                    'name' => __('Order Status', 'e2pdf'),
+                    'key' => 'e2pdf_wc_my_orders_actions_template_id_status',
+                    'type' => 'checkbox_list',
+                    'options' => $this->get_status_options('e2pdf_wc_my_orders_actions_template_id'),
+                ),
+                array(
+                    'name' => __('Priority', 'e2pdf'),
+                    'key' => 'e2pdf_wc_my_orders_actions_template_id_priority',
+                    'value' => get_option('e2pdf_wc_my_orders_actions_template_id_priority', '10'),
+                    'default_value' => '10',
+                    'type' => 'text',
+                    'class' => 'e2pdf-numbers',
+                    'placeholder' => '0',
+                ),
+                array(
+                    'header' => __('User Order Details', 'e2pdf'),
+                    'name' => __('Template', 'e2pdf'),
+                    'key' => 'e2pdf_wc_order_details_template_id',
+                    'value' => get_option('e2pdf_wc_order_details_template_id', '0'),
+                    'default_value' => '0',
+                    'type' => 'select',
+                    'options' => $order_templates,
+                ),
+                array(
+                    'name' => __('Order Status', 'e2pdf'),
+                    'key' => 'e2pdf_wc_order_details_template_id_status',
+                    'type' => 'checkbox_list',
+                    'options' => $this->get_status_options('e2pdf_wc_order_details_template_id'),
+                ),
+                array(
+                    'name' => __('Hook', 'e2pdf'),
+                    'key' => 'e2pdf_wc_order_details_template_id_hook',
+                    'value' => get_option('e2pdf_wc_order_details_template_id_hook', 'woocommerce_order_details_before_order_table'),
+                    'default_value' => 'woocommerce_order_details_before_order_table',
+                    'type' => 'select',
+                    'options' => array(
+                        'woocommerce_order_details_before_order_table' => 'woocommerce_order_details_before_order_table',
+                        'woocommerce_order_details_before_order_table_items' => 'woocommerce_order_details_before_order_table_items',
+                        'woocommerce_order_details_after_order_table_items' => 'woocommerce_order_details_after_order_table_items',
+                        'woocommerce_order_details_after_order_table' => 'woocommerce_order_details_after_order_table',
+                        'woocommerce_after_order_details' => 'woocommerce_after_order_details',
+                    ),
+                ),
+                array(
+                    'name' => __('Priority', 'e2pdf'),
+                    'key' => 'e2pdf_wc_order_details_template_id_priority',
+                    'value' => get_option('e2pdf_wc_order_details_template_id_priority', '10'),
+                    'default_value' => '10',
+                    'type' => 'text',
+                    'class' => 'e2pdf-numbers',
+                    'placeholder' => '0',
+                ),
+                array(
+                    'header' => __('User Cart', 'e2pdf'),
+                    'name' => __('Template', 'e2pdf'),
+                    'key' => 'e2pdf_wc_cart_template_id',
+                    'value' => get_option('e2pdf_wc_cart_template_id', '0'),
+                    'default_value' => '0',
+                    'type' => 'select',
+                    'options' => $cart_templates,
+                ),
+                array(
+                    'name' => __('Priority', 'e2pdf'),
+                    'key' => 'e2pdf_wc_cart_template_id_priority',
+                    'value' => get_option('e2pdf_wc_cart_template_id_priority', '10'),
+                    'default_value' => '10',
+                    'type' => 'text',
+                    'class' => 'e2pdf-numbers',
+                    'placeholder' => '0',
+                ),
+                array(
+                    'header' => __('User Checkout', 'e2pdf'),
+                    'name' => __('Template', 'e2pdf'),
+                    'key' => 'e2pdf_wc_checkout_template_id',
+                    'value' => get_option('e2pdf_wc_checkout_template_id', '0'),
+                    'default_value' => '0',
+                    'type' => 'select',
+                    'options' => $cart_templates,
+                ),
+                array(
+                    'name' => __('Hook', 'e2pdf'),
+                    'key' => 'e2pdf_wc_checkout_template_id_hook',
+                    'value' => get_option('e2pdf_wc_checkout_template_id_hook', 'woocommerce_review_order_before_submit'),
+                    'default_value' => 'woocommerce_review_order_before_submit',
+                    'type' => 'select',
+                    'options' => array(
+                        'woocommerce_review_order_before_submit' => 'woocommerce_review_order_before_submit',
+                        'woocommerce_review_order_after_submit' => 'woocommerce_review_order_after_submit',
+                    ),
+                ),
+                array(
+                    'name' => __('Priority', 'e2pdf'),
+                    'key' => 'e2pdf_wc_checkout_template_id_priority',
+                    'value' => get_option('e2pdf_wc_checkout_template_id_priority', '10'),
+                    'default_value' => '10',
+                    'type' => 'text',
+                    'class' => 'e2pdf-numbers',
+                    'placeholder' => '0',
+                ),
+            ),
+        );
+
+        /* Deprecate and move to Hooks */
+        $options['woocommerce_group']['options'][] = array(
+            'header' => __('Admin Order List', 'e2pdf'),
+            'name' => __('Template', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_actions_template_id',
+            'value' => get_option('e2pdf_wc_admin_order_actions_template_id', '0'),
+            'default_value' => '0',
+            'type' => 'select',
+            'options' => $order_templates,
+        );
+        $options['woocommerce_group']['options'][] = array(
+            'name' => __('Hook', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_actions_template_id_hook',
+            'value' => get_option('e2pdf_wc_admin_order_actions_template_id_hook', 'woocommerce_admin_order_actions_end'),
+            'default_value' => 'woocommerce_admin_order_actions_end',
+            'type' => 'select',
+            'options' => array(
+                'woocommerce_admin_order_actions_start' => 'woocommerce_admin_order_actions_start',
+                'woocommerce_admin_order_actions_end' => 'woocommerce_admin_order_actions_end',
+            ),
+        );
+        $options['woocommerce_group']['options'][] = array(
+            'name' => __('Order Status', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_actions_template_id_status',
+            'type' => 'checkbox_list',
+            'options' => $this->get_status_options('e2pdf_wc_admin_order_actions_template_id'),
+        );
+        $options['woocommerce_group']['options'][] = array(
+            'name' => __('Priority', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_actions_template_id_priority',
+            'value' => get_option('e2pdf_wc_admin_order_actions_template_id_priority', '10'),
+            'default_value' => '10',
+            'type' => 'text',
+            'class' => 'e2pdf-numbers',
+            'placeholder' => '0',
+        );
+
+        $options['woocommerce_group']['options'][] = array(
+            'header' => __('Admin Order Details', 'e2pdf'),
+            'name' => __('Template', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_details_template_id',
+            'value' => get_option('e2pdf_wc_admin_order_details_template_id', '0'),
+            'default_value' => '0',
+            'type' => 'select',
+            'options' => $order_templates,
+        );
+        $options['woocommerce_group']['options'][] = array(
+            'name' => __('Order Status', 'e2pdf'),
+            'key' => 'e2pdf_wc_admin_order_details_template_id_status',
+            'type' => 'checkbox_list',
+            'options' => $this->get_status_options('e2pdf_wc_admin_order_details_template_id'),
+        );
+
+        return $options;
+    }
+
+    public function get_status_options($key) {
+        $statuses = get_option($key . '_status', array('any'));
+        $order_statuses = array();
+        if (function_exists('wc_get_order_statuses')) {
+            $order_statuses = wc_get_order_statuses();
+        }
+        $status_options = array();
+        foreach ($order_statuses as $order_status_key => $order_status) {
+            $status_options[] = array(
+                'name' => $order_status,
+                'key' => $key . '_status[]',
+                'value' => is_array($statuses) && in_array($order_status_key, $statuses, false) ? $order_status_key : '',
+                'checkbox_value' => $order_status_key,
+                'placeholder' => $order_status,
+                'type' => 'checkbox',
+                'default_value' => '',
+            );
+        }
+
+        $status_options[] = array(
+            'name' => 'Any',
+            'key' => $key . '_status[]',
+            'value' => is_array($statuses) && in_array('any', $statuses, false) ? 'any' : '',
+            'checkbox_value' => 'any',
+            'placeholder' => __('Any', 'e2pdf'),
+            'type' => 'checkbox',
+            'default_value' => '',
+        );
+
+        return $status_options;
     }
 
     public function hook_woocommerce_order_edit() {
@@ -3590,24 +3717,83 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
     public function hook_woocommerce_order_edit_callback($post, $metabox) {
         foreach ($metabox['args']['hooks'] as $hook) {
-            $action = apply_filters('e2pdf_hook_action_button',
-                    array(
-                        'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
-                        'url' => $this->helper->get_url(
-                                array(
-                                    'page' => 'e2pdf',
-                                    'action' => 'export',
-                                    'id' => $hook,
-                                    'dataset' => $post->ID,
-                                ), 'admin.php?'
-                        ),
-                        'title' => 'PDF #' . $hook
-                    ), 'hook_woocommerce_order_edit', $hook, $post->ID
-            );
-            if (!empty($action)) {
-                echo sprintf(
-                        $action['html'], $action['url'], $action['title']
+            if ($this->helper->load('hooks')->process_hook(
+                            $hook,
+                            [
+                                'dataset' => $post->ID,
+                            ],
+                            'hook_woocommerce_order_edit'
+                    )
+            ) {
+                $action = apply_filters(
+                        'e2pdf_hook_action_button',
+                        array(
+                            'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
+                            'url' => $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf',
+                                        'action' => 'export',
+                                        'id' => $hook,
+                                        'dataset' => $post->ID,
+                                    ), 'admin.php?'
+                            ),
+                            'title' => 'PDF #' . $hook,
+                        ), 'hook_woocommerce_order_edit', $hook, $post->ID
                 );
+                if (!empty($action)) {
+                    echo sprintf(
+                            $action['html'], $action['url'], $action['title']
+                    );
+                }
+            }
+        }
+    }
+
+    public function hook_woocommerce_subscription_edit() {
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_subscription_edit', 'shop_subscription');
+        if (!empty($hooks)) {
+            add_meta_box(
+                    'e2pdf',
+                    apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_woocommerce_subscription_edit'),
+                    array($this, 'hook_woocommerce_subscription_edit_callback'),
+                    'shop_subscription',
+                    'side',
+                    'default',
+                    array('hooks' => $hooks)
+            );
+        }
+    }
+
+    public function hook_woocommerce_subscription_edit_callback($post, $metabox) {
+        foreach ($metabox['args']['hooks'] as $hook) {
+            if ($this->helper->load('hooks')->process_hook(
+                            $hook,
+                            [
+                                'dataset' => $post->ID,
+                            ],
+                            'hook_woocommerce_subscription_edit'
+                    )
+            ) {
+                $action = apply_filters(
+                        'e2pdf_hook_action_button',
+                        array(
+                            'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
+                            'url' => $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf',
+                                        'action' => 'export',
+                                        'id' => $hook,
+                                        'dataset' => $post->ID,
+                                    ), 'admin.php?'
+                            ),
+                            'title' => 'PDF #' . $hook,
+                        ), 'hook_woocommerce_subscription_edit', $hook, $post->ID
+                );
+                if (!empty($action)) {
+                    echo sprintf(
+                            $action['html'], $action['url'], $action['title']
+                    );
+                }
             }
         }
     }
@@ -3616,24 +3802,34 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         if (!empty($order->id)) {
             $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_order_row_actions', 'shop_order');
             foreach ($hooks as $hook) {
-                $action = apply_filters('e2pdf_hook_action_button',
-                        array(
-                            'html' => '<a class="button e2pdf-download-hook e2pdf-download-hook-icon-button" target="_blank" title="%2$s" href="%1$s">%2$s</a> ',
-                            'url' => $this->helper->get_url(
-                                    array(
-                                        'page' => 'e2pdf',
-                                        'action' => 'export',
-                                        'id' => $hook,
-                                        'dataset' => $order->id,
-                                    ), 'admin.php?'
-                            ),
-                            'title' => 'PDF #' . $hook
-                        ), 'hook_woocommerce_order_row_actions', $hook, $order->id
-                );
-                if (!empty($action)) {
-                    echo sprintf(
-                            $action['html'], $action['url'], $action['title']
+                if ($this->helper->load('hooks')->process_hook(
+                                $hook,
+                                [
+                                    'dataset' => $order->id,
+                                ],
+                                'hook_woocommerce_order_row_actions'
+                        )
+                ) {
+                    $action = apply_filters(
+                            'e2pdf_hook_action_button',
+                            array(
+                                'html' => '<a class="button e2pdf-download-hook e2pdf-download-hook-icon-button" target="_blank" title="%2$s" href="%1$s">%2$s</a> ',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $order->id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook,
+                            ), 'hook_woocommerce_order_row_actions', $hook, $order->id
                     );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
                 }
             }
         }
@@ -3652,25 +3848,201 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         if ($column == 'e2pdf_hook_woocommerce_order_row_column') {
             $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_order_row_column', 'shop_order');
             foreach ($hooks as $hook) {
-                $action = apply_filters('e2pdf_hook_action_button',
-                        array(
-                            'html' => '<a class="button e2pdf-download-hook e2pdf-download-hook-icon-button" target="_blank" title="%2$s" href="%1$s">%2$s</a> ',
-                            'url' => $this->helper->get_url(
-                                    array(
-                                        'page' => 'e2pdf',
-                                        'action' => 'export',
-                                        'id' => $hook,
-                                        'dataset' => $post_id,
-                                    ), 'admin.php?'
-                            ),
-                            'title' => 'PDF #' . $hook
-                        ), 'hook_woocommerce_order_row_column', $hook, $post_id
-                );
-                if (!empty($action)) {
-                    echo sprintf(
-                            $action['html'], $action['url'], $action['title']
+                if ($this->helper->load('hooks')->process_hook(
+                                $hook,
+                                [
+                                    'dataset' => $post_id,
+                                ],
+                                'hook_woocommerce_order_row_column'
+                        )
+                ) {
+                    $action = apply_filters(
+                            'e2pdf_hook_action_button',
+                            array(
+                                'html' => '<a class="button e2pdf-download-hook e2pdf-download-hook-icon-button" target="_blank" title="%2$s" href="%1$s">%2$s</a> ',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $post_id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook,
+                            ), 'hook_woocommerce_order_row_column', $hook, $post_id
                     );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
                 }
+            }
+        }
+    }
+
+    public function hook_woocommerce_subscription_row_column($columns) {
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_subscription_row_column', 'shop_subscription');
+        if (!empty($hooks)) {
+            $columns['e2pdf_hook_woocommerce_subscription_row_column'] = apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_woocommerce_subscription_row_column');
+            add_action('manage_shop_subscription_posts_custom_column', array($this, 'hook_woocommerce_subscription_row_column_callback'), 10, 2);
+        }
+        return $columns;
+    }
+
+    public function hook_woocommerce_subscription_row_column_callback($column, $post_id) {
+        if ($column == 'e2pdf_hook_woocommerce_subscription_row_column') {
+            $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_subscription_row_column', 'shop_subscription');
+            foreach ($hooks as $hook) {
+                if ($this->helper->load('hooks')->process_hook(
+                                $hook,
+                                [
+                                    'dataset' => $post_id,
+                                ],
+                                'hook_woocommerce_subscription_row_column'
+                        )
+                ) {
+                    $action = apply_filters(
+                            'e2pdf_hook_action_button',
+                            array(
+                                'html' => '<a class="button e2pdf-download-hook e2pdf-download-hook-icon-button" target="_blank" title="%2$s" href="%1$s">%2$s</a> ',
+                                'url' => $this->helper->get_url(
+                                        array(
+                                            'page' => 'e2pdf',
+                                            'action' => 'export',
+                                            'id' => $hook,
+                                            'dataset' => $post_id,
+                                        ), 'admin.php?'
+                                ),
+                                'title' => 'PDF #' . $hook,
+                            ), 'hook_woocommerce_subscription_row_column', $hook, $post_id
+                    );
+                    if (!empty($action)) {
+                        echo sprintf(
+                                $action['html'], $action['url'], $action['title']
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    public function hook_woocommerce_my_account_my_orders_actions($actions, $order) {
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_my_account_my_orders_actions', 'shop_order');
+        foreach ($hooks as $hook) {
+            if ($this->helper->load('hooks')->process_hook(
+                            $hook,
+                            [
+                                'dataset' => $order->get_id(),
+                            ],
+                            'hook_woocommerce_my_account_my_orders_actions'
+                    )
+            ) {
+                $actions['e2pdf_' . $hook] = array(
+                    'url' => do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" output="url"]'),
+                    'name' => apply_filters('e2pdf_wc_my_account_my_orders_actions_invoice_title', do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" output="button_title"]')),
+                );
+            }
+        }
+        return apply_filters('e2pdf_wc_filter_woocommerce_my_account_my_orders_actions', $actions, $order);
+    }
+
+    public function hook_wcs_view_subscription_actions($actions, $order) {
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_wcs_view_subscription_actions', 'shop_subscription');
+        foreach ($hooks as $hook) {
+            if ($this->helper->load('hooks')->process_hook(
+                            $hook,
+                            [
+                                'dataset' => $order->get_id(),
+                            ],
+                            'hook_wcs_view_subscription_actions'
+                    )
+            ) {
+                $actions['e2pdf_' . $hook] = array(
+                    'url' => do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" output="url"]'),
+                    'name' => apply_filters('e2pdf_wc_wcs_view_subscription_actions_actions_title', do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" output="button_title"]')),
+                );
+            }
+        }
+        return apply_filters('e2pdf_wc_filter_wcs_view_subscription_actions', $actions, $order);
+    }
+
+    public function hook_woocommerce_order_details($order) {
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_' . current_action(), 'shop_order');
+        foreach ($hooks as $hook) {
+            if ($this->helper->load('hooks')->process_hook(
+                            $hook,
+                            [
+                                'dataset' => $order->get_id(),
+                            ],
+                            'hook_' . current_action()
+                    )
+            ) {
+                echo do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]');
+            }
+        }
+    }
+
+    public function hook_woocommerce_subscription_details($order) {
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_' . current_action(), 'shop_subscription');
+
+        if (!empty($hooks)) {
+            echo '<tr><td>' . apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_' . current_action()) . '</td><td>';
+        }
+
+        foreach ($hooks as $hook) {
+            if ($this->helper->load('hooks')->process_hook(
+                            $hook,
+                            [
+                                'dataset' => $order->get_id(),
+                            ],
+                            'hook_' . current_action()
+                    )
+            ) {
+                echo do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-subscription-details-button"]');
+            }
+        }
+
+        if (!empty($hooks)) {
+            echo '</td></tr>';
+        }
+    }
+
+    public function hook_woocommerce_proceed_to_checkout() {
+        if (!is_cart() || WC()->cart->is_empty()) {
+            return;
+        }
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_proceed_to_checkout', 'cart');
+        foreach ($hooks as $hook) {
+            if ($this->helper->load('hooks')->process_hook(
+                            $hook,
+                            [
+                                'dataset' => wc_get_page_id('cart'),
+                            ],
+                            'hook_woocommerce_proceed_to_checkout'
+                    )
+            ) {
+                echo do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . wc_get_page_id('cart') . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-cart-button"]');
+            }
+        }
+    }
+
+    public function hook_woocommerce_review_order() {
+        if (!is_checkout() || WC()->cart->is_empty()) {
+            return;
+        }
+        $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_' . current_action(), 'cart');
+        foreach ($hooks as $hook) {
+            if (
+                    $this->helper->load('hooks')->process_hook(
+                            $hook,
+                            [
+                                'dataset' => wc_get_page_id('cart'),
+                            ],
+                            'hook_' . current_action()
+                    )
+            ) {
+                echo do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . wc_get_page_id('cart') . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-checkout-button"]');
             }
         }
     }

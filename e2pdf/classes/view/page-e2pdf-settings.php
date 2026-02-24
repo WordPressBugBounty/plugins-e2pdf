@@ -7,6 +7,11 @@ if (!defined('ABSPATH')) {
     <h1><?php _e('Settings', 'e2pdf'); ?></h1>
     <hr class="wp-header-end">
     <?php $this->render('blocks', 'notifications'); ?>
+    <?php if ($this->get->get('group') == 'woocommerce_group') { ?>
+        <div id="message" class="e2pdf-notice notice notice-warning">
+            <p><?php _e("It's recommended to use the Integration Hooks in the E2Pdf Template settings instead", 'e2pdf'); ?></p>
+        </div>
+    <?php } ?>
     <h3 class="nav-tab-wrapper wp-clearfix">
         <?php foreach ($this->view->groups as $group_key => $group) { ?>
             <?php if (isset($group['action']) && isset($group['group'])) { ?>
@@ -28,8 +33,8 @@ if (!defined('ABSPATH')) {
                         <li>
                             <div class="e2pdf-name"><?php _e('Font', 'e2pdf'); ?>:
                             </div><div class="e2pdf-value">
-                                <input name="font" type="file">
-                                <div class="e2pdf-note"><?php _e('Allowed File Types', 'e2pdf'); ?>: <strong><?php echo implode(', ', $this->view->allowed_extensions); ?></strong></div>
+                                <input name="font" type="file" accept=".<?php echo esc_attr(implode(', .', $this->view->allowed_extensions)); ?>">
+                                <div class="e2pdf-note"><?php _e('Allowed File Types', 'e2pdf'); ?>: <strong>.<?php echo implode(', .', $this->view->allowed_extensions); ?></strong></div>
                                 <div class="e2pdf-note"><?php _e('Max Upload File Size', 'e2pdf'); ?>: <strong><?php echo $this->view->upload_max_filesize; ?></strong></div>
                             </div>
                         </li>

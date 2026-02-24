@@ -1204,25 +1204,34 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
             $hooks = $this->helper->load('hooks')->get('everest', 'hook_everest_row_actions', $entry->form_id);
             if (!empty($hooks)) {
                 foreach ($hooks as $hook) {
-                    $action = apply_filters(
-                            'e2pdf_hook_action_button',
-                            array(
-                                'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $entry->entry_id,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook,
-                            ), 'hook_everest_row_actions', $hook, $entry->entry_id
-                    );
-                    if (!empty($action)) {
-                        $actions['e2pdf_' . $hook] = sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $entry->entry_id,
+                                    ],
+                                    'hook_everest_row_actions'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $entry->entry_id,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_everest_row_actions', $hook, $entry->entry_id
                         );
+                        if (!empty($action)) {
+                            $actions['e2pdf_' . $hook] = sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
             }
@@ -1236,25 +1245,34 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
             $hooks = $this->helper->load('hooks')->get('everest', 'hook_everest_entry_view', $entry->form_id);
             if (!empty($hooks)) {
                 foreach ($hooks as $hook) {
-                    $action = apply_filters(
-                            'e2pdf_hook_action_button',
-                            array(
-                                'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
-                                'url' => $this->helper->get_url(
-                                        array(
-                                            'page' => 'e2pdf',
-                                            'action' => 'export',
-                                            'id' => $hook,
-                                            'dataset' => $entry->entry_id,
-                                        ), 'admin.php?'
-                                ),
-                                'title' => 'PDF #' . $hook,
-                            ), 'hook_everest_entry_view', $hook, $entry->entry_id
-                    );
-                    if (!empty($action)) {
-                        echo sprintf(
-                                $action['html'], $action['url'], $action['title']
+                    if ($this->helper->load('hooks')->process_hook(
+                                    $hook,
+                                    [
+                                        'dataset' => $entry->entry_id,
+                                    ],
+                                    'hook_everest_entry_view'
+                            )
+                    ) {
+                        $action = apply_filters(
+                                'e2pdf_hook_action_button',
+                                array(
+                                    'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
+                                    'url' => $this->helper->get_url(
+                                            array(
+                                                'page' => 'e2pdf',
+                                                'action' => 'export',
+                                                'id' => $hook,
+                                                'dataset' => $entry->entry_id,
+                                            ), 'admin.php?'
+                                    ),
+                                    'title' => 'PDF #' . $hook,
+                                ), 'hook_everest_entry_view', $hook, $entry->entry_id
                         );
+                        if (!empty($action)) {
+                            echo sprintf(
+                                    $action['html'], $action['url'], $action['title']
+                            );
+                        }
                     }
                 }
             }

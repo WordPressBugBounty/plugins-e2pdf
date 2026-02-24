@@ -222,6 +222,7 @@ class Helper_E2pdf_Image {
 
     public function get_extension($value = false) {
 
+        $value = trim($value);
         if (!$value) {
             return false;
         }

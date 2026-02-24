@@ -384,7 +384,7 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                     <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_templates'); ?>">
                     <ul class="e2pdf-options-list">
                         <li><div class="e2pdf-name"><?php _e('Template', 'e2pdf'); ?>:
-                            </div><div class="e2pdf-value"><input name="template" type="file">
+                            </div><div class="e2pdf-value"><input name="template" type="file" accept=".xml">
                                 <div class="e2pdf-note"><?php _e('Allowed File Types', 'e2pdf'); ?>: <strong>.xml</strong></div>
                                 <div class="e2pdf-note"><?php _e('Max Upload File Size', 'e2pdf'); ?>: <strong><?php echo $this->view->upload_max_filesize; ?></strong></div>
                             </div>
@@ -435,7 +435,7 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                                             $this->render('field', 'select', array(
                                                 'field' => array(
                                                     'name' => $option_value['key'],
-                                                    'class' => 'e2pdf-w100'
+                                                    'class' => $option_value['key'] == 'options[overwrite]' ? 'e2pdf-import-overwrite e2pdf-w100' : 'e2pdf-w100'
                                                 ),
                                                 'value' => $option_value['value'],
                                                 'options' => $option_value['options']
