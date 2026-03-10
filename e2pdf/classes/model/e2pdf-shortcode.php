@@ -233,17 +233,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
                 switch ($attributes->get('output')) {
                     case 'url':
-                        $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                        $response = esc_url($url);
-                        break;
                     case 'url_raw':
-                        $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                        $response = esc_url_raw($url);
-                        break;
                     case 'url_encode':
                         $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                        // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
-                        $response = urlencode(esc_url_raw($url));
+                        if ($attributes->get('output') === 'url') {
+                            $response = esc_url($url);
+                        } elseif ($attributes->get('output') === 'url_raw') {
+                            $response = esc_url_raw($url);
+                        } elseif ($attributes->get('output') === 'url_encode') {
+                            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
+                            $response = urlencode(esc_url_raw($url));
+                        }
                         break;
                     default:
                         $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_pdf_url', $url, $atts);
@@ -251,6 +251,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         if ($attributes->get('print') && $this->helper->load('server')->isPrintingSupported()) {
                             $classes[] = 'e2pdf-print-pdf';
                             $url = add_query_arg(['v' => $this->helper->get('version')], $url);
+                        } elseif ($attributes->get('view')) {
+                            $iframe_download = false;
+                            $viewer_atts = array_merge(
+                                    array_diff_key($atts, ['class' => '']),
+                                    [
+                                        'class' => isset($atts['view_class']) ? $atts['view_class'] : '',
+                                        'file' => $url,
+                                        'output' => 'url_raw',
+                                    ]
+                            );
+                            $url = $this->e2pdf_view($viewer_atts);
                         } elseif (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported()) {
                             if ($inline) {
                                 $target = '_blank';
@@ -306,17 +317,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     );
                     switch ($attributes->get('output')) {
                         case 'url':
-                            $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                            $response = esc_url($url);
-                            break;
                         case 'url_raw':
-                            $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                            $response = esc_url_raw($url);
-                            break;
                         case 'url_encode':
                             $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
-                            $response = urlencode(esc_url_raw($url));
+                            if ($attributes->get('output') === 'url') {
+                                $response = esc_url($url);
+                            } elseif ($attributes->get('output') === 'url_raw') {
+                                $response = esc_url_raw($url);
+                            } elseif ($attributes->get('output') === 'url_encode') {
+                                // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
+                                $response = urlencode(esc_url_raw($url));
+                            }
                             break;
                         default:
                             $file_download = '';
@@ -324,6 +335,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             if ($attributes->get('print') && $this->helper->load('server')->isPrintingSupported()) {
                                 $classes[] = 'e2pdf-print-pdf';
                                 $url = add_query_arg(['v' => $this->helper->get('version')], $url);
+                            } elseif ($attributes->get('view')) {
+                                $iframe_download = false;
+                                $viewer_atts = array_merge(
+                                        array_diff_key($atts, ['class' => '']),
+                                        [
+                                            'class' => isset($atts['view_class']) ? $atts['view_class'] : '',
+                                            'file' => $url,
+                                            'output' => 'url_raw',
+                                        ]
+                                );
+                                $url = $this->e2pdf_view($viewer_atts);
                             } elseif (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported()) {
                                 if ($inline) {
                                     $target = '_blank';
@@ -467,17 +489,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 );
                 switch ($attributes->get('output')) {
                     case 'url':
-                        $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                        $response = esc_url($url);
-                        break;
                     case 'url_raw':
-                        $url = esc_url_raw($url);
-                        $response = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                        break;
                     case 'url_encode':
                         $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_output_url', $url, $atts);
-                        // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
-                        $response = urlencode(esc_url_raw($url));
+                        if ($attributes->get('output') === 'url') {
+                            $response = esc_url($url);
+                        } elseif ($attributes->get('output') === 'url_raw') {
+                            $response = esc_url_raw($url);
+                        } elseif ($attributes->get('output') === 'url_encode') {
+                            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
+                            $response = urlencode(esc_url_raw($url));
+                        }
                         break;
                     default:
                         $url = apply_filters('e2pdf_model_shortcode_e2pdf_download_pdf_url', $url, $atts);
@@ -485,6 +507,17 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         if ($attributes->get('print') && $this->helper->load('server')->isPrintingSupported()) {
                             $classes[] = 'e2pdf-print-pdf';
                             $url = add_query_arg(['v' => $this->helper->get('version')], $url);
+                        } elseif ($attributes->get('view')) {
+                            $iframe_download = false;
+                            $viewer_atts = array_merge(
+                                    array_diff_key($atts, ['class' => '']),
+                                    [
+                                        'class' => isset($atts['view_class']) ? $atts['view_class'] : '',
+                                        'file' => $url,
+                                        'output' => 'url_raw',
+                                    ]
+                            );
+                            $url = $this->e2pdf_view($viewer_atts);
                         } elseif (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported()) {
                             if ($template->get('inline')) {
                                 $target = '_blank';

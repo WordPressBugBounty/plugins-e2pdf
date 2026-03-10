@@ -20,11 +20,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         'title' => 'Divi Forms',
     );
 
-    /**
-     * Get info about extension
-     * @param string $key - Key to get assigned extension info value
-     * @return array|string - Extension Key and Title or Assigned extension info value
-     */
+    // info
     public function info($key = false) {
         if ($key && isset($this->info[$key])) {
             return $this->info[$key];
@@ -35,10 +31,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Check if needed plugin active
-     * @return bool - Activated/Not Activated plugin
-     */
+    // active
     public function active() {
         if (file_exists(get_template_directory() . '/et-pagebuilder/et-pagebuilder.php')) {
             return true;
@@ -50,12 +43,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Set option
-     * @param string $attr - Key of option
-     * @param string $value - Value of option
-     * @return bool - Status of setting option
-     */
+    // set
     public function set($key, $value) {
         if (!isset($this->options)) {
             $this->options = new stdClass();
@@ -63,14 +51,14 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         $this->options->$key = $value;
         switch ($key) {
             case 'dataset':
-                $this->set('cached_entry', array());
-                $this->set('cached_meta', array());
+                $this->set('cached_entry', []);
+                $this->set('cached_meta', []);
                 if ($this->get('item') && $this->get('dataset')) {
                     $entry = new Model_E2pdf_Dataset();
                     if ($entry->load($this->get('dataset'), $this->get('item'), 'divi')) {
                         $cached_entry = $entry->get('entry');
                         $this->set('cached_entry', $cached_entry);
-                        $processed_fields_values = array();
+                        $processed_fields_values = [];
                         if ($cached_entry && is_array($cached_entry)) {
                             $et_contact_proccess = array_search('et_contact_proccess', $cached_entry);
                             $et_pb_contact_form_num = $et_contact_proccess === false ? 0 : str_replace('et_pb_contactform_submit_', '', $et_contact_proccess);
@@ -107,6 +95,14 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                                         }
                                                     }
                                                     $processed_fields_values[$field_value['original_id']]['value'] = pwh_dcfh_file_helpers()::get_form_upload_url($contact_form_id, $subdir, $processed_fields_values[$field_value['original_id']]['value']);
+                                                } elseif (function_exists('ks_pac_dcfh_file_helper') && $contact_form_id) {
+                                                    if ($subdir && !file_exists(ks_pac_dcfh_file_helper()::get_form_upload_dir($contact_form_id, $subdir, $processed_fields_values[$field_value['original_id']]['value'])) && preg_match('/^\d{4}\/\d{2}$/', $subdir)) {
+                                                        $tmpsubdir = date('Y/m', strtotime(str_replace('/', '-', ltrim($subdir, '/')) . " -1 month"));
+                                                        if (file_exists(ks_pac_dcfh_file_helper()::get_form_upload_dir($contact_form_id, $tmpsubdir, $processed_fields_values[$field_value['original_id']]['value']))) {
+                                                            $subdir = $tmpsubdir;
+                                                        }
+                                                    }
+                                                    $processed_fields_values[$field_value['original_id']]['value'] = ks_pac_dcfh_file_helper()::get_form_upload_url($contact_form_id, $subdir, $processed_fields_values[$field_value['original_id']]['value']);
                                                 } else {
                                                     $processed_fields_values[$field_value['original_id']]['value'] = '';
                                                 }
@@ -130,7 +126,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                 );
                             }
                         }
-                        $meta_data = array();
+                        $meta_data = [];
                         foreach ($processed_fields_values as $field_key => $field_value) {
                             $meta_data['%%' . $field_key . '%%'] = $field_value['value'];
                         }
@@ -143,11 +139,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         }
     }
 
-    /**
-     * Get option by key
-     * @param string $key - Key to get assigned option value
-     * @return mixed
-     */
+    // get
     public function get($key) {
         if (isset($this->options->$key)) {
             $value = $this->options->$key;
@@ -156,7 +148,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                 case 'args':
                 case 'cached_entry':
                 case 'cached_meta':
-                    $value = array();
+                    $value = [];
                     break;
                 default:
                     $value = false;
@@ -166,10 +158,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Get items to work with
-     * @return array() - List of available items
-     */
+    // items
     public function items() {
         global $wpdb;
         $condition = array(
@@ -196,7 +185,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
         $posts = $wpdb->get_results($wpdb->prepare('SELECT * FROM `' . $wpdb->prefix . 'posts`' . $where['sql'] . $orderby . '', $where['filter']));
 
-        $content = array();
+        $content = [];
         foreach ($posts as $key => $post) {
             foreach ($this->get_forms($post->post_content) as $form_key => $form_value) {
                 $content[] = $this->item($form_key);
@@ -205,13 +194,9 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $content;
     }
 
-    /**
-     * Parse available forms from pages
-     * @param string $content - Page content
-     * @return array() - Forms list
-     */
+    // get forms
     public function get_forms($content) {
-        $forms = array();
+        $forms = [];
         if (false !== strpos($content, 'et_pb_contact_form')) {
             $shortcode_tags = array(
                 'et_pb_contact_form',
@@ -234,15 +219,10 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $forms;
     }
 
-    /**
-     * Get entries for export
-     * @param string $item_id - Item ID
-     * @param string $name - Entries names
-     * @return array() - Entries list
-     */
+    // datasets
     public function datasets($item_id = false, $name = false) {
         global $wpdb;
-        $datasets = array();
+        $datasets = [];
         if ($item_id) {
             $condition = array(
                 'extension' => array(
@@ -283,11 +263,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $datasets;
     }
 
-    /**
-     * Get Dataset Actions
-     * @param int $dataset_id - Dataset ID
-     * @return object
-     */
+    // get dataset actions
     public function get_dataset_actions($dataset_id = false) {
         $dataset_id = (int) $dataset_id;
         if (!$dataset_id) {
@@ -299,11 +275,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $actions;
     }
 
-    /**
-     * Get Template Actions
-     * @param int $template - Template ID
-     * @return object
-     */
+    // get template actions
     public function get_template_actions($template = false) {
         $template = (int) $template;
         if (!$template) {
@@ -314,11 +286,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $actions;
     }
 
-    /**
-     * Get item
-     * @param string $item_id - Item ID
-     * @return object - Item
-     */
+    // item
     public function item($item_id = false) {
         if (!$item_id && $this->get('item')) {
             $item_id = $this->get('item');
@@ -346,11 +314,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $item;
     }
 
-    /**
-     * Get post
-     * @param string $item_id - Item ID
-     * @return object - Post
-     */
+    // get form
     public function get_form($item_id = false) {
         global $wpdb;
         $item_post = false;
@@ -388,14 +352,8 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $item_post;
     }
 
-    /**
-     * Render value according to content
-     * @param string $value - Content
-     * @param string $type - Type of rendering value
-     * @param array $field - Field details
-     * @return string - Fully rendered value
-     */
-    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
+    // render
+    public function render($value, $field = [], $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
         if (!$raw) {
             $value = $this->strip_shortcodes($value);
@@ -405,14 +363,8 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $value;
     }
 
-    /**
-     * Render shortcodes which available in this extension
-     * @param string $value - Content
-     * @param string $type - Type of rendering value
-     * @param array $field - Field details
-     * @return string - Value with rendered shortcodes
-     */
-    public function render_shortcodes($value, $field = array()) {
+    // render shortcodes
+    public function render_shortcodes($value, $field = []) {
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
         if ($this->verify()) {
             if (false !== strpos($value, '[')) {
@@ -435,23 +387,14 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         );
     }
 
-    /**
-     * Strip unused shortcodes
-     * @param string $value - Content
-     * @return string - Value with removed unused shortcodes
-     */
+    // strip shortcodes
     public function strip_shortcodes($value) {
         $value = preg_replace('~(?:\[/?)[^/\]]+/?\]~s', '', $value);
         $value = preg_replace('~%%[^%%]*%%~', '', $value);
         return $value;
     }
 
-    /**
-     * Convert "shortcodes" inside value string
-     * @param string $value - Value string
-     * @param bool $to - Convert From/To
-     * @return string - Converted value
-     */
+    // convert shortcodes
     public function convert_shortcodes($value, $to = false, $html = false) {
         if ($value) {
             if ($to) {
@@ -467,10 +410,11 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $value;
     }
 
+    // auto
     public function auto() {
 
-        $response = array();
-        $elements = array();
+        $response = [];
+        $elements = [];
 
         if ($this->get('item')) {
             $post = $this->get_form($this->get('item'));
@@ -690,7 +634,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                                         )
                                                 );
                                             } elseif ($select) {
-                                                $options_tmp = array();
+                                                $options_tmp = [];
                                                 $options = $xpath->query('.//option', $select);
                                                 foreach ($options as $option) {
                                                     $options_tmp[] = $xml->get_node_value($option, 'value');
@@ -746,12 +690,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $response;
     }
 
-    /**
-     * Convert Field name to Value
-     * @since 0.01.34
-     * @param string $name - Field name
-     * @return bool|string - Converted value or false
-     */
+    // auto map
     public function auto_map($name = false) {
         $item = $this->get('item');
         if ($item) {
@@ -780,7 +719,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                 if (!empty($field_tagnames)) {
                                     preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($field_tagnames) . '/', $field_content, $field_shortcodes);
                                     foreach ($field_shortcodes[0] as $field_key => $field_shortcode_value) {
-                                        $field_shortcode = array();
+                                        $field_shortcode = [];
                                         $field_shortcode[3] = $field_shortcodes[3][$field_key];
                                         $field_atts = shortcode_parse_atts($field_shortcode[3]);
                                         if (isset($field_atts['field_title']) && isset($field_atts['field_id'])) {
@@ -800,14 +739,8 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Generate field for Auto PDF
-     * @param object $field - Formidable field object
-     * @param string $type - Field type
-     * @param array $options - Field additional options
-     * @return array - Prepared auto field
-     */
-    public function auto_field($field = false, $element = array()) {
+    // auto field
+    public function auto_field($field = false, $element = []) {
 
         if (!$field) {
             return false;
@@ -821,7 +754,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
             $element['float'] = false;
         }
 
-        $classes = array();
+        $classes = [];
         if (isset($element['class']) && $element['class']) {
             $classes = explode(' ', $element['class']);
             unset($element['class']);
@@ -854,10 +787,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $element;
     }
 
-    /**
-     * Verify if item and dataset exists
-     * @return bool - item and dataset exists
-     */
+    // verify
     public function verify() {
         if ($this->get('cached_entry')) {
             return true;
@@ -865,10 +795,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Init Visual Mapper data
-     * @return bool|string - HTML data source for Visual Mapper
-     */
+    // visual mapper
     public function visual_mapper() {
 
         $source = '';
@@ -988,6 +915,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return false;
     }
 
+    // filter mail for Divi Contact Form Helper
     public function filter_wp_mail_pwh_dcfh($args) {
         if (isset($args['message']) && $args['message']) {
             $args['message'] = preg_replace('/(\{\{)((e2pdf-download|e2pdf-view|e2pdf-save|e2pdf-attachment|e2pdf-adobesign|e2pdf-zapier)[^\}]*?)(\}\})/', '[$2]', $args['message']);
@@ -995,6 +923,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $this->filter_wp_mail($args);
     }
 
+    // filter mail
     public function filter_wp_mail($args) {
         if (isset($args['message'])) {
             if (false !== strpos($args['message'], '[')) {
@@ -1060,18 +989,14 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $wp_mail;
     }
 
-    /**
-     * Load actions for this extension
-     */
+    // load actions
     public function load_actions() { // phpcs:ignore Squiz.WhiteSpace.SuperfluousWhitespace.EndLine
     }
 
-    /**
-     * Load filters for this extension
-     */
+    // load filters
     public function load_filters() {
-        /* Divi Contact Form Helper Confirmation Email compatibility fix */
-        if (defined('PWH_DCFH_PLUGIN_FILE')) {
+        // Divi Contact Form Helper Confirmation Email compatibility fix
+        if (defined('PWH_DCFH_PLUGIN_FILE') || defined('KS_PAC_DCFH_PLUGIN_FILE')) {
             add_filter('et_pb_module_shortcode_attributes', array($this, 'filter_et_pb_module_shortcode_attributes'), 9, 5);
         } else {
             add_filter('et_pb_module_shortcode_attributes', array($this, 'filter_et_pb_module_shortcode_attributes'), 30, 5);
@@ -1079,10 +1004,174 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         add_filter('et_module_shortcode_output', array($this, 'filter_et_module_shortcode_output'), 30, 3);
     }
 
+    // filter shortcode attributes
     public function filter_et_pb_module_shortcode_attributes($props, $attrs, $render_slug, $address, $content) {
-        if ($render_slug && $render_slug == 'et_pb_contact_form' && !empty($_POST) && $et_contact_proccess = array_search('et_contact_proccess', $_POST)) {
-            $e2pdf_shortcodes = false;
-            $success_message = isset($props['success_message']) ? str_replace(array('&#91;', '&#93;', '&quot;'), array('[', ']', '"'), $props['success_message']) : '';
+
+        if ($render_slug !== 'et_pb_contact_form') {
+            return $props;
+        }
+
+        $et_contact_proccess = array_search('et_contact_proccess', (array) $_POST);
+        if ($et_contact_proccess === false) {
+            return $props;
+        }
+
+        $e2pdf_shortcodes = false;
+
+        $success_message = isset($props['success_message']) ? str_replace(array('&#91;', '&#93;', '&quot;'), array('[', ']', '"'), $props['success_message']) : '';
+        if (false !== strpos($success_message, '[')) {
+            $shortcode_tags = array(
+                'e2pdf-download',
+                'e2pdf-save',
+                'e2pdf-view',
+                'e2pdf-adobesign',
+                'e2pdf-zapier',
+            );
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $success_message, $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                $e2pdf_shortcodes = true;
+            } else {
+                $success_message = '';
+            }
+        }
+
+        $use_custom_message_richtext = isset($props['use_custom_message_richtext']) && $props['use_custom_message_richtext'] == 'on' && isset($props['custom_message_richtext']) ? true : false;
+        if ($use_custom_message_richtext) {
+            $custom_message = str_replace(array('&#91;', '&#93;'), array('[', ']'), $props['custom_message_richtext']);
+        } else {
+            $custom_message = isset($props['custom_message']) ? str_replace(array('&#91;', '&#93;'), array('[', ']'), $props['custom_message']) : '';
+        }
+        if (false !== strpos($custom_message, '[')) {
+            $shortcode_tags = array(
+                'e2pdf-download',
+                'e2pdf-save',
+                'e2pdf-attachment',
+                'e2pdf-adobesign',
+                'e2pdf-zapier',
+            );
+
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $custom_message, $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                $e2pdf_shortcodes = true;
+            } else {
+                $custom_message = '';
+            }
+        }
+
+        /* Divi Contact Form Helper Confirmation Email and Confirmation Email RichText */
+        $use_confirmation_message_richtext = isset($props['use_confirmation_email']) && $props['use_confirmation_email'] == 'on' && isset($props['use_confirmation_message_richtext']) && $props['use_confirmation_message_richtext'] == 'on' && isset($props['confirmation_message_richtext']) ? true : false;
+        if ($use_confirmation_message_richtext) {
+            $confirmation_email_message = str_replace(array('&#91;', '&#93;'), array('[', ']'), $props['confirmation_message_richtext']);
+        } else {
+            $confirmation_email_message = isset($props['use_confirmation_email']) && $props['use_confirmation_email'] == 'on' && isset($props['confirmation_email_message']) ? str_replace(array('&#91;', '&#93;'), array('[', ']'), $props['confirmation_email_message']) : '';
+        }
+        if (false !== strpos($confirmation_email_message, '[')) {
+            $shortcode_tags = array(
+                'e2pdf-download',
+                'e2pdf-save',
+                'e2pdf-attachment',
+                'e2pdf-adobesign',
+                'e2pdf-zapier',
+            );
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $confirmation_email_message, $matches);
+            $tagnames = array_intersect($shortcode_tags, $matches[1]);
+            if (!empty($tagnames)) {
+                $e2pdf_shortcodes = true;
+            } else {
+                $confirmation_email_message = '';
+            }
+        }
+
+        // check if E2Pdf shortcodes exist in messages
+        if (!$e2pdf_shortcodes) {
+            return $props;
+        }
+
+        $data = $_POST;
+        if (isset($props['_unique_id'])) {
+            $data['_unique_id'] = $props['_unique_id'];
+        }
+        if (isset($props['save_files_to_media']) && $props['save_files_to_media'] == 'on') {
+            $data['_save_files_to_media'] = $props['save_files_to_media'];
+            $data['_subdir'] = wp_upload_dir()['subdir'];
+        } elseif (function_exists('pwh_dcfh_file_helpers')) {
+            $subdir = pwh_dcfh_file_helpers()::get_subdir();
+            if (is_array($subdir)) {
+                $data['_subdir'] = implode('/', $subdir);
+            }
+        } elseif (function_exists('ks_pac_dcfh_file_helper')) {
+            $subdir = ks_pac_dcfh_file_helper()::get_subdir();
+            if (is_array($subdir)) {
+                $data['_subdir'] = implode('/', $subdir);
+            }
+        }
+
+        $captcha = isset($props['captcha']) ? $props['captcha'] : '';
+        $use_spam_service = isset($props['use_spam_service']) ? $props['use_spam_service'] : 'off';
+        $et_pb_contact_form_num = str_replace('et_pb_contactform_submit_', '', $et_contact_proccess);
+        $et_contact_error = false;
+        $current_form_fields = isset($data['et_pb_contact_email_fields_' . $et_pb_contact_form_num]) ? $data['et_pb_contact_email_fields_' . $et_pb_contact_form_num] : '';
+        $contact_email = '';
+        $nonce_result = isset($data['_wpnonce-et-pb-contact-form-submitted-' . $et_pb_contact_form_num]) && wp_verify_nonce($data['_wpnonce-et-pb-contact-form-submitted-' . $et_pb_contact_form_num], 'et-pb-contact-form-submit') ? true : false;
+
+        if ($nonce_result && isset($data['et_pb_contactform_submit_' . $et_pb_contact_form_num]) && empty($data['et_pb_contact_et_number_' . $et_pb_contact_form_num])) {
+            if ('' !== $current_form_fields) {
+                $fields_data_json = str_replace('\\', '', $current_form_fields);
+                $fields_data_array = json_decode($fields_data_json, true);
+
+                // check whether captcha field is not empty
+                if ('on' === $captcha && 'off' === $use_spam_service && (!isset($data['et_pb_contact_captcha_' . $et_pb_contact_form_num]) || empty($data['et_pb_contact_captcha_' . $et_pb_contact_form_num]))) {
+                    $et_contact_error = true;
+                } elseif ('on' === $use_spam_service) {
+                    if (class_exists('ET_Builder_Element')) {
+                        $contact_form = ET_Builder_Element::get_module('et_pb_contact_form');
+                        if ($contact_form && is_object($contact_form) && method_exists($contact_form, 'is_spam_submission')) {
+                            $contact_form->props = $props;
+                            if ($contact_form->is_spam_submission()) {
+                                if (!empty($_POST['token'])) {
+                                    unset($_POST['token']);
+                                }
+                                $et_contact_error = true;
+                            } else {
+                                $props['use_spam_service'] = 'off';
+                                $props['captcha'] = 'off';
+                            }
+                        }
+                    }
+                }
+
+                // check all fields on current form and generate error message if needed
+                if (!empty($fields_data_array)) {
+                    foreach ($fields_data_array as $index => $value) {
+                        if (isset($value['field_id']) && 'et_pb_contact_et_number_' . $et_pb_contact_form_num === $value['field_id']) {
+                            continue;
+                        }
+                        /* Check all the required fields, generate error message if required field is empty */
+                        $field_value = isset($data[$value['field_id']]) ? trim($data[$value['field_id']]) : '';
+                        if ('required' === $value['required_mark'] && empty($field_value) && !is_numeric($field_value)) {
+                            $et_contact_error = true;
+                            continue;
+                        }
+                        /* Additional check for email field */
+                        if ('email' === $value['field_type'] && 'required' === $value['required_mark'] && !empty($field_value)) {
+                            $contact_email = isset($data[$value['field_id']]) ? sanitize_email($data[$value['field_id']]) : '';
+                            if (!empty($contact_email) && !is_email($contact_email)) {
+                                $et_contact_error = true;
+                            }
+                        }
+                    }
+                }
+            } else {
+                $et_contact_error = true;
+            }
+        } else {
+            $et_contact_error = true;
+        }
+
+        if (!$et_contact_error && $nonce_result) {
+            $dataset = false;
             if (false !== strpos($success_message, '[')) {
                 $shortcode_tags = array(
                     'e2pdf-download',
@@ -1094,18 +1183,41 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                 preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $success_message, $matches);
                 $tagnames = array_intersect($shortcode_tags, $matches[1]);
                 if (!empty($tagnames)) {
-                    $e2pdf_shortcodes = true;
-                } else {
-                    $success_message = '';
+                    preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $success_message, $shortcodes);
+                    foreach ($shortcodes[0] as $key => $shortcode_value) {
+                        $item = false;
+                        $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                        $atts = shortcode_parse_atts($shortcode[3]);
+                        if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                        } else {
+                            if (!isset($atts['dataset']) && isset($atts['id'])) {
+                                $template = new Model_E2pdf_Template();
+                                $template->load($atts['id']);
+                                if ($template->get('extension') === 'divi') {
+                                    $item = $template->get('item');
+                                    if (!$dataset) {
+                                        $entry = new Model_E2pdf_Dataset();
+                                        $entry->set('extension', 'divi');
+                                        $entry->set('item', $item);
+                                        $entry->set('entry', $data);
+                                        $dataset = $entry->save();
+                                    }
+                                    $atts['dataset'] = $dataset;
+                                    $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                }
+                            }
+                            if (!isset($atts['apply'])) {
+                                $shortcode[3] .= ' apply="true"';
+                            }
+                            if (!isset($atts['iframe_download'])) {
+                                $shortcode[3] .= ' iframe_download="true"';
+                            }
+                            $props['success_message'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['success_message']);
+                        }
+                    }
                 }
             }
 
-            $use_custom_message_richtext = isset($props['use_custom_message_richtext']) && $props['use_custom_message_richtext'] == 'on' && isset($props['custom_message_richtext']) ? true : false;
-            if ($use_custom_message_richtext) {
-                $custom_message = str_replace(array('&#91;', '&#93;'), array('[', ']'), $props['custom_message_richtext']);
-            } else {
-                $custom_message = isset($props['custom_message']) ? str_replace(array('&#91;', '&#93;'), array('[', ']'), $props['custom_message']) : '';
-            }
             if (false !== strpos($custom_message, '[')) {
                 $shortcode_tags = array(
                     'e2pdf-download',
@@ -1118,19 +1230,41 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                 preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $custom_message, $matches);
                 $tagnames = array_intersect($shortcode_tags, $matches[1]);
                 if (!empty($tagnames)) {
-                    $e2pdf_shortcodes = true;
-                } else {
-                    $custom_message = '';
+                    preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $custom_message, $shortcodes);
+                    add_filter('wp_mail', array($this, 'filter_wp_mail'), 11);
+                    foreach ($shortcodes[0] as $key => $shortcode_value) {
+                        $item = false;
+                        $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                        $atts = shortcode_parse_atts($shortcode[3]);
+                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                            $template = new Model_E2pdf_Template();
+                            $template->load($atts['id']);
+                            if ($template->get('extension') === 'divi') {
+                                $item = $template->get('item');
+                                if (!$dataset) {
+                                    $entry = new Model_E2pdf_Dataset();
+                                    $entry->set('extension', 'divi');
+                                    $entry->set('item', $item);
+                                    $entry->set('entry', $data);
+                                    $dataset = $entry->save();
+                                }
+                                $atts['dataset'] = $dataset;
+                                $shortcode[3] .= ' dataset="' . $dataset . '"';
+                            }
+                        }
+                        if ($use_custom_message_richtext) {
+                            if ((defined('PWH_DCFH_PLUGIN_VERSION') && version_compare(PWH_DCFH_PLUGIN_VERSION, '1.5.1', '>=')) || defined('KS_PAC_DCFH_PLUGIN_FILE')) {
+                                $props['custom_message_richtext'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '{{' . $shortcode[2] . $shortcode[3] . '}}', $props['custom_message_richtext']);
+                            } else {
+                                $props['custom_message_richtext'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['custom_message_richtext']);
+                            }
+                        } else {
+                            $props['custom_message'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['custom_message']);
+                        }
+                    }
                 }
             }
 
-            /* Divi Contact Form Helper Confirmation Email and Confirmation Email RichText */
-            $use_confirmation_message_richtext = isset($props['use_confirmation_email']) && $props['use_confirmation_email'] == 'on' && isset($props['use_confirmation_message_richtext']) && $props['use_confirmation_message_richtext'] == 'on' && isset($props['confirmation_message_richtext']) ? true : false;
-            if ($use_confirmation_message_richtext) {
-                $confirmation_email_message = str_replace(array('&#91;', '&#93;'), array('[', ']'), $props['confirmation_message_richtext']);
-            } else {
-                $confirmation_email_message = isset($props['use_confirmation_email']) && $props['use_confirmation_email'] == 'on' && isset($props['confirmation_email_message']) ? str_replace(array('&#91;', '&#93;'), array('[', ']'), $props['confirmation_email_message']) : '';
-            }
             if (false !== strpos($confirmation_email_message, '[')) {
                 $shortcode_tags = array(
                     'e2pdf-download',
@@ -1142,299 +1276,111 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                 preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $confirmation_email_message, $matches);
                 $tagnames = array_intersect($shortcode_tags, $matches[1]);
                 if (!empty($tagnames)) {
-                    $e2pdf_shortcodes = true;
-                } else {
-                    $confirmation_email_message = '';
-                }
-            }
-
-            /* Check if E2Pdf shortcodes exist in messages */
-            if ($e2pdf_shortcodes) {
-                $data = $_POST;
-                if (isset($props['_unique_id'])) {
-                    $data['_unique_id'] = $props['_unique_id'];
-                }
-                if (isset($props['save_files_to_media']) && $props['save_files_to_media'] == 'on') {
-                    $data['_save_files_to_media'] = $props['save_files_to_media'];
-                    $data['_subdir'] = wp_upload_dir()['subdir'];
-                } elseif (function_exists('pwh_dcfh_file_helpers')) {
-                    $subdir = pwh_dcfh_file_helpers()::get_subdir();
-                    if (is_array($subdir)) {
-                        $data['_subdir'] = implode('/', $subdir);
-                    }
-                }
-
-                $captcha = isset($props['captcha']) ? $props['captcha'] : '';
-                $use_spam_service = isset($props['use_spam_service']) ? $props['use_spam_service'] : 'off';
-                $et_pb_contact_form_num = str_replace('et_pb_contactform_submit_', '', $et_contact_proccess);
-                $et_contact_error = false;
-                $current_form_fields = isset($data['et_pb_contact_email_fields_' . $et_pb_contact_form_num]) ? $data['et_pb_contact_email_fields_' . $et_pb_contact_form_num] : '';
-                $contact_email = '';
-                $nonce_result = isset($data['_wpnonce-et-pb-contact-form-submitted-' . $et_pb_contact_form_num]) && wp_verify_nonce($data['_wpnonce-et-pb-contact-form-submitted-' . $et_pb_contact_form_num], 'et-pb-contact-form-submit') ? true : false;
-
-                if ($nonce_result && isset($data['et_pb_contactform_submit_' . $et_pb_contact_form_num]) && empty($data['et_pb_contact_et_number_' . $et_pb_contact_form_num])) {
-                    if ('' !== $current_form_fields) {
-                        $fields_data_json = str_replace('\\', '', $current_form_fields);
-                        $fields_data_array = json_decode($fields_data_json, true);
-                        /* Check whether captcha field is not empty */
-                        if ('on' === $captcha && 'off' === $use_spam_service && (!isset($data['et_pb_contact_captcha_' . $et_pb_contact_form_num]) || empty($data['et_pb_contact_captcha_' . $et_pb_contact_form_num]))) {
-                            $et_contact_error = true;
-                        } elseif ('on' === $use_spam_service) {
-                            if (class_exists('ET_Builder_Element')) {
-                                $contact_form = ET_Builder_Element::get_module('et_pb_contact_form');
-                                if ($contact_form && is_object($contact_form) && method_exists($contact_form, 'is_spam_submission')) {
-                                    $contact_form->props = $props;
-                                    if ($contact_form->is_spam_submission()) {
-                                        if (!empty($_POST['token'])) {
-                                            unset($_POST['token']);
-                                        }
-                                        $et_contact_error = true;
-                                    } else {
-                                        $props['use_spam_service'] = 'off';
-                                        $props['captcha'] = 'off';
-                                    }
+                    preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $confirmation_email_message, $shortcodes);
+                    add_filter('wp_mail', array($this, 'filter_wp_mail_pwh_dcfh'), 11);
+                    foreach ($shortcodes[0] as $key => $shortcode_value) {
+                        $item = false;
+                        $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                        $atts = shortcode_parse_atts($shortcode[3]);
+                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                            $template = new Model_E2pdf_Template();
+                            $template->load($atts['id']);
+                            if ($template->get('extension') === 'divi') {
+                                $item = $template->get('item');
+                                if (!$dataset) {
+                                    $entry = new Model_E2pdf_Dataset();
+                                    $entry->set('extension', 'divi');
+                                    $entry->set('item', $item);
+                                    $entry->set('entry', $data);
+                                    $dataset = $entry->save();
                                 }
+                                $atts['dataset'] = $dataset;
+                                $shortcode[3] .= ' dataset="' . $dataset . '"';
                             }
                         }
-
-                        /* Check all fields on current form and generate error message if needed */
-                        if (!empty($fields_data_array)) {
-                            foreach ($fields_data_array as $index => $value) {
-                                if (isset($value['field_id']) && 'et_pb_contact_et_number_' . $et_pb_contact_form_num === $value['field_id']) {
-                                    continue;
-                                }
-                                /* Check all the required fields, generate error message if required field is empty */
-                                $field_value = isset($data[$value['field_id']]) ? trim($data[$value['field_id']]) : '';
-                                if ('required' === $value['required_mark'] && empty($field_value) && !is_numeric($field_value)) {
-                                    $et_contact_error = true;
-                                    continue;
-                                }
-                                /* Additional check for email field */
-                                if ('email' === $value['field_type'] && 'required' === $value['required_mark'] && !empty($field_value)) {
-                                    $contact_email = isset($data[$value['field_id']]) ? sanitize_email($data[$value['field_id']]) : '';
-                                    if (!empty($contact_email) && !is_email($contact_email)) {
-                                        $et_contact_error = true;
-                                    }
-                                }
+                        if ((defined('PWH_DCFH_PLUGIN_VERSION') && version_compare(PWH_DCFH_PLUGIN_VERSION, '1.5.1', '>=')) || defined('KS_PAC_DCFH_PLUGIN_FILE')) {
+                            if ($use_confirmation_message_richtext) {
+                                $props['confirmation_message_richtext'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '{{' . $shortcode[2] . $shortcode[3] . '}}', $props['confirmation_message_richtext']);
+                            } else {
+                                $props['confirmation_email_message'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '{{' . $shortcode[2] . $shortcode[3] . '}}', $props['confirmation_email_message']);
                             }
-                        }
-                    } else {
-                        $et_contact_error = true;
-                    }
-                } else {
-                    $et_contact_error = true;
-                }
-
-                if (!$et_contact_error && $nonce_result) {
-                    $dataset = false;
-                    if (false !== strpos($success_message, '[')) {
-                        $shortcode_tags = array(
-                            'e2pdf-download',
-                            'e2pdf-save',
-                            'e2pdf-view',
-                            'e2pdf-adobesign',
-                            'e2pdf-zapier',
-                        );
-                        preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $success_message, $matches);
-                        $tagnames = array_intersect($shortcode_tags, $matches[1]);
-                        if (!empty($tagnames)) {
-                            preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $success_message, $shortcodes);
-                            foreach ($shortcodes[0] as $key => $shortcode_value) {
-                                $item = false;
-                                $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
-                                $atts = shortcode_parse_atts($shortcode[3]);
-                                if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
-                                } else {
-                                    if (!isset($atts['dataset']) && isset($atts['id'])) {
-                                        $template = new Model_E2pdf_Template();
-                                        $template->load($atts['id']);
-                                        if ($template->get('extension') === 'divi') {
-                                            $item = $template->get('item');
-                                            if (!$dataset) {
-                                                $entry = new Model_E2pdf_Dataset();
-                                                $entry->set('extension', 'divi');
-                                                $entry->set('item', $item);
-                                                $entry->set('entry', $data);
-                                                $dataset = $entry->save();
-                                            }
-                                            $atts['dataset'] = $dataset;
-                                            $shortcode[3] .= ' dataset="' . $dataset . '"';
-                                        }
-                                    }
-                                    if (!isset($atts['apply'])) {
-                                        $shortcode[3] .= ' apply="true"';
-                                    }
-                                    if (!isset($atts['iframe_download'])) {
-                                        $shortcode[3] .= ' iframe_download="true"';
-                                    }
-                                    $props['success_message'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['success_message']);
-                                }
-                            }
-                        }
-                    }
-
-                    if (false !== strpos($custom_message, '[')) {
-                        $shortcode_tags = array(
-                            'e2pdf-download',
-                            'e2pdf-save',
-                            'e2pdf-attachment',
-                            'e2pdf-adobesign',
-                            'e2pdf-zapier',
-                        );
-
-                        preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $custom_message, $matches);
-                        $tagnames = array_intersect($shortcode_tags, $matches[1]);
-                        if (!empty($tagnames)) {
-                            preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $custom_message, $shortcodes);
-                            add_filter('wp_mail', array($this, 'filter_wp_mail'), 11);
-                            foreach ($shortcodes[0] as $key => $shortcode_value) {
-                                $item = false;
-                                $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
-                                $atts = shortcode_parse_atts($shortcode[3]);
-                                if (!isset($atts['dataset']) && isset($atts['id'])) {
-                                    $template = new Model_E2pdf_Template();
-                                    $template->load($atts['id']);
-                                    if ($template->get('extension') === 'divi') {
-                                        $item = $template->get('item');
-                                        if (!$dataset) {
-                                            $entry = new Model_E2pdf_Dataset();
-                                            $entry->set('extension', 'divi');
-                                            $entry->set('item', $item);
-                                            $entry->set('entry', $data);
-                                            $dataset = $entry->save();
-                                        }
-                                        $atts['dataset'] = $dataset;
-                                        $shortcode[3] .= ' dataset="' . $dataset . '"';
-                                    }
-                                }
-                                if ($use_custom_message_richtext) {
-                                    if (defined('PWH_DCFH_PLUGIN_VERSION') && version_compare(PWH_DCFH_PLUGIN_VERSION, '1.5.1', '>=')) {
-                                        $props['custom_message_richtext'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '{{' . $shortcode[2] . $shortcode[3] . '}}', $props['custom_message_richtext']);
-                                    } else {
-                                        $props['custom_message_richtext'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['custom_message_richtext']);
-                                    }
-                                } else {
-                                    $props['custom_message'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['custom_message']);
-                                }
-                            }
-                        }
-                    }
-
-                    if (false !== strpos($confirmation_email_message, '[')) {
-                        $shortcode_tags = array(
-                            'e2pdf-download',
-                            'e2pdf-save',
-                            'e2pdf-attachment',
-                            'e2pdf-adobesign',
-                            'e2pdf-zapier',
-                        );
-                        preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $confirmation_email_message, $matches);
-                        $tagnames = array_intersect($shortcode_tags, $matches[1]);
-                        if (!empty($tagnames)) {
-                            preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $confirmation_email_message, $shortcodes);
-                            add_filter('wp_mail', array($this, 'filter_wp_mail_pwh_dcfh'), 11);
-                            foreach ($shortcodes[0] as $key => $shortcode_value) {
-                                $item = false;
-                                $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
-                                $atts = shortcode_parse_atts($shortcode[3]);
-                                if (!isset($atts['dataset']) && isset($atts['id'])) {
-                                    $template = new Model_E2pdf_Template();
-                                    $template->load($atts['id']);
-                                    if ($template->get('extension') === 'divi') {
-                                        $item = $template->get('item');
-                                        if (!$dataset) {
-                                            $entry = new Model_E2pdf_Dataset();
-                                            $entry->set('extension', 'divi');
-                                            $entry->set('item', $item);
-                                            $entry->set('entry', $data);
-                                            $dataset = $entry->save();
-                                        }
-                                        $atts['dataset'] = $dataset;
-                                        $shortcode[3] .= ' dataset="' . $dataset . '"';
-                                    }
-                                }
-                                if (defined('PWH_DCFH_PLUGIN_VERSION') && version_compare(PWH_DCFH_PLUGIN_VERSION, '1.5.1', '>=')) {
-                                    if ($use_confirmation_message_richtext) {
-                                        $props['confirmation_message_richtext'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '{{' . $shortcode[2] . $shortcode[3] . '}}', $props['confirmation_message_richtext']);
-                                    } else {
-                                        $props['confirmation_email_message'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '{{' . $shortcode[2] . $shortcode[3] . '}}', $props['confirmation_email_message']);
-                                    }
-                                } else {
-                                    if ($use_confirmation_message_richtext) {
-                                        $props['confirmation_message_richtext'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['confirmation_message_richtext']);
-                                    } else {
-                                        $props['confirmation_email_message'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['confirmation_email_message']);
-                                    }
-                                }
+                        } else {
+                            if ($use_confirmation_message_richtext) {
+                                $props['confirmation_message_richtext'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['confirmation_message_richtext']);
+                            } else {
+                                $props['confirmation_email_message'] = str_replace(str_replace(array('[', ']'), array('&#91;', '&#93;'), $shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['confirmation_email_message']);
                             }
                         }
                     }
                 }
             }
         }
+
         return $props;
     }
 
+    // filter shortcode output
     public function filter_et_module_shortcode_output($output, $render_slug, $form) {
 
-        $et_contact_proccess = !empty($_POST) && is_array($_POST) ? array_search('et_contact_proccess', $_POST) : false;
-        if ($render_slug && $render_slug == 'et_pb_contact_form' && $et_contact_proccess) {
+        if ($render_slug !== 'et_pb_contact_form') {
+            return $output;
+        }
 
-            $et_pb_contact_form_num = str_replace(array('pwh_dcfh_et_pb_contactform_submit_', 'et_pb_contactform_submit_'), array('', ''), $et_contact_proccess);
-            $nonce_result = isset($_POST['_wpnonce-et-pb-contact-form-submitted-' . $et_pb_contact_form_num]) && wp_verify_nonce($_POST['_wpnonce-et-pb-contact-form-submitted-' . $et_pb_contact_form_num], 'et-pb-contact-form-submit') ? true : false;
+        $et_contact_proccess = array_search('et_contact_proccess', (array) $_POST);
+        if ($et_contact_proccess === false) {
+            return $output;
+        }
 
-            if ($nonce_result && (
-                    (isset($_POST['et_pb_contactform_submit_' . $et_pb_contact_form_num]) && empty($_POST['et_pb_contact_et_number_' . $et_pb_contact_form_num])) ||
-                    (isset($_POST['pwh_dcfh_et_pb_contactform_submit_' . $et_pb_contact_form_num]) && $_POST['pwh_dcfh_et_pb_contactform_submit_' . $et_pb_contact_form_num] == 'et_contact_proccess')
-                    )
-            ) {
+        $et_pb_contact_form_num = str_replace(array('pwh_dcfh_et_pb_contactform_submit_', 'et_pb_contactform_submit_'), array('', ''), $et_contact_proccess);
+        $nonce_result = isset($_POST['_wpnonce-et-pb-contact-form-submitted-' . $et_pb_contact_form_num]) && wp_verify_nonce($_POST['_wpnonce-et-pb-contact-form-submitted-' . $et_pb_contact_form_num], 'et-pb-contact-form-submit') ? true : false;
 
-                $success_message = isset($form->props['success_message']) ? str_replace(array('&#91;', '&#93;', '&quot;'), array('[', ']', '"'), $form->props['success_message']) : '';
-                if (false !== strpos($success_message, '[')) {
-                    $shortcode_tags = array(
-                        'e2pdf-download',
-                        'e2pdf-save',
-                        'e2pdf-view',
-                        'e2pdf-adobesign',
-                        'e2pdf-zapier',
-                    );
-                    preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $success_message, $matches);
-                    $tagnames = array_intersect($shortcode_tags, $matches[1]);
-                    if (!empty($tagnames)) {
-                        preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $success_message, $shortcodes);
-                        foreach ($shortcodes[0] as $key => $shortcode_value) {
-                            $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
-                            if (isset($form->props['enable_multistep']) && 'on' === $form->props['enable_multistep']) {
-                                $output = str_replace($shortcode_value, do_shortcode_tag($shortcode), $output);
-                            } else {
-                                $output = str_replace(str_replace(array('"'), array('&quot;'), $shortcode_value), do_shortcode_tag($shortcode), $output);
-                            }
+        if ($nonce_result && (
+                (isset($_POST['et_pb_contactform_submit_' . $et_pb_contact_form_num]) && empty($_POST['et_pb_contact_et_number_' . $et_pb_contact_form_num])) ||
+                (isset($_POST['pwh_dcfh_et_pb_contactform_submit_' . $et_pb_contact_form_num]) && $_POST['pwh_dcfh_et_pb_contactform_submit_' . $et_pb_contact_form_num] == 'et_contact_proccess')
+                )
+        ) {
+
+            $success_message = isset($form->props['success_message']) ? str_replace(array('&#91;', '&#93;', '&quot;'), array('[', ']', '"'), $form->props['success_message']) : '';
+            if (false !== strpos($success_message, '[')) {
+                $shortcode_tags = array(
+                    'e2pdf-download',
+                    'e2pdf-save',
+                    'e2pdf-view',
+                    'e2pdf-adobesign',
+                    'e2pdf-zapier',
+                );
+                preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $success_message, $matches);
+                $tagnames = array_intersect($shortcode_tags, $matches[1]);
+                if (!empty($tagnames)) {
+                    preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $success_message, $shortcodes);
+                    foreach ($shortcodes[0] as $key => $shortcode_value) {
+                        $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                        if (isset($form->props['enable_multistep']) && 'on' === $form->props['enable_multistep']) {
+                            $output = str_replace($shortcode_value, do_shortcode_tag($shortcode), $output);
+                        } else {
+                            $output = str_replace(str_replace(array('"'), array('&quot;'), $shortcode_value), do_shortcode_tag($shortcode), $output);
                         }
                     }
                 }
             }
-
-            remove_filter('wp_mail', array($this, 'filter_wp_mail'), 11);
-            remove_filter('wp_mail', array($this, 'filter_wp_mail_pwh_dcfh'), 11);
-
-            $files = $this->helper->get('divi_attachments');
-            if (is_array($files) && !empty($files)) {
-                foreach ($files as $key => $file) {
-                    $this->helper->delete_dir(dirname($file) . '/');
-                }
-                $this->helper->deset('divi_attachments');
-            }
         }
+
+        remove_filter('wp_mail', array($this, 'filter_wp_mail'), 11);
+        remove_filter('wp_mail', array($this, 'filter_wp_mail_pwh_dcfh'), 11);
+
+        $files = $this->helper->get('divi_attachments');
+        if (is_array($files) && !empty($files)) {
+            foreach ($files as $key => $file) {
+                $this->helper->delete_dir(dirname($file) . '/');
+            }
+            $this->helper->deset('divi_attachments');
+        }
+
 
         return $output;
     }
 
-    /**
-     * Delete dataset for template
-     * @param int $template_id - Template ID
-     * @param int $dataset - Dataset ID
-     * @return bool - Result of removing items
-     */
+    // delete item
     public function delete_item($template_id = false, $dataset = false) {
         global $wpdb;
         $template = new Model_E2pdf_Template();
@@ -1453,11 +1399,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Delete all datasets for Template
-     * @param int $template_id - Template ID
-     * @return bool - Result of removing items
-     */
+    // delete items
     public function delete_items($template_id = false) {
         global $wpdb;
         $template = new Model_E2pdf_Template();
@@ -1474,10 +1416,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return false;
     }
 
-    /**
-     * Get styles for generating Map Field function
-     * @return array - List of css files to load
-     */
+    // styles
     public function styles($item_id = false) {
         $styles = array(
             plugins_url('css/extension/divi.css?v=' . time(), $this->helper->get('plugin_file_path')),

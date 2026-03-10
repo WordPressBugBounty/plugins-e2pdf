@@ -83,11 +83,11 @@ class Helper_E2pdf_Atts {
                     }
                     return $default;
                 case 'disable':
-                    return isset($this->atts[$key]) ? explode(',', $this->atts[$key]) : [];
+                    return !empty($this->atts[$key]) ? explode(',', $this->atts[$key]) : [];
                 case 'class':
-                    return isset($this->atts[$key]) ? explode(' ', $this->atts[$key]) : [];
+                    return !empty($this->atts[$key]) ? explode(' ', $this->atts[$key]) : [];
                 case 'style':
-                    return isset($this->atts[$key]) ? explode(';', $this->atts[$key]) : [];
+                    return !empty($this->atts[$key]) ? explode(';', $this->atts[$key]) : [];
                 case 'flatten':
                     if (isset($this->atts[$key])) {
                         if (in_array((string) $this->atts[$key], ['0', '1', '2'], true)) {

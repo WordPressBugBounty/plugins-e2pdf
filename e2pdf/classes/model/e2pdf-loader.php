@@ -299,8 +299,8 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         }
     }
 
-    // admin body class
-    public function filter_admin_body_class($classes) {
+    // admin body loading class
+    public function filter_admin_body_loading_class($classes) {
         $classes .= ' e2pdf-loading';
         return $classes;
     }
@@ -918,7 +918,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
 
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         if ($current_screen->id == 'toplevel_page_e2pdf' || ($current_screen->id == 'e2pdf_page_e2pdf-templates' && isset($_GET['action']) && $_GET['action'] == 'edit')) {
-            add_filter('admin_body_class', [&$this, 'filter_admin_body_class']);
+            add_filter('admin_body_class', [&$this, 'filter_admin_body_loading_class']);
         }
 
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended

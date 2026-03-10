@@ -336,6 +336,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                         $this->render('blocks', 'notifications');
                         $this->index_action();
                     } else {
+                        do_action('e2pdf_controller_e2pdf_export_completed', $request['file'], $template);
                         $this->download_response($template->get('format'), $request['file'], $template->get_name(), $disposition, false, true);
                         exit;
                     }

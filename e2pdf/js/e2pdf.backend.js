@@ -10805,6 +10805,7 @@ jQuery(document).ready(function () {
                 e2pdf.pages.createPage(page, properties, actions, true);
             });
             jQuery('.e2pdf-be').draggable({
+                cursorAt: {left: 0, top: 0},
                 helper: function () {
                     var element = jQuery(this).clone();
                     var type = element.attr('data-type');
@@ -10817,14 +10818,24 @@ jQuery(document).ready(function () {
                     e2pdf.properties.render(el);
                     el.css('z-index', 1);
                     if (e2pdf.zoom.zoom != 1) {
-                        el.css('transform', 'scale(' + e2pdf.zoom.zoom + ')');
-                        el.css('transform-origin', '0 0');
+                        el.css({
+                            'transform': 'scale(' + e2pdf.zoom.zoom + ')',
+                            'transform-origin': '0 0'
+                        });
                     }
+
+                    var w = el.width() * e2pdf.zoom.zoom;
+                    var h = el.height() * e2pdf.zoom.zoom;
+                    e2pdf.static.guide.x = Math.round(w / 2);
+                    e2pdf.static.guide.y = Math.round(h / 2);
+                    jQuery('.e2pdf-be').draggable('option', 'cursorAt', {
+                        left: Math.round(w / 2),
+                        top: Math.round(h / 2)
+                    });
+
                     return el;
                 },
                 start: function (ev, ui) {
-                    e2pdf.static.guide.x = ev.originalEvent.pageX - jQuery(this).offset().left;
-                    e2pdf.static.guide.y = ev.originalEvent.pageY - jQuery(this).offset().top;
                     e2pdf.element.unselect();
                 },
                 stop: function (ev, ui) {
@@ -10861,7 +10872,7 @@ jQuery(document).ready(function () {
                         }
                         if (guides.left.dist <= e2pdf.static.guide.distance) {
                             e2pdf.static.drag.page.find('.e2pdf-guide-v').css("left", guides.left.guide.left / e2pdf.zoom.zoom - e2pdf.static.drag.page.offset().left / e2pdf.zoom.zoom - 1).show();
-                            var snap_left = guides.left.guide.left - guides.left.offset - jQuery(this).offset().left + 5;
+                            var snap_left = guides.left.guide.left - guides.left.offset - jQuery(this).offset().left;
                             ui.position.left = snap_left;
                         } else {
                             jQuery('.e2pdf-guide-v').hide();
