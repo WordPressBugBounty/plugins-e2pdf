@@ -940,7 +940,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                             'width' => 'auto',
                                             'height' => 'auto',
                                             'value' => $field_value,
-                                            'option' => $option_value,
+                                            'option' => wp_strip_all_tags($option_value),
                                             'group' => $field_value,
                                         ),
                                     )
@@ -993,7 +993,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                             'width' => 'auto',
                                             'height' => 'auto',
                                             'value' => $field_value,
-                                            'option' => $option_value,
+                                            'option' => wp_strip_all_tags($option_value),
                                         ),
                                     )
                             );
@@ -1243,7 +1243,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
             $source = ob_get_clean();
             if ($source) {
                 $dom = new DOMDocument();
-                $html = $this->helper->load('convert')->load_html($source, $dom, true);
+                $html = $this->helper->load('convert')->load_html(preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $source), $dom, true);
             }
 
             if (ob_get_length() > 0) {
@@ -1356,6 +1356,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                     }
                 }
 
+
                 $elements = $xpath->query("//*[contains(@class, 'wpforms-field-repeater-display-rows')]");
                 foreach ($elements as $element) {
                     $sub_elements = $xpath->query('.//input|.//textarea|.//select', $element);
@@ -1374,6 +1375,17 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                 foreach ($elements as $element) {
                     $xml->set_node_value($element, 'name', preg_replace('/wpforms_\d+_(\d+)/', 'wpforms[fields][$1]', $xml->get_node_value($element, 'name')));
                 }
+
+                // radio, checkbox mapping html value fix
+                $elements = $xpath->query('//input[@type="checkbox"]|//input[@type="radio"]');
+                foreach ($elements as $element) {
+                    $value = $xml->get_node_value($element, 'value');
+                    if ($value) {
+                        $value = wp_strip_all_tags(html_entity_decode($value));
+                        $xml->set_node_value($element, 'value', $value);
+                    }
+                }
+
                 $elements = $xpath->query('//input|//textarea|//select');
                 foreach ($elements as $element) {
                     $xml->set_node_value($element, 'name', '{field_id="' . preg_replace('/wpforms\[fields\]\[(\d+|\d+_\d+|\d+\|\d+)\].*/', '$1', $xml->get_node_value($element, 'name')) . '"}');
@@ -1402,13 +1414,14 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         $styles = array();
         if (defined('WPFORMS_PLUGIN_URL')) {
             if (defined('WPFORMS_PLUGIN_SLUG') && WPFORMS_PLUGIN_SLUG == 'wpforms') {
-                $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/content/frontend.css';
-                $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/layout.css';
-                $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/repeater.css';
+                $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/content/frontend.min.css';
+                $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/layout.min.css';
+                $styles[] = WPFORMS_PLUGIN_URL . 'assets/pro/css/fields/repeater.min.css';
             }
-            $styles[] = WPFORMS_PLUGIN_URL . 'assets/css/frontend/modern/wpforms-full.css';
+            $styles[] = WPFORMS_PLUGIN_URL . 'assets/css/frontend/modern/wpforms-full.min.css';
+
             if (function_exists('wpforms_surveys_polls') && isset(wpforms_surveys_polls()->url)) {
-                $styles[] = wpforms_surveys_polls()->url . 'assets/css/wpforms-surveys-polls.css';
+                $styles[] = wpforms_surveys_polls()->url . 'assets/css/wpforms-surveys-polls.min.css';
             }
         }
         $styles[] = plugins_url('css/extension/wpforms.css?v=' . time(), $this->helper->get('plugin_file_path'));

@@ -5576,12 +5576,14 @@ var e2pdf = {
                     obj['style'] = {
                         'name': e2pdf.lang.get('Style'),
                         'fields': [
+                            e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('border_color', el),
                             e2pdf.properties.getField('border', el),
                             e2pdf.properties.getField('z_index', el)
                         ],
                         'position': 'right',
                         'classes': [
+                            'e2pdf-w100',
                             'e2pdf-w70',
                             'e2pdf-w30 e2pdf-pl10',
                             'e2pdf-w100'
@@ -5637,12 +5639,14 @@ var e2pdf = {
                     obj['style'] = {
                         'name': e2pdf.lang.get('Style'),
                         'fields': [
+                            e2pdf.properties.getField('background', el),
                             e2pdf.properties.getField('border_color', el),
                             e2pdf.properties.getField('border', el),
                             e2pdf.properties.getField('z_index', el)
                         ],
                         'position': 'right',
                         'classes': [
+                            'e2pdf-w100',
                             'e2pdf-w70',
                             'e2pdf-w30 e2pdf-pl10',
                             'e2pdf-w100'

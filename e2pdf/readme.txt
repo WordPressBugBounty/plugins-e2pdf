@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 6.9
 Requires PHP: 5.4
-Stable tag: 1.32.03
+Stable tag: 1.32.05
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -138,6 +138,14 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 6. Settings Page.
 
 == Changelog ==
+
+= 1.32.05 =
+*Release Date - March 12, 2026*
+
+* Add: Checkbox and Radio background color support
+* Fix: WPForms Visual Mapper styles
+* Fix: WPForms Checkbox and Radio HTML mapping
+* Fix: Backward compatibility for the URL format setting
 
 = 1.32.03 =
 *Release Date - March 10, 2026*

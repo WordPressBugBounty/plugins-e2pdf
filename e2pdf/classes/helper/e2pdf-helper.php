@@ -303,13 +303,16 @@ class Helper_E2pdf_Helper {
 
     // get frontend site url
     public function get_frontend_site_url() {
-        if (function_exists('pll_home_url')) {
-            return pll_home_url();
+        $url_format = get_option('e2pdf_url_format', 'auto');
+        if ($url_format === 'auto') {
+            if (function_exists('pll_home_url')) {
+                return pll_home_url();
+            }
+            if (function_exists('icl_t') && !defined('POLYLANG_VERSION')) {
+                return home_url('/');
+            }
         }
-        if (function_exists('icl_t') && !defined('POLYLANG_VERSION')) {
-            return home_url('/');
-        }
-        return get_option('e2pdf_url_format', 'siteurl') === 'home' ? home_url('/') : site_url('/');
+        return $url_format === 'home' ? home_url('/') : site_url('/');
     }
 
     // get frontend pdf url

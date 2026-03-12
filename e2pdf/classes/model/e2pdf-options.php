@@ -222,10 +222,11 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                     array(
                         'name' => __('URL Format', 'e2pdf'),
                         'key' => 'e2pdf_url_format',
-                        'value' => get_option('e2pdf_url_format', 'siteurl'),
-                        'default_value' => 'siteurl',
-                        'type' => function_exists('pll_home_url') || (function_exists('icl_t') && !defined('POLYLANG_VERSION')) ? 'hidden' : 'select',
+                        'value' => get_option('e2pdf_url_format', 'auto'),
+                        'default_value' => 'auto',
+                        'type' => 'select',
                         'options' => array(
+                            'auto' => 'Auto',
                             'siteurl' => 'WordPress Address (URL)',
                             'home' => 'Site Address (URL)',
                         ),
