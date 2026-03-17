@@ -3275,18 +3275,45 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
          * Checkout Field Editor (Checkout Manager) for WooCommerce
          * https://wordpress.org/plugins/woo-checkout-field-editor-pro/
          */
-        if (class_exists('THWCFD_Utils')) {
-            $meta_keys = array_merge(THWCFD_Utils::get_fields('billing'), THWCFD_Utils::get_fields('shipping'), THWCFD_Utils::get_fields('additional'));
-            if (!empty($meta_keys)) {
-                $vc .= '<h3 class="e2pdf-plr5">Checkout Field Editor for WooCommerce</h3>';
-                $vc .= '<div class="e2pdf-grid">';
-                $i = 0;
-                foreach ($meta_keys as $meta_key => $meta_value) {
-                    $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wc-order key="' . $meta_key . '" meta="true" checkout_field_editor="true"') . '</div>';
-                    $i++;
-                }
-                $vc .= '</div>';
+        $meta_keys = [];
+        if (class_exists('WCFE_Checkout_Fields_Utils') && class_exists('THWCFE_Utils_Section')) {
+            $checkout_field_editor_sections = WCFE_Checkout_Fields_Utils::get_checkout_sections();
+            foreach ($checkout_field_editor_sections as $checkout_field_editor_section) {
+                $checkout_field_editor_fields = THWCFE_Utils_Section::get_fields($checkout_field_editor_section);
+                $meta_keys = array_merge($meta_keys, $checkout_field_editor_fields);
             }
+        }
+        if (class_exists('THWCFD_Utils')) {
+            $meta_keys = array_merge(
+                    $meta_keys,
+                    THWCFD_Utils::get_fields('billing'),
+                    THWCFD_Utils::get_fields('shipping'),
+                    THWCFD_Utils::get_fields('additional')
+            );
+        }
+        if (class_exists('THWCFD_Utils_Block') && class_exists('THWCFE_Utils_Section')) {
+            $checkout_field_editor_sections = THWCFD_Utils_Block::get_block_checkout_sections();
+            foreach ($checkout_field_editor_sections as $checkout_field_editor_section) {
+                $checkout_field_editor_fields = THWCFE_Utils_Section::get_fields($checkout_field_editor_section);
+                $meta_keys = array_merge($meta_keys, $checkout_field_editor_fields);
+            }
+        }
+        if (class_exists('THWCFD_Utils_Block') && class_exists('THWCFD_Utils_Section')) {
+            $checkout_field_editor_sections = THWCFD_Utils_Block::get_block_checkout_sections();
+            foreach ($checkout_field_editor_sections as $checkout_field_editor_section) {
+                $checkout_field_editor_fields = THWCFD_Utils_Section::get_fieldset($checkout_field_editor_section);
+                $meta_keys = array_merge($meta_keys, $checkout_field_editor_fields);
+            }
+        }
+        if (!empty($meta_keys)) {
+            $vc .= '<h3 class="e2pdf-plr5">Checkout Field Editor for WooCommerce</h3>';
+            $vc .= '<div class="e2pdf-grid">';
+            $i = 0;
+            foreach ($meta_keys as $meta_key => $meta_value) {
+                $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($meta_key, 'e2pdf-wc-order key="' . $meta_key . '" meta="true" checkout_field_editor="true"') . '</div>';
+                $i++;
+            }
+            $vc .= '</div>';
         }
 
         $meta_keys = $this->get_post_taxonomy_keys();

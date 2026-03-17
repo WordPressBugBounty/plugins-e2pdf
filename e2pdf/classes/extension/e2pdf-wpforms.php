@@ -940,7 +940,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                             'width' => 'auto',
                                             'height' => 'auto',
                                             'value' => $field_value,
-                                            'option' => wp_strip_all_tags($option_value),
+                                            'option' => sanitize_text_field($option_value),
                                             'group' => $field_value,
                                         ),
                                     )
@@ -993,7 +993,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                             'width' => 'auto',
                                             'height' => 'auto',
                                             'value' => $field_value,
-                                            'option' => wp_strip_all_tags($option_value),
+                                            'option' => sanitize_text_field($option_value),
                                         ),
                                     )
                             );
@@ -1381,8 +1381,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                 foreach ($elements as $element) {
                     $value = $xml->get_node_value($element, 'value');
                     if ($value) {
-                        $value = wp_strip_all_tags(html_entity_decode($value));
-                        $xml->set_node_value($element, 'value', $value);
+                        $xml->set_node_value($element, 'value', sanitize_text_field($value));
                     }
                 }
 
