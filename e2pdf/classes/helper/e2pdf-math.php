@@ -1,12 +1,11 @@
 <?php
 
 /**
- * E2pdf Shortcode If Helper
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      1.22.00
+ * File: /helper/e2pdf-math.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -18,12 +17,48 @@ if (!defined('ABSPATH')) {
 class Helper_E2pdf_Math {
 
     private $helper;
-    protected $variables = array();
-    protected $stack = array();
-    protected $output = array();
+    protected $variables = [];
+    protected $stack = [];
+    protected $output = [];
 
     public function __construct() {
         $this->helper = Helper_E2pdf_Helper::instance();
+    }
+
+    public function pre_render($value = '', $extension = null) {
+        $replacements = [];
+        if ($value) {
+            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
+            $tagnames = $matches[1];
+            if (!empty($tagnames)) {
+                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $value, $shortcodes);
+                foreach ($shortcodes[0] as $key => $shortcode_value) {
+                    $index = count($replacements) + 1;
+                    $replacements[] = $shortcode_value;
+                    $value = str_replace($shortcode_value, '%' . $index . '$s', $value);
+                }
+            }
+
+            if (method_exists($extension, 'strip_math')) {
+                $value = $extension->strip_math($value, $replacements);
+            }
+
+            if (!empty($replacements)) {
+                $value = preg_replace('/%(?!\d+\$s)/', '%%', $value);
+                $value = vsprintf(
+                        $value, array_map(
+                                function ($v) {
+                                    return '(' . $v . ')';
+                                }, $replacements
+                        )
+                );
+            }
+        }
+        return $value;
+    }
+
+    public function after_render($value) {
+        return str_replace('()', '0', $value);
     }
 
     public function evaluate($string) {
@@ -36,9 +71,9 @@ class Helper_E2pdf_Math {
     }
 
     public function parse($string) {
-        $tokens = $this->tokenize($string);
-        $this->output = array();
-        $this->operators = array();
+        $tokens = $this->tokenize(str_replace(' ', '', $string));
+        $this->output = [];
+        $this->operators = [];
         foreach ($tokens as $token) {
             $token = $this->extractVariables($token);
             $expression = $this->factory($token);
@@ -50,6 +85,7 @@ class Helper_E2pdf_Math {
                 $this->output[] = $expression;
             }
         }
+        // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
         while (($op = array_pop($this->operators))) {
             if (isset($op->type) && $op->type == 'parenthesis') {
                 throw new Exception(__('Mismatched Parenthesis in Math operation', 'e2pdf'));
@@ -64,6 +100,7 @@ class Helper_E2pdf_Math {
     }
 
     public function run() {
+        // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
         while (($operator = array_pop($this->stack)) && $operator->operator) {
             $value = $this->operate($operator);
             if (!is_null($value)) {
@@ -83,6 +120,7 @@ class Helper_E2pdf_Math {
 
     protected function render() {
         $output = '';
+        // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
         while (($el = array_pop($this->stack))) {
             $output .= $el->value;
         }
@@ -97,6 +135,7 @@ class Helper_E2pdf_Math {
             $this->operators[] = $expression;
         } else {
             $clean = false;
+            // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
             while (($end = array_pop($this->operators))) {
                 if (isset($end->type) && $end->type == 'parenthesis') {
                     $clean = true;
@@ -124,7 +163,7 @@ class Helper_E2pdf_Math {
                 } else {
                     break;
                 }
-            } while (($end = end($this->operators)) && $end->operator);
+            } while (($end = end($this->operators)) && $end->operator); // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 
             $this->operators[] = $expression;
         } else {
@@ -133,9 +172,66 @@ class Helper_E2pdf_Math {
     }
 
     protected function tokenize($string) {
-        $parts = preg_split('((\b\d[\d.]*\b|\+|-|\(|\)|\*|¦|/)|\s+)', $string, null, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+        $parts = preg_split('((\b\d[\d.]*\b|\+|-|\(|\)|\*|\^|¦|/)|\s+)', $string, null, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
         $parts = array_map('trim', $parts);
-        return $parts;
+
+        $tokens = [];
+        $expectOperand = true;
+
+        $count = count($parts);
+        for ($i = 0; $i < $count; $i++) {
+            $token = $parts[$i];
+            if (($token === '+' || $token === '-') && $expectOperand) {
+                $sign = 1;
+                while ($i < $count && ($parts[$i] === '+' || $parts[$i] === '-')) {
+                    if ($parts[$i] === '-') {
+                        $sign *= -1;
+                    }
+                    $i++;
+                }
+                if ($i >= $count || $parts[$i] === ')') {
+                    if (!empty($tokens)) {
+                        $last = end($tokens);
+                        if (in_array($last, ['+', '-', '*', '/', '^', '¦'], true)) {
+                            array_pop($tokens);
+                        }
+                    }
+                    if ($i < $count) {
+                        $i--;
+                    }
+                    $expectOperand = false;
+                    continue;
+                }
+                $next = $parts[$i];
+                if (is_numeric($next)) {
+                    $tokens[] = ($sign === -1) ? (string) (-1 * floatval($next)) : $next;
+                    $expectOperand = false;
+                } elseif ($next === '(') {
+                    if ($sign === -1) {
+                        $tokens[] = '-1';
+                        $tokens[] = '*';
+                    }
+                    $tokens[] = '(';
+                    $expectOperand = true;
+                } else {
+                    $tokens[] = $next;
+                    $expectOperand = false;
+                }
+            } elseif ($token === '(') {
+                $tokens[] = $token;
+                $expectOperand = true;
+            } elseif ($token === ')') {
+                $tokens[] = $token;
+                $expectOperand = false;
+            } elseif (in_array($token, ['+', '-', '*', '/', '^', '¦'], true)) {
+                $tokens[] = $token;
+                $expectOperand = true;
+            } else {
+                $tokens[] = $token;
+                $expectOperand = false;
+            }
+        }
+        return $tokens;
     }
 
     protected function factory($value) {
@@ -172,10 +268,13 @@ class Helper_E2pdf_Math {
             $expression->operator = true;
             $expression->type = 'power';
             $expression->precidence = 6;
-        } elseif (in_array($value, array('(', ')'))) {
+        } elseif (in_array($value, ['(', ')'], true)) {
             $expression->type = 'parenthesis';
             $expression->precidence = 7;
             $expression->open = $value == '(';
+        } else {
+            $value = 0;
+            $expression->type = 'number';
         }
         $expression->value = $value;
         return $expression;
@@ -202,7 +301,7 @@ class Helper_E2pdf_Math {
                 case 'division':
                     $left = $this->operate(array_pop($this->stack));
                     $right = $this->operate(array_pop($this->stack));
-                    $value = $right / $left;
+                    $value = ($left == 0) ? 0 : $right / $left;
                     break;
                 case 'power':
                     $left = $this->operate(array_pop($this->stack));

@@ -2875,7 +2875,6 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     '%%' => '¦',
                 ]
         );
-        $value = preg_replace('/[^0-9\-\+\*\¦\/\^\(\)\.]/', '', $value);
         $value = $value ? $this->helper->load('math')->evaluate($value) : $default;
 
         $response = is_numeric($value) ? $this->e2pdf_format_number($atts, $value) : $value;

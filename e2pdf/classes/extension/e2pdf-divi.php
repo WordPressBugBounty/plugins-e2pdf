@@ -390,7 +390,19 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
     // strip shortcodes
     public function strip_shortcodes($value) {
         $value = preg_replace('~(?:\[/?)[^/\]]+/?\]~s', '', $value);
-        $value = preg_replace('~%%[^%%]*%%~', '', $value);
+        $value = preg_replace('~%%[^%]*%%~', '', $value);
+        return $value;
+    }
+
+    public function strip_math($value, &$replacements) {
+        if ($value) {
+            preg_match_all('~%%[^%]*%%~', $value, $matches);
+            foreach ($matches[0] as $match) {
+                $index = count($replacements) + 1;
+                $replacements[] = $match;
+                $value = str_replace($match, '%' . $index . '$s', $value);
+            }
+        }
         return $value;
     }
 

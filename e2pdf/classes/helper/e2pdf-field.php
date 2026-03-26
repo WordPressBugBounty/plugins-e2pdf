@@ -281,7 +281,13 @@ class Helper_E2pdf_Field {
                         }
                     } else {
                         if ($shortcode[5]) {
+                            if ($shortcode[2] === 'e2pdf-math') {
+                                $shortcode[5] = $this->helper->load('math')->pre_render($shortcode[5], $extension);
+                            }
                             $shortcode[5] = $extension->render($shortcode[5], array(), false);
+                            if ($shortcode[2] === 'e2pdf-math') {
+                                $shortcode[5] = $this->helper->load('math')->after_render($shortcode[5]);
+                            }
                         }
                         if ($do_shortcode) {
                             $value = str_replace($shortcode_value, do_shortcode_tag($shortcode), $value);
@@ -406,7 +412,7 @@ class Helper_E2pdf_Field {
                 $value = $this->helper->load('graph')->graph($extension->strip_shortcodes($value), $field);
                 break;
             default:
-                if (!($extension instanceof Extension_E2pdf_Formidable) && !($extension instanceof Extension_E2pdf_Metform)) {
+                if (!($extension instanceof Extension_E2pdf_Formidable) && !($extension instanceof Extension_E2pdf_Metform) && !($extension instanceof Extension_E2pdf_Wpcf7)) {
                     $value = $extension->convert_shortcodes($value);
                 }
                 $value = $this->helper->load('properties')->apply($field, $value);

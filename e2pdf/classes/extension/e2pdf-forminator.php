@@ -564,6 +564,19 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
         return $value;
     }
 
+    // strip math
+    public function strip_math($value, &$replacements) {
+        if ($value) {
+            preg_match_all('/\{[^}]+\}/', $value, $matches);
+            foreach ($matches[0] as $match) {
+                $index = count($replacements) + 1;
+                $replacements[] = $match;
+                $value = str_replace($match, '%' . $index . '$s', $value);
+            }
+        }
+        return $value;
+    }
+
     // convert shortcodes
     public function convert_shortcodes($value, $to = false, $html = false) {
         if ($value) {
@@ -835,7 +848,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
             } elseif (!$html) {
                 return '<div class="e2pdf-vm-error">' . __('The form could not be parsed due the incorrect HTML', 'e2pdf') . '</div>';
             } else {
-                
+
                 $use_labels = true;
                 if ((defined('FORMINATOR_VERSION') && version_compare(FORMINATOR_VERSION, '1.14.10', '<')) || (!empty($custom_form->settings['print_value']) && filter_var($custom_form->settings['print_value'], FILTER_VALIDATE_BOOLEAN))) {
                     $use_labels = false;

@@ -583,6 +583,18 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
         return $value;
     }
 
+    public function strip_math($value, &$replacements) {
+        if ($value) {
+            preg_match_all('~%[^%]*%~', $value, $matches);
+            foreach ($matches[0] as $match) {
+                $index = count($replacements) + 1;
+                $replacements[] = $match;
+                $value = str_replace($match, '%' . $index . '$s', $value);
+            }
+        }
+        return $value;
+    }
+
     // verify
     public function verify() {
         if ($this->get('cached_entry')) {

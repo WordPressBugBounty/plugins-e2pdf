@@ -329,6 +329,19 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
         return $value;
     }
 
+    // strip math
+    public function strip_math($value, &$replacements) {
+        if ($value) {
+            preg_match_all('/%[a-z0-9_]*%/', $value, $matches);
+            foreach ($matches[0] as $match) {
+                $index = count($replacements) + 1;
+                $replacements[] = $match;
+                $value = str_replace($match, '%' . $index . '$s', $value);
+            }
+        }
+        return $value;
+    }
+
     /**
      * Convert shortcodes inside value string
      * @param string $value - Value string

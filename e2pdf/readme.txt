@@ -3,9 +3,9 @@ Contributors: rasmarcus, oleksandrz
 Donate link: https://e2pdf.com/
 Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpforms, elementor, woocommerce, contact form 7, jetformbuilder
 Requires at least: 4.0
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 5.4
-Stable tag: 1.32.07
+Stable tag: 1.32.09
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -105,8 +105,6 @@ E2Pdf is the new and highly improved iteration of the [Formidable PRO2PDF plugin
 
 Today, the E2Pdf plugin and Wordpress extension provide the entire WordPress community with a cost free method of creating dynamic PDF documents – without programming or coding – with one simple shortcode. More information can be found at [E2Pdf.com](https://e2pdf.com)
 
-[youtube https://www.youtube.com/watch?v=BFu78n9-tcM]
-
 == Installation ==
 
 1. Go to your "Plugins" -> "Add New" page in your WordPress admin dashboard
@@ -130,14 +128,29 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Screenshots ==
 
-1. Export data to PDF from Admin Panel.
-2. Templates list Page.
-3. Creating new PDF Template.
-4. Editing PDF Template.
-5. PDF Template Object properties.
-6. Settings Page.
+1. Creating an E2Pdf Template
+2. E2Pdf Template Editor
+3. Field Context Menu
+4. Visual Mapper
+5. Field Properties
+6. Form Submission
+7. Success Message with PDF URL
+8. Viewing the Generated PDF
+9. Email with Attachment
+10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.09 =
+*Release Date - March 25, 2026*
+
+* Improvement: Styles
+
+= 1.32.08 =
+*Release Date - March 25, 2026*
+
+* Fix: [e2pdf-math] calculation
+* Fix: Contact Form 7 values rendering
 
 = 1.32.07 =
 *Release Date - March 17, 2026*
