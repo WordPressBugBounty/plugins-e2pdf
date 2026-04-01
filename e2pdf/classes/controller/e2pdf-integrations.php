@@ -31,26 +31,33 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
     public function adobesign_action() {
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_integrations')) {
-                Model_E2pdf_Options::update_options('adobesign_group', $this->post->get());
-                if (!get_option('e2pdf_adobesign_client_id', '') || !get_option('e2pdf_adobesign_client_secret', '') || !get_option('e2pdf_adobesign_region', '')) {
-                    set_transient('e2pdf_adobesign_access_token', false);
+                if (
+                        get_option('e2pdf_adobesign_client_id', '') !== $this->post->get('e2pdf_adobesign_client_id') ||
+                        get_option('e2pdf_adobesign_client_secret', '') !== $this->post->get('e2pdf_adobesign_client_secret') ||
+                        get_option('e2pdf_adobesign_region', '') !== $this->post->get('e2pdf_adobesign_region') ||
+                        !get_option('e2pdf_adobesign_refresh_token')
+                ) {
                     update_option('e2pdf_adobesign_code', false);
                     update_option('e2pdf_adobesign_api_access_point', false);
                     update_option('e2pdf_adobesign_web_access_point', false);
                     update_option('e2pdf_adobesign_refresh_token', false);
-                    $this->add_notification('update', __('Not Authorized', 'e2pdf'));
-                    $this->redirect(
-                            $this->helper->get_url(
-                                    [
-                                        'page' => 'e2pdf-integrations',
-                                        'action' => 'adobesign',
-                                    ]
-                            )
-                    );
-                } else {
-                    $request = (new Model_E2pdf_AdobeSign())->get_code();
-                    if (isset($request['redirect'])) {
-                        $this->redirect($request['redirect']);
+                    set_transient('e2pdf_adobesign_access_token', false);
+                    Model_E2pdf_Options::update_options('adobesign_group', $this->post->get());
+                    if (!get_option('e2pdf_adobesign_client_id', '') || !get_option('e2pdf_adobesign_client_secret', '') || !get_option('e2pdf_adobesign_region', '')) {
+                        $this->add_notification('update', __('Not Authorized', 'e2pdf'));
+                        $this->redirect(
+                                $this->helper->get_url(
+                                        [
+                                            'page' => 'e2pdf-integrations',
+                                            'action' => 'adobesign',
+                                        ]
+                                )
+                        );
+                    } else {
+                        $request = (new Model_E2pdf_AdobeSign())->get_code();
+                        if (isset($request['redirect'])) {
+                            $this->redirect($request['redirect']);
+                        }
                     }
                 }
             } else {
@@ -90,8 +97,11 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_integrations')) {
                 if (
                         get_option('e2pdf_gdrive_client_id', '') !== $this->post->get('e2pdf_gdrive_client_id') ||
-                        get_option('e2pdf_gdrive_client_secret', '') !== $this->post->get('e2pdf_gdrive_client_secret')
+                        get_option('e2pdf_gdrive_client_secret', '') !== $this->post->get('e2pdf_gdrive_client_secret') ||
+                        !get_option('e2pdf_gdrive_refresh_token')
                 ) {
+                    update_option('e2pdf_gdrive_refresh_token', '');
+                    delete_transient('e2pdf_gdrive_access_token');
                     Model_E2pdf_Options::update_options('gdrive_group', $this->post->get());
                     if (!get_option('e2pdf_gdrive_client_id', '') || !get_option('e2pdf_gdrive_client_secret', '')) {
                         $this->add_notification('update', __('Not Authorized', 'e2pdf'));

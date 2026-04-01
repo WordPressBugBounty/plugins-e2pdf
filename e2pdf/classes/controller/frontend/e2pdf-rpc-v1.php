@@ -62,8 +62,10 @@ class Controller_Frontend_E2pdf_Rpc_V1 extends Helper_E2pdf_View {
             switch ($rpc->get('action')) {
                 case 'auth':
                     if ($rpc->get_arg('api_key') == get_option('e2pdf_gdrive_api_key')) {
-                        if ($rpc->get_arg('code')) {
-                            (new Model_E2pdf_Gdrive())->get_token($rpc->get_arg('code'));
+                        if ($rpc->get_arg('code') || $rpc->get_arg('error')) {
+                            if ($rpc->get_arg('code')) {
+                                (new Model_E2pdf_Gdrive())->get_token($rpc->get_arg('code'));
+                            }
                             $this->redirect(
                                     $this->helper->get_url(
                                             [

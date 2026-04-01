@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 7.0
 Requires PHP: 5.4
-Stable tag: 1.32.09
+Stable tag: 1.32.11
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -105,6 +105,8 @@ E2Pdf is the new and highly improved iteration of the [Formidable PRO2PDF plugin
 
 Today, the E2Pdf plugin and Wordpress extension provide the entire WordPress community with a cost free method of creating dynamic PDF documents – without programming or coding – with one simple shortcode. More information can be found at [E2Pdf.com](https://e2pdf.com)
 
+[youtube https://www.youtube.com/watch?v=BFu78n9-tcM]
+
 == Installation ==
 
 1. Go to your "Plugins" -> "Add New" page in your WordPress admin dashboard
@@ -140,6 +142,11 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.11 =
+*Release Date - April 01, 2026*
+
+* Improvement: Integrations
 
 = 1.32.09 =
 *Release Date - March 25, 2026*
