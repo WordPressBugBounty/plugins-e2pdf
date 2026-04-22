@@ -304,12 +304,12 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         ), 'post.php?'
                 );
             } else {
-                $item->url = 'javascript:void(0);';
+                $item->url = '';
             }
         } else {
             $item->id = '';
             $item->name = '';
-            $item->url = 'javascript:void(0);';
+            $item->url = '';
         }
         return $item;
     }

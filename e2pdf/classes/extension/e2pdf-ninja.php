@@ -274,7 +274,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
             $item->name = $form->get_setting('title');
         } else {
             $item->id = '';
-            $item->url = 'javascript:void(0);';
+            $item->url = '';
             $item->name = '';
         }
         return $item;

@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 7.0
 Requires PHP: 5.4
-Stable tag: 1.32.11
+Stable tag: 1.32.16
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,33 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.16 =
+*Release Date - April 22, 2026*
+
+* Improvement: UI
+
+= 1.32.15 =
+*Release Date - April 21, 2026*
+
+* Improvement: [e2pdf-arg] shortcodes
+* Security: Cross Site Scripting (XSS)
+
+= 1.32.14 =
+*Release Date - April 14, 2026*
+
+* Add: [frm-graph] shortcode support
+* Improvement: Graph options
+
+= 1.32.13 =
+*Release Date - April 13, 2026*
+
+* Add: [e2pdf-no-translation] Weglot shortcode support
+
+= 1.32.12 =
+*Release Date - April 08, 2026*
+
+* Add: WPForms hidden field default value support
 
 = 1.32.11 =
 *Release Date - April 01, 2026*

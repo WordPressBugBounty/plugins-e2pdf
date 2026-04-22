@@ -3,7 +3,6 @@ if (!defined('ABSPATH')) {
     die('Access denied.');
 }
 ?>
-
 <div id="e2pdf-build-top-panel" class="e2pdf-build-top-panel">
     <ul class="e2pdf-panel-options">
         <li>

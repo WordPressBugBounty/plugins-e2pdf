@@ -200,7 +200,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
             $item->name = function_exists('forminator_get_form_name') ? forminator_get_form_name($item_id, 'custom_form') : $form->name;
         } else {
             $item->id = '';
-            $item->url = 'javascript:void(0);';
+            $item->url = '';
             $item->name = '';
         }
         return $item;

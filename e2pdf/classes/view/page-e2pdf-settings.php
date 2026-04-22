@@ -15,11 +15,11 @@ if (!defined('ABSPATH')) {
     <h3 class="nav-tab-wrapper wp-clearfix">
         <?php foreach ($this->view->groups as $group_key => $group) { ?>
             <?php if (isset($group['action']) && isset($group['group'])) { ?>
-                <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => $group['action'], 'group' => $group['group'])); ?>" class="nav-tab <?php if ($this->get->get('action') === $group['action'] && $this->get->get('group') === $group['group']) { ?>nav-tab-active<?php } ?>"><?php echo $group['name']; ?></a>
+                <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => $group['action'], 'group' => $group['group']))); ?>" class="nav-tab <?php if ($this->get->get('action') === $group['action'] && $this->get->get('group') === $group['group']) { ?>nav-tab-active<?php } ?>"><?php echo esc_html($group['name']); ?></a>
             <?php } elseif (isset($group['action'])) { ?>
-                <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => $group['action'])); ?>" class="nav-tab <?php if ($this->get->get('action') === $group['action']) { ?>nav-tab-active<?php } ?>"><?php echo $group['name']; ?></a>
+                <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => $group['action']))); ?>" class="nav-tab <?php if ($this->get->get('action') === $group['action']) { ?>nav-tab-active<?php } ?>"><?php echo esc_html($group['name']); ?></a>
             <?php } else { ?>
-                <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings')); ?>" class="nav-tab <?php if (!$this->get->get('action')) { ?>nav-tab-active<?php } ?>"><?php echo $group['name']; ?></a>
+                <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings'))); ?>" class="nav-tab <?php if (!$this->get->get('action')) { ?>nav-tab-active<?php } ?>"><?php echo esc_html($group['name']); ?></a>
             <?php } ?>
         <?php } ?>
     </h3>
@@ -34,8 +34,8 @@ if (!defined('ABSPATH')) {
                             <div class="e2pdf-name"><?php _e('Font', 'e2pdf'); ?>:
                             </div><div class="e2pdf-value">
                                 <input name="font" type="file" accept=".<?php echo esc_attr(implode(', .', $this->view->allowed_extensions)); ?>">
-                                <div class="e2pdf-note"><?php _e('Allowed File Types', 'e2pdf'); ?>: <strong>.<?php echo implode(', .', $this->view->allowed_extensions); ?></strong></div>
-                                <div class="e2pdf-note"><?php _e('Max Upload File Size', 'e2pdf'); ?>: <strong><?php echo $this->view->upload_max_filesize; ?></strong></div>
+                                <div class="e2pdf-note"><?php _e('Allowed File Types', 'e2pdf'); ?>: <strong>.<?php echo esc_html(implode(', .', $this->view->allowed_extensions)); ?></strong></div>
+                                <div class="e2pdf-note"><?php _e('Max Upload File Size', 'e2pdf'); ?>: <strong><?php echo esc_html($this->view->upload_max_filesize); ?></strong></div>
                             </div>
                         </li>
                         <li>
@@ -52,14 +52,14 @@ if (!defined('ABSPATH')) {
                             <?php foreach ($this->view->fonts as $key => $value) { ?>
                                 <li>
                                     <div class="e2pdf-name">
-                                        <strong><?php echo $value; ?></strong> (<?php echo $key; ?>)
+                                        <strong><?php echo esc_html($value); ?></strong> (<?php echo esc_html($key); ?>)
                                     </div><div class="e2pdf-value">
                                         <?php echo in_array(md5_file($this->helper->get('fonts_dir') . $key), $this->view->cached_fonts) ? '<i class="dashicons dashicons-cloud-saved"></i>' : ''; ?>
-                                        <a class="e2pdf-link" href="<?php echo $this->helper->get_upload_url('fonts/' . $key); ?>" target="_blank"><i class="dashicons dashicons-download"></i></a>
+                                        <a class="e2pdf-link" href="<?php echo esc_url($this->helper->get_upload_url('fonts/' . $key)); ?>" target="_blank"><i class="dashicons dashicons-download"></i></a>
                                         <?php if ($key === 'NotoSans-Regular.ttf') { ?>
-                                            <a class="e2pdf-link" disabled="disabled" data-font="<?php echo $key; ?>" href="javascript:void(0);"><i class="dashicons dashicons-no"></i></a>
+                                            <a class="e2pdf-link" disabled="disabled" data-font="<?php echo esc_attr($key); ?>" href="javascript:void(0);"><i class="dashicons dashicons-no"></i></a>
                                         <?php } else { ?>
-                                            <a class="e2pdf-link e2pdf-delete-font" data-font="<?php echo $key; ?>" href="javascript:void(0);" _wpnonce="<?php echo wp_create_nonce('e2pdf_settings'); ?>"><i class="dashicons dashicons-no"></i></a>
+                                            <a class="e2pdf-link e2pdf-delete-font" data-font="<?php echo esc_attr($key); ?>" href="javascript:void(0);" _wpnonce="<?php echo wp_create_nonce('e2pdf_settings'); ?>"><i class="dashicons dashicons-no"></i></a>
                                         <?php } ?>
                                     </div>
 
@@ -76,7 +76,7 @@ if (!defined('ABSPATH')) {
                     <ul class="e2pdf-permissions-list">
                         <?php foreach ($this->view->roles as $role_key => $role) { ?>
                             <li>
-                                <div class="e2pdf-name"><?php echo $role['name']; ?>:
+                                <div class="e2pdf-name"><?php echo esc_html($role['name']); ?>:
                                 </div><div class="e2pdf-value">
                                     <?php
                                     foreach ($this->view->caps as $cap_key => $cap) {
@@ -107,7 +107,7 @@ if (!defined('ABSPATH')) {
                         <div class="e2pdf-name">
                             <?php _e('Optimize DB', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
-                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance')); ?>">
+                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance'))); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
                                 <input type="hidden" name="e2pdf_db_optimize" value="1">
                                 <input type="submit" name="submit" id="submit" class="button button-primary" value="»">
@@ -118,7 +118,7 @@ if (!defined('ABSPATH')) {
                         <div class="e2pdf-name">
                             <?php _e('Clear Recovery Mode Limit', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
-                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance')); ?>">
+                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance'))); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
                                 <input type="hidden" name="e2pdf_recovery_mode_limit" value="1">
                                 <input type="submit" name="submit" id="submit" class="button button-primary" value="»">
@@ -130,7 +130,7 @@ if (!defined('ABSPATH')) {
                         <div class="e2pdf-name">
                             <?php _e('Purge Objects Cache', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
-                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance')); ?>">
+                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance'))); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
                                 <input type="hidden" name="e2pdf_purge_objects_cache" value="1">
                                 <input type="submit" name="submit" id="submit" class="button button-primary" value="»">
@@ -141,7 +141,7 @@ if (!defined('ABSPATH')) {
                         <div class="e2pdf-name">
                             <?php _e('Purge Fonts Cache', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
-                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance')); ?>">
+                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance'))); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
                                 <input type="hidden" name="e2pdf_purge_fonts_cache" value="1">
                                 <input type="submit" name="submit" id="submit" class="button button-primary" value="»">
@@ -152,7 +152,7 @@ if (!defined('ABSPATH')) {
                         <div class="e2pdf-name">
                             <?php _e('Purge PDFs Cache', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
-                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance')); ?>">
+                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance'))); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
                                 <input type="hidden" name="e2pdf_purge_pdfs_cache" value="1">
                                 <input type="submit" name="submit" id="submit" class="button button-primary" value="»">
@@ -164,7 +164,7 @@ if (!defined('ABSPATH')) {
                         <div class="e2pdf-name">
                             <?php _e('Purge Full Cache', 'e2pdf'); ?>:
                         </div><div class="e2pdf-value">
-                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance')); ?>">
+                            <form onsubmit="return confirm('<?php _e('Are you sure want to continue?', 'e2pdf') ?>');" method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => 'maintenance'))); ?>">
                                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
                                 <input type="hidden" name="e2pdf_purge_cache" value="1">
                                 <input type="submit" name="submit" id="submit" class="button button-primary" value="»">
@@ -176,11 +176,11 @@ if (!defined('ABSPATH')) {
         <?php } else { ?>
             <div class="e2pdf-view-area">
                 <?php if (isset($group['action']) && isset($group['group'])) { ?>
-                    <form method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => $this->get->get('action'), 'group' => $this->get->get('group'))); ?>">
+                    <form method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => $this->get->get('action'), 'group' => $this->get->get('group')))); ?>">
                     <?php } elseif (isset($group['action'])) { ?>
-                        <form method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => $this->get->get('action'))); ?>">
+                        <form method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings', 'action' => $this->get->get('action')))); ?>">
                         <?php } else { ?>
-                            <form method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf-settings')); ?>">
+                            <form method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-settings'))); ?>">
                             <?php } ?>
                             <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
                             <ul class="e2pdf-options-list">

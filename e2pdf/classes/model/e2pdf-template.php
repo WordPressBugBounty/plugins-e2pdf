@@ -671,6 +671,23 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                                         }
                                     }
                                     break;
+                                case 'e2pdf-graph':
+                                    if (!$rendered) {
+                                        $chart = 0 === strpos($element['value'], '[frm-graph');
+                                        if ($chart) {
+                                            $element['properties']['chart'] = '1';
+                                            $pages[$page_key]['elements'][$element_key]['properties']['chart'] = '1';
+                                        }
+                                        $element['value'] = $this->helper->load('translator')->pre_translate($element['value'], $element['template_id'], $element['element_id'], 'value');
+                                        $pages[$page_key]['elements'][$element_key]['value'] = $this->extension()->render(
+                                                $element['value'], $element
+                                        );
+                                        if ($chart) {
+                                            $data = $this->helper->load('convert')->unserialize($pages[$page_key]['elements'][$element_key]['value']);
+                                            $pages[$page_key]['elements'][$element_key]['value'] = is_array($data) ? json_encode($data) : '';
+                                        }
+                                    }
+                                    break;
                                 default:
                                     if (!$rendered) {
                                         $element['value'] = $this->helper->load('translator')->pre_translate($element['value'], $element['template_id'], $element['element_id'], 'value');

@@ -247,7 +247,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
             $item->name = isset($form['name']) ? $form['name'] : '';
         } else {
             $item->id = '';
-            $item->url = 'javascript:void(0);';
+            $item->url = '';
             $item->name = '';
         }
         return $item;

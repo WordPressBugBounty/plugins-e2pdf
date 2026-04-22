@@ -1324,21 +1324,21 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                 if ($extension->method('merged_items')) {
                     $select = new stdClass();
                     $select->id = '-2';
-                    $select->url = 'javascript:void(0);';
+                    $select->url = '';
                     $select->name = __('Merged Connections', 'e2pdf');
                     array_unshift($content, $select);
                 }
                 if ($extension->method('auto_form')) {
                     $select = new stdClass();
                     $select->id = '-1';
-                    $select->url = 'javascript:void(0);';
+                    $select->url = '';
                     $select->name = __('Auto Form from PDF', 'e2pdf');
                     array_unshift($content, $select);
                 }
             }
             $select = new stdClass();
             $select->id = '';
-            $select->url = 'javascript:void(0);';
+            $select->url = '';
             $select->name = __('--- Select ---', 'e2pdf');
             array_unshift($content, $select);
             $response = array(

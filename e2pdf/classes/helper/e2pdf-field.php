@@ -87,12 +87,7 @@ class Helper_E2pdf_Field {
             }
             $replace = apply_filters('e2pdf_helper_field_pre_shortcodes', $replace, $value, $extension, $field);
             $value = str_replace(array_keys($replace), $replace, $value);
-        }
-        return $value;
-    }
 
-    public function inner_shortcodes($value, $extension, $field = array()) {
-        if (false !== strpos($value, '[')) {
             $args = apply_filters('e2pdf_extension_render_shortcodes_args', $extension->get('args'), isset($field['element_id']) ? $field['element_id'] : false, $extension->get('template_id'), $extension->get('item'), $extension->get('dataset'), false, false);
             $shortcode_tags = array(
                 'e2pdf-arg',
@@ -117,13 +112,18 @@ class Helper_E2pdf_Field {
             if (false !== strpos($value, '[e2pdf-arg')) {
                 $value = preg_replace_callback(
                         '/(\[e2pdf-arg)([0-9]+)(\])/',
-                        function ($m) use ($args) {
-                            return isset($args['arg' . $m[2]]) ? $args['arg' . $m[2]] : '';
+                        function ($m) use ($args, $extension) {
+                            return isset($args['arg' . $m[2]]) ? $extension->strip_shortcodes($args['arg' . $m[2]]) : '';
                         },
                         $value
                 );
             }
+        }
+        return $value;
+    }
 
+    public function inner_shortcodes($value, $extension, $field = array()) {
+        if (false !== strpos($value, '[')) {
             if ($extension instanceof Extension_E2pdf_Woocommerce || $extension instanceof Extension_E2pdf_Wordpress) {
                 // [e2pdf-foreach] backward compatibility
                 $shortcode_tags = array(
@@ -409,7 +409,10 @@ class Helper_E2pdf_Field {
             case 'e2pdf-graph':
                 $value = $this->helper->load('properties')->apply($field, $value);
                 $value = $this->helper->load('translator')->translate($value, 'full');
-                $value = $this->helper->load('graph')->graph($extension->strip_shortcodes($value), $field);
+                $chart = isset($field['properties']['chart']) && $field['properties']['chart'] ? true : false;
+                if (!$chart) {
+                    $value = $this->helper->load('graph')->graph($extension->strip_shortcodes($value), $field);
+                }
                 break;
             default:
                 if (!($extension instanceof Extension_E2pdf_Formidable) && !($extension instanceof Extension_E2pdf_Metform) && !($extension instanceof Extension_E2pdf_Wpcf7)) {

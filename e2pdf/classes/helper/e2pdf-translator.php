@@ -21,36 +21,30 @@ class Helper_E2pdf_Translator {
         $this->translation = get_option('e2pdf_pdf_translation', '2');
 
         if ($this->translation !== '0') {
-            /**
-             * Translate Multilingual sites – TranslatePress
-             * https://wordpress.org/plugins/translatepress-multilingual/
-             */
-            if (class_exists('E2pdf_TRP_Translator')) {
-                $this->translator = new E2pdf_TRP_Translator($this->translation);
-            }
-
-            /**
-             * Weglot Translate – Translate your WordPress website and go multilingual
-             * https://wordpress.org/plugins/weglot/
-             */
-            if (class_exists('E2pdf_Weglot_Translator')) {
-                $this->translator = new E2pdf_Weglot_Translator($this->translation);
-            }
-
-            /**
-             * The WordPress Multilingual Plugin
-             * https://wpml.org/
-             */
-            if (class_exists('E2pdf_WPML_Translator')) {
-                $this->translator = new E2pdf_WPML_Translator($this->translation);
-            }
-
-            /**
-             * Polylang
-             * https://wordpress.org/plugins/polylang/
-             */
             if (class_exists('E2pdf_Polylang_Translator')) {
+                /**
+                 * Polylang
+                 * https://wordpress.org/plugins/polylang/
+                 */
                 $this->translator = new E2pdf_Polylang_Translator($this->translation);
+            } elseif (class_exists('E2pdf_WPML_Translator')) {
+                /**
+                 * The WordPress Multilingual Plugin
+                 * https://wpml.org/
+                 */
+                $this->translator = new E2pdf_WPML_Translator($this->translation);
+            } elseif (class_exists('E2pdf_Weglot_Translator')) {
+                /**
+                 * Weglot Translate – Translate your WordPress website and go multilingual
+                 * https://wordpress.org/plugins/weglot/
+                 */
+                $this->translator = new E2pdf_Weglot_Translator($this->translation);
+            } elseif (class_exists('E2pdf_TRP_Translator')) {
+                /**
+                 * Translate Multilingual sites – TranslatePress
+                 * https://wordpress.org/plugins/translatepress-multilingual/
+                 */
+                $this->translator = new E2pdf_TRP_Translator($this->translation);
             }
         }
     }
@@ -100,38 +94,36 @@ class Helper_E2pdf_Translator {
                     break;
             }
             if ($translation) {
-                /**
-                 * Translate Multilingual sites – TranslatePress
-                 * https://wordpress.org/plugins/translatepress-multilingual/
-                 */
-                if (is_a($this->translator, 'E2pdf_TRP_Translator')) {
-                    return $this->translator->translate($string);
-                }
-
-
-                /**
-                 * Weglot Translate – Translate your WordPress website and go multilingual
-                 * https://wordpress.org/plugins/weglot/
-                 */
-                if (is_a($this->translator, 'E2pdf_Weglot_Translator')) {
-                    return $this->translator->translate($string);
-                }
-
-                /**
-                 * Multilingual CMS (WPML)
-                 * https://wpml.org/
-                 */
-                if (is_a($this->translator, 'E2pdf_WPML_Translator')) {
-                    return $string;
-                }
-
-                /**
-                 * Polylang
-                 * https://wordpress.org/plugins/polylang/
-                 */
                 if (is_a($this->translator, 'E2pdf_Polylang_Translator')) {
-                    return $this->translator->translate($string, $post_id);
+                    /**
+                     * Polylang
+                     * https://wordpress.org/plugins/polylang/
+                     */
+                    $string = $this->translator->translate($string, $post_id);
+                } elseif (is_a($this->translator, 'E2pdf_WPML_Translator')) {
+                    /**
+                     * Multilingual CMS (WPML)
+                     * https://wpml.org/
+                     */
+                } elseif (is_a($this->translator, 'E2pdf_Weglot_Translator')) {
+                    /**
+                     * Weglot Translate – Translate your WordPress website and go multilingual
+                     * https://wordpress.org/plugins/weglot/
+                     */
+                    $string = $this->translator->translate($string);
+                } elseif (is_a($this->translator, 'E2pdf_TRP_Translator')) {
+                    /**
+                     * Translate Multilingual sites – TranslatePress
+                     * https://wordpress.org/plugins/translatepress-multilingual/
+                     */
+                    $string = $this->translator->translate($string);
                 }
+            }
+        }
+
+        if (is_string($string)) {
+            if (false !== strpos($string, 'e2pdf-no-translation')) {
+                $string = str_replace(['[e2pdf-no-translation]', '[/e2pdf-no-translation]'], ['', ''], $string);
             }
         }
 
@@ -142,8 +134,9 @@ class Helper_E2pdf_Translator {
         if (!$this->translator) {
             return '';
         }
+        $lang = '';
         if (method_exists($this->translator, 'lang')) {
-            $lang = $this->translator->lang($post_id = 0);
+            $lang = $this->translator->lang($post_id);
         }
         return !empty($lang) ? $lang : '';
     }
@@ -170,6 +163,7 @@ class Helper_E2pdf_Translator {
 
 if (class_exists('WeglotWP\Services\Translate_Service_Weglot') && function_exists('weglot_get_current_language') && function_exists('weglot_get_original_language')) {
 
+    // phpcs:ignore Generic.Files.OneObjectStructurePerFile.MultipleFound
     class E2pdf_Weglot_Translator {
 
         private $helper;
@@ -186,9 +180,48 @@ if (class_exists('WeglotWP\Services\Translate_Service_Weglot') && function_exist
 
         public function translate($string) {
             if ($this->weglot) {
-                $string = str_replace(array('e2pdf-page-number', 'e2pdf-page-total'), array('e-2-p-d-f-p-a-g-e-n-u-m-b-e-r', 'e-2-p-d-f-p-a-g-e-t-o-t-a-l'), $string);
+                $placeholders = [];
+                $string = $this->encode($string, $placeholders);
                 $string = $this->weglot->weglot_treat_page($string);
-                $string = str_replace(array('e-2-p-d-f-p-a-g-e-n-u-m-b-e-r', 'e-2-p-d-f-p-a-g-e-t-o-t-a-l'), array('e2pdf-page-number', 'e2pdf-page-total'), $string);
+                $string = $this->decode($string, $placeholders);
+            }
+            return $string;
+        }
+
+        private function encode($string, &$placeholders) {
+            $index = 0;
+
+            $string = preg_replace_callback(
+                    '/\[e2pdf-no-translation\](.*?)\[\/e2pdf-no-translation\]/s',
+                    function ($m) use (&$placeholders, &$index) {
+                        $key = "__E2PDF_NT_{$index}__";
+                        $placeholders[$key] = $m[1];
+                        $index++;
+                        return $key;
+                    },
+                    $string
+            );
+
+            $tokens = array('e2pdf-page-number', 'e2pdf-page-total');
+            foreach ($tokens as $token) {
+                if (strpos($string, $token) !== false) {
+                    $key = "__E2PDF_NT_{$index}__";
+                    $placeholders[$key] = $token;
+                    $index++;
+                    $string = str_replace($token, $key, $string);
+                }
+            }
+
+            return $string;
+        }
+
+        private function decode($string, $placeholders) {
+            if ($placeholders) {
+                $string = str_replace(
+                        array_keys($placeholders),
+                        array_values($placeholders),
+                        $string
+                );
             }
             return $string;
         }
@@ -214,6 +247,7 @@ if (class_exists('WeglotWP\Services\Translate_Service_Weglot') && function_exist
 
 if (class_exists('TRP_Translate_Press')) {
 
+    // phpcs:ignore Generic.Files.OneObjectStructurePerFile.MultipleFound
     class E2pdf_TRP_Translator {
 
         private $helper;
@@ -261,7 +295,7 @@ if (class_exists('TRP_Translate_Press')) {
                                         'original' => $string,
                                         'domain' => $domain,
                                         'context' => '',
-                                        'original_plural' => ''
+                                        'original_plural' => '',
                                     )
                             );
                         }
@@ -293,7 +327,7 @@ if (class_exists('TRP_Translate_Press')) {
                                                     'original' => $substring,
                                                     'domain' => $domain,
                                                     'context' => '',
-                                                    'original_plural' => ''
+                                                    'original_plural' => '',
                                                 )
                                         );
                                     }
@@ -318,7 +352,7 @@ if (class_exists('TRP_Translate_Press')) {
                                     'original' => $string,
                                     'domain' => $domain,
                                     'context' => '',
-                                    'original_plural' => ''
+                                    'original_plural' => '',
                                 )
                         );
                     }
@@ -348,7 +382,9 @@ if (class_exists('TRP_Translate_Press')) {
             if (!$this->lang || $this->lang == $this->default_lang) {
                 return $string;
             }
-            $translated = $wpdb->get_var($wpdb->prepare(
+
+            $translated = $wpdb->get_var(
+                    $wpdb->prepare(
                             'SELECT translated FROM `' . $wpdb->prefix . 'trp_gettext_' . $this->lang . '` WHERE original = %s AND domain = %s AND (status = 2 OR status = 1) LIMIT 1',
                             $string,
                             $domain

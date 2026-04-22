@@ -124,7 +124,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
             $item->name = $form->post_title;
         } else {
             $item->id = '';
-            $item->url = 'javascript:void(0);';
+            $item->url = '';
             $item->name = '';
         }
         return $item;
@@ -210,9 +210,85 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
             add_action('wpforms_email_send_after', array($this, 'action_wpforms_email_send_after'));
         }
 
+        // hidden default value
+        add_action('wpforms_process_entry_saved', array($this, 'action_wpforms_process_entry_saved'), 10, 4);
+
         // hooks
         add_action('wpforms_entry_details_sidebar', array($this, 'hook_wpforms_entry_view'));
         add_action('wpforms_pro_admin_entries_edit_sidebar', array($this, 'hook_wpforms_entry_edit'));
+    }
+
+    // hidden default value
+    public function action_wpforms_process_entry_saved($fields, $entry, $form_data, $dataset) {
+
+        if (!$dataset || empty($form_data['fields'])) {
+            return;
+        }
+
+        foreach ($form_data['fields'] as $field) {
+            if ($field['type'] === 'hidden' && !empty($field['default_value']) && !empty($field['id'])) {
+
+                $field_id = $field['id'];
+                $default_value = $field['default_value'];
+
+                if (is_string($field['default_value']) && false !== strpos($default_value, '[e2pdf-download') || false !== strpos($default_value, '[e2pdf-save')) {
+                    $shortcode_tags = array(
+                        'e2pdf-download',
+                        'e2pdf-save',
+                    );
+                    preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $default_value, $matches);
+                    $tagnames = array_intersect($shortcode_tags, $matches[1]);
+                    if (!empty($tagnames)) {
+                        preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $default_value, $shortcodes);
+                        foreach ($shortcodes[0] as $key => $shortcode_value) {
+                            $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                            $atts = shortcode_parse_atts($shortcode[3]);
+                            if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                            } else {
+                                if (!isset($atts['dataset']) && isset($atts['id'])) {
+                                    $template = new Model_E2pdf_Template();
+                                    $template->load($atts['id']);
+                                    if ($template->get('extension') === 'wpforms') {
+                                        $atts['dataset'] = $dataset;
+                                        $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                    }
+                                }
+                                if (!isset($atts['apply'])) {
+                                    $shortcode[3] .= ' apply="true"';
+                                }
+                                $default_value = str_replace($shortcode_value, do_shortcode_tag($shortcode), $default_value);
+                            }
+                        }
+                    }
+
+                    // Uncanny Automator
+                    $process = wpforms()->obj('process');
+                    if ($process) {
+                        if (isset($process->fields[$field_id])) {
+                            $process->fields[$field_id]['value'] = $default_value;
+                        }
+                    }
+
+                    $db_entry = wpforms()->entry->get($dataset);
+                    if (!$db_entry) {
+                        return;
+                    }
+                    if (isset($db_entry->fields)) {
+                        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                        $db_entry_fields = @json_decode($db_entry->fields, true);
+                        if (isset($db_entry_fields[$field_id])) {
+                            $db_entry_fields[$field_id]['value'] = $default_value;
+                            wpforms()->entry->update(
+                                    $dataset,
+                                    [
+                                        'fields' => wp_json_encode($db_entry_fields),
+                                    ]
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // email send after action
@@ -1368,7 +1444,6 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                         $element->parentNode->removeChild($element);
                     }
                 }
-
 
                 $elements = $xpath->query("//*[contains(@class, 'wpforms-field-repeater-display-rows')]");
                 foreach ($elements as $element) {

@@ -127,7 +127,24 @@ class Helper_E2pdf_Graph {
             'increment' => $this->get_value('g_increment', '0', $field),
             'stack_group' => $this->get_value('g_stack_group', '0', $field),
             'project_angle' => $this->get_value('g_project_angle', '0', $field),
+            'depth' => $this->get_value('g_depth', '40', $field),
+            'depth_shade_gradient' => array("black:0.2", "black:0.2", "black:0.2", "h"),
+            'aspect_ratio' => $this->get_value('g_aspect_ratio', '1', $field),
+            'bar_width' => $this->get_value('g_bar_width', '0', $field),
+            'bar_width_min' => $this->get_value('g_bar_width_min', '1', $field),
         ];
+
+        if ($this->is_exists('g_legend_entry_height', $field)) {
+            $settings['legend_entry_height'] = $this->get_value('g_legend_entry_height', '0', $field);
+        } else {
+            $settings['legend_entry_height'] = $this->get_value('g_legend_entry_height', '20', $field);
+        }
+
+        if ($this->is_exists('g_bar_space', $field)) {
+            $settings['bar_space'] = $this->get_value('g_bar_space', '0', $field);
+        } else {
+            $settings['bar_space'] = $this->get_value('g_bar_space', '10', $field);
+        }
 
         if (!$this->is_empty('g_axis_text_align_v', $field)) {
             $settings['axis_text_align_v'] = $this->get_value('g_axis_text_align_v', '', $field);
@@ -397,6 +414,10 @@ class Helper_E2pdf_Graph {
 
     public function is_empty($key = '', $field = array()) {
         return isset($field['properties'][$key]) && $field['properties'][$key] !== '' ? false : true;
+    }
+
+    public function is_exists($key = '', $field = array()) {
+        return isset($field['properties'][$key]) ? true : false;
     }
 
     public function get_value($key = '', $default = '', $field = array()) {

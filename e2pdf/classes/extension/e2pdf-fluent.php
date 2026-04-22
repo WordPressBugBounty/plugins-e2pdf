@@ -213,7 +213,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
             $item->name = $form->title;
         } else {
             $item->id = '';
-            $item->url = 'javascript:void(0);';
+            $item->url = '';
             $item->name = '';
         }
         return $item;

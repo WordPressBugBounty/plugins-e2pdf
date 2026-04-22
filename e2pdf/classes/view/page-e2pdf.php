@@ -8,13 +8,13 @@ if (!defined('ABSPATH')) {
     <hr class="wp-header-end">
     <?php $this->render('blocks', 'notifications'); ?>
     <h3 class="nav-tab-wrapper wp-clearfix">
-        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf')); ?>" class="nav-tab <?php if (!($this->get->get('action'))) { ?>nav-tab-active<?php } ?>"><?php echo _e('Create PDF', 'e2pdf'); ?></a>
-        <a href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk')); ?>" class="nav-tab <?php if ($this->get->get('action') == 'bulk') { ?>nav-tab-active<?php } ?>"><?php _e('Bulk Create PDFs', 'e2pdf'); ?></a>
+        <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf'))); ?>" class="nav-tab <?php if (!($this->get->get('action'))) { ?>nav-tab-active<?php } ?>"><?php _e('Create PDF', 'e2pdf'); ?></a>
+        <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk'))); ?>" class="nav-tab <?php if ($this->get->get('action') == 'bulk') { ?>nav-tab-active<?php } ?>"><?php _e('Bulk Create PDFs', 'e2pdf'); ?></a>
     </h3>
 
     <?php if (!$this->get->get('action')) { ?>
         <div class="wrap e2pdf-view-area e2pdf-rel">
-            <form id="e2pdf-export-form" method="post" target="_blank" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'export')); ?>" class="e2pdf-export-form">
+            <form id="e2pdf-export-form" method="post" target="_blank" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf', 'action' => 'export'))); ?>" class="e2pdf-export-form">
                 <div class="e2pdf-grid">
                     <div class="e2pdf-ib e2pdf-w30 e2pdf-pr10">
                     </div><div class="e2pdf-ib e2pdf-w70 e2pdf-pl10 e2pdf-inline-radio e2pdf-align-right e2pdf-export-disposition">
@@ -87,7 +87,7 @@ if (!defined('ABSPATH')) {
                                     ),
                                 ));
                                 ?>
-                                <a href="javascript:void(0);" class="e2pdf-link e2pdf-datasets-refresh" _wpnonce="<?php echo esc_attr(wp_create_nonce('e2pdf')); ?>"><i class="dashicons dashicons-update"></i></a>
+                                <a href="javascript:void(0);" class="e2pdf-link e2pdf-datasets-refresh" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-update"></i></a>
                                 <div class="e2pdf-ib e2pdf-w100 e2pdf-export-dataset-actions"></div>
                             </div>
                         </div>
@@ -120,7 +120,7 @@ if (!defined('ABSPATH')) {
                                     ),
                                 ));
                                 ?>
-                                <a href="javascript:void(0);" class="e2pdf-link e2pdf-datasets-refresh" _wpnonce="<?php echo esc_attr(wp_create_nonce('e2pdf')); ?>"><i class="dashicons dashicons-update"></i></a>
+                                <a href="javascript:void(0);" class="e2pdf-link e2pdf-datasets-refresh" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-update"></i></a>
                                 <div class="e2pdf-ib e2pdf-w100 e2pdf-export-dataset-actions"></div>
                             </div>
                         </div>
@@ -264,7 +264,7 @@ if (!defined('ABSPATH')) {
         </div>
     <?php } elseif ($this->get->get('action') == 'bulk') { ?>
         <div class="wrap e2pdf-view-area e2pdf-rel">
-            <form id="e2pdf-export-form" method="post" action="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk')); ?>" class="e2pdf-export-form">
+            <form id="e2pdf-export-form" method="post" action="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk'))); ?>" class="e2pdf-export-form">
                 <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf'); ?>">
                 <div class="e2pdf-grid">
                     <div class="e2pdf-ib e2pdf-w30 e2pdf-pr10">
@@ -470,7 +470,6 @@ if (!defined('ABSPATH')) {
                 </div>
             </form>
         </div>
-
         <?php if ($this->controller->get_bulks_list()) { ?>
             <div class="e2pdf-ib wrap e2pdf-view-area e2pdf-rel e2pdf-bulks-list">
                 <div class="e2pdf-grid">
@@ -482,36 +481,32 @@ if (!defined('ABSPATH')) {
                         <?php _e("Created", 'e2pdf'); ?></div>
                 </div>
                 <?php foreach ($this->controller->get_bulks_list() as $key => $bulk) { ?>
-                    <div class="e2pdf-grid e2pdf-mt10 e2pdf-bulk" bulk="<?php echo $bulk->get('ID'); ?>" status="<?php echo $bulk->get('status'); ?>">
-                        <div class="e2pdf-ib e2pdf-w10"><?php echo $bulk->get('ID'); ?>
+                    <div class="e2pdf-grid e2pdf-mt10 e2pdf-bulk" bulk="<?php echo (int) $bulk->get('ID'); ?>" status="<?php echo esc_attr($bulk->get('status')); ?>">
+                        <div class="e2pdf-ib e2pdf-w10"><?php echo (int) $bulk->get('ID'); ?>
                         </div><div class="e2pdf-ib e2pdf-w50">
                             <?php if ($bulk->get('template')) { ?>
-                                <a target="_blank" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'edit', 'id' => $bulk->get('template')->get('ID'))); ?>"><?php echo esc_html($bulk->get('template')->get('title')); ?></a></strong>
+                                <a target="_blank" href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'edit', 'id' => $bulk->get('template')->get('ID')))); ?>"><?php echo esc_html($bulk->get('template')->get('title')); ?></a></strong>
                             <?php } else { ?>
-                                <?php echo $bulk->get('template_id'); ?>
+                                <?php echo (int) $bulk->get('template_id'); ?>
                             <?php } ?>
                         </div><div class="e2pdf-ib e2pdf-w20">
-                            <span class="spinner is-active"></span><span class="e2pdf-bulk-count"><?php echo $bulk->get('count'); ?></span>/<?php echo $bulk->get('total'); ?></div><div class="e2pdf-ib e2pdf-w10">
+                            <span class="spinner is-active"></span><span class="e2pdf-bulk-count"><?php echo (int) $bulk->get('count'); ?></span>/<?php echo (int) $bulk->get('total'); ?></div><div class="e2pdf-ib e2pdf-w10">
                             <?php if ($bulk->get('status') == 'completed') { ?>
-                                <a class="e2pdf-link" href="<?php echo $this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk', 'uid' => $bulk->get('uid'))); ?>"><i class="dashicons dashicons-download"></i></a>
+                                <a class="e2pdf-link" href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf', 'action' => 'bulk', 'uid' => $bulk->get('uid')))); ?>"><i class="dashicons dashicons-download"></i></a>
                             <?php } ?>
                             <?php if ($bulk->get('status') == 'stop') { ?>
-                                <a class="e2pdf-link e2pdf-bulk-action" action="start" bulk="<?php echo $bulk->get('ID'); ?>" href="javascript:void(0)" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-controls-play"></i></a>
+                                <a class="e2pdf-link e2pdf-bulk-action" action="start" bulk="<?php echo (int) $bulk->get('ID'); ?>" href="javascript:void(0)" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-controls-play"></i></a>
                             <?php } elseif ($bulk->get('status') != 'completed') { ?>
-                                <a class="e2pdf-link e2pdf-bulk-action" action="stop" bulk="<?php echo $bulk->get('ID'); ?>" href="javascript:void(0)" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-controls-pause"></i></a> 
+                                <a class="e2pdf-link e2pdf-bulk-action" action="stop" bulk="<?php echo (int) $bulk->get('ID'); ?>" href="javascript:void(0)" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-controls-pause"></i></a> 
                             <?php } ?>
-                            <a class="e2pdf-link e2pdf-bulk-action" action="delete" bulk="<?php echo $bulk->get('ID'); ?>" href="javascript:void(0)" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-no"></i></a> 
+                            <a class="e2pdf-link e2pdf-bulk-action" action="delete" bulk="<?php echo (int) $bulk->get('ID'); ?>" href="javascript:void(0)" _wpnonce="<?php echo wp_create_nonce('e2pdf'); ?>"><i class="dashicons dashicons-no"></i></a> 
                         </div><div class="e2pdf-ib e2pdf-w10">
-                            <?php echo get_date_from_gmt($bulk->get('created_at')); ?>
+                            <?php echo esc_html(get_date_from_gmt($bulk->get('created_at'))); ?>
                         </div>
                     </div>
                 <?php } ?>
             </div>
         <?php } ?>
     <?php } ?>
-
 </div>
 <?php $this->render('blocks', 'debug-panel'); ?>
-
-
-

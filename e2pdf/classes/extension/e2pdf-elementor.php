@@ -288,7 +288,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
             $item->name = $form['settings']['form_name'] . ' (' . $form['id'] . ')' . $post_name;
         } else {
             $item->id = '';
-            $item->url = 'javascript:void(0);';
+            $item->url = '';
             $item->name = '';
         }
         return $item;

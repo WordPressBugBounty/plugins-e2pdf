@@ -221,7 +221,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             } else {
                 $item->id = '';
                 $item->name = '';
-                $item->url = 'javascript:void(0);';
+                $item->url = '';
             }
         }
         return $item;

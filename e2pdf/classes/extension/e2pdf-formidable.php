@@ -254,7 +254,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             $item->name = esc_html('' === $form->name ? __('(no title)', 'formidable') : $form->name . ($form->parent_form_id ? __(' (child)', 'formidable') : ''));
         } else {
             $item->id = '';
-            $item->url = 'javascript:void(0);';
+            $item->url = '';
             $item->name = '';
         }
         return $item;
@@ -311,20 +311,23 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         add_filter('e2pdf_model_options_get_options_options', array($this, 'filter_e2pdf_model_options_get_options_options'));
         add_filter('frm_main_feedback', array($this, 'filter_frm_main_feedback'));
 
-        /* Replace shortcodes on Backup */
+        // replace shortcodes on backup
         add_filter('e2pdf_controller_templates_backup_options', array($this, 'filter_e2pdf_controller_templates_backup_options'), 10, 3);
         add_filter('e2pdf_controller_templates_backup_pages', array($this, 'filter_e2pdf_controller_templates_backup_pages'), 10, 4);
         add_filter('e2pdf_controller_templates_backup_actions', array($this, 'filter_e2pdf_controller_templates_backup_actions'), 10, 4);
         add_filter('e2pdf_controller_templates_backup_replace_shortcodes', array($this, 'filter_e2pdf_controller_templates_backup_replace_shortcodes'), 10, 4);
 
-        /*  Replace shortcodes on Import */
+        //  replace shortcodes on import
         add_filter('e2pdf_controller_templates_import_options', array($this, 'filter_e2pdf_controller_templates_import_options'), 10, 3);
         add_filter('e2pdf_controller_templates_import_pages', array($this, 'filter_e2pdf_controller_templates_import_pages'), 10, 5);
         add_filter('e2pdf_controller_templates_import_actions', array($this, 'filter_e2pdf_controller_templates_import_actions'), 10, 5);
         add_filter('e2pdf_controller_templates_import_replace_shortcodes', array($this, 'filter_e2pdf_controller_templates_import_replace_shortcodes'), 10, 5);
 
-        /* Hooks */
+        // hooks
         add_filter('frm_row_actions', array($this, 'hook_formidable_row_actions'), 10, 2);
+
+        // frm-graph
+        add_filter('frm_graph_shortcode_custom_html', array($this, 'filter_frm_graph_shortcode_custom_html'), 99, 2);
     }
 
     public function action_frm_success_action() {
@@ -1619,6 +1622,13 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         return $actions;
     }
 
+    public function filter_frm_graph_shortcode_custom_html($html, $data) {
+        if (apply_filters('e2pdf_pdf_render', false)) {
+            return serialize($data['graph_data']);
+        }
+        return $html;
+    }
+
     public function filter_e2pdf_controller_templates_import_replace_shortcodes($value, $options, $xml, $template, $extension) {
 
         if ($extension->loaded('formidable') &&
@@ -2150,7 +2160,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                                 )
                         );
                         break;
-
                     case 'time':
                         $elements[] = $this->auto_field(
                                 $field,
