@@ -64,14 +64,14 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                         $entry = new Forminator_Form_Entry_Model();
                         $entry->set_fields($this->replace_values_to_labels($this->get('field_data_array'), $this->get('cached_form'), $entry));
                         if (isset($entry->meta_data) && is_array($entry->meta_data)) {
-                            $entry->meta_data = $this->update_meta_data($entry->meta_data);
+                            $entry->meta_data = $this->update_meta_data($entry->meta_data, $this->get('cached_form'));
                         }
                         $this->set('cached_entry', $entry);
                         $this->set('cached_meta', $this->get('cached_entry')->meta_data);
                     } else {
                         $entry = Forminator_API::get_entry($this->get('item'), $this->get('dataset'));
                         if (isset($entry->meta_data) && is_array($entry->meta_data)) {
-                            $entry->meta_data = $this->update_meta_data($entry->meta_data);
+                            $entry->meta_data = $this->update_meta_data($entry->meta_data, $this->get('cached_form'));
                         }
                         $this->set('cached_entry', $entry);
                         $this->set('cached_meta', $this->get('cached_entry')->meta_data);
@@ -530,11 +530,21 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
         return $content;
     }
 
-    // Fix: Compatibility with Forminator 1.48.x
-    public function update_meta_data($meta_data) {
+    // fields compatibility
+    public function update_meta_data($meta_data, $form) {
         foreach ($meta_data as $meta_key => $meta) {
+            // 1.48.x
             if ((false !== strpos($meta_key, 'checkbox') || false !== strpos($meta_key, 'select')) && !empty($meta['value']) && is_string($meta['value'])) {
                 $meta_data[$meta_key]['value'] = implode(', ', explode('<br/>', $meta['value']));
+            }
+            // 1.53.x
+            if (false !== strpos($meta_key, 'calculation') && isset($meta['value']) && !is_array($meta['value'])) {
+                $field = $form->get_field($meta_key, true);
+                $value = ('' === (string) $meta['value']) ? '0.0' : $meta['value'];
+                $meta_data[$meta_key]['value'] = [
+                    'result' => $value,
+                    'formatting_result' => is_array($field) && !empty($field) ? Forminator_Field::forminator_number_formatting($field, $value) : $value,
+                ];
             }
         }
         return $meta_data;
