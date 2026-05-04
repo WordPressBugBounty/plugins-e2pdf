@@ -154,7 +154,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if (strpos($attributes->get('dataset'), 'post_data:ID') !== false) {
             $response .= '[e2pdf-download ';
             foreach ($atts as $key => $value) {
-                $response .= $key . '="' . str_replace('"', '', $value) . '" ';
+                $response .= sanitize_key($key) . '="' . esc_attr($value) . '" ';
             }
             $response .= ']';
             return $response;
