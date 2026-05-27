@@ -837,7 +837,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                         if ($template->get('ID')) {
                             $this->add_notification(
                                     'update', sprintf(
-                                            __('Template Imported: <a target="_blank" href="%2$s">View</a> | <a target="_blank" href="%3$s">Edit</a>', 'e2pdf'),
+                                            __('Template Imported: <a target="_blank" href="%1$s">View</a> | <a target="_blank" href="%2$s">Edit</a>', 'e2pdf'),
                                             $this->helper->get_url(
                                                     [
                                                         'page' => 'e2pdf-templates',
@@ -845,7 +845,13 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                                                         'id' => $template->get('ID')
                                                     ]
                                             ),
-                                            $this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'edit', 'id' => $template->get('ID')))
+                                            $this->helper->get_url(
+                                                    [
+                                                        'page' => 'e2pdf-templates',
+                                                        'action' => 'edit',
+                                                        'id' => $template->get('ID')
+                                                    ]
+                                            )
                                     )
                             );
                         } else {
@@ -1512,8 +1518,8 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                                 break;
                             case 'fonts':
                                 $fonts_node = new SimpleXMLElement($reader->readOuterXML(), LIBXML_PARSEHUGE);
-                                foreach ($fonts_node->children() as $font) {
-                                    $this->helper->load('xml')->parse_xml_font($font);
+                                foreach ($fonts_node->children() as $xml_font) {
+                                    $this->helper->load('xml')->parse_xml_font($xml_font);
                                 }
                                 break;
                             default:
@@ -1549,8 +1555,8 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                     ];
                 }
                 if (isset($xml->fonts) && $xml->fonts) {
-                    foreach ($xml->fonts->children() as $key => $font) {
-                        $this->helper->load('xml')->parse_xml_font($font);
+                    foreach ($xml->fonts->children() as $key => $xml_font) {
+                        $this->helper->load('xml')->parse_xml_font($xml_font);
                     }
                 }
             }

@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: e2pdf\n"
-"POT-Creation-Date: 2026-05-25 13:33+0200\n"
-"PO-Revision-Date: 2026-05-25 13:33+0200\n"
+"POT-Creation-Date: 2026-05-27 12:30+0200\n"
+"PO-Revision-Date: 2026-05-27 12:30+0200\n"
 "Last-Translator: Weblate Admin <admin@example.com>\n"
 "Language-Team: Russian <https://localhost/projects/e2pdf/e2pdf/ru/>\n"
 "Language: ru_RU\n"
@@ -69,16 +69,16 @@ msgstr "Выберите шрифт для загрузки"
 
 #: classes/controller/e2pdf-settings.php:211
 #: classes/controller/e2pdf-templates.php:526
-#: classes/controller/e2pdf-templates.php:1427
-#: classes/controller/e2pdf-templates.php:1679
+#: classes/controller/e2pdf-templates.php:1433
+#: classes/controller/e2pdf-templates.php:1685
 #, php-format
 msgid "Only %s files allowed"
 msgstr "Разрешены только файлы %s"
 
 #: classes/controller/e2pdf-settings.php:213
 #: classes/controller/e2pdf-templates.php:528
-#: classes/controller/e2pdf-templates.php:1433
-#: classes/controller/e2pdf-templates.php:1685
+#: classes/controller/e2pdf-templates.php:1439
+#: classes/controller/e2pdf-templates.php:1691
 msgid "Invalid Type"
 msgstr "Недопустимый тип"
 
@@ -93,12 +93,12 @@ msgstr "Шрифт загружен"
 #: classes/controller/e2pdf-settings.php:220
 #: classes/controller/e2pdf-templates.php:181
 #: classes/controller/e2pdf-templates.php:383
-#: classes/controller/e2pdf-templates.php:852
-#: classes/controller/e2pdf-templates.php:1163
-#: classes/controller/e2pdf-templates.php:1220
-#: classes/controller/e2pdf-templates.php:1269
-#: classes/controller/e2pdf-templates.php:2084
-#: classes/controller/e2pdf-templates.php:2097 classes/controller/e2pdf.php:734
+#: classes/controller/e2pdf-templates.php:858
+#: classes/controller/e2pdf-templates.php:1169
+#: classes/controller/e2pdf-templates.php:1226
+#: classes/controller/e2pdf-templates.php:1275
+#: classes/controller/e2pdf-templates.php:2090
+#: classes/controller/e2pdf-templates.php:2103 classes/controller/e2pdf.php:734
 #: classes/controller/frontend/e2pdf-download.php:351
 #: classes/extension/e2pdf-forminator.php:833
 #: classes/model/e2pdf-adobesign.php:127 classes/model/e2pdf-adobesign.php:208
@@ -163,22 +163,22 @@ msgstr "Файл не является действительным шаблон
 #: classes/controller/e2pdf-templates.php:840
 #, php-format
 msgid ""
-"Template Imported: <a target=\"_blank\" href=\"%2$s\">View</a> | <a "
-"target=\"_blank\" href=\"%3$s\">Edit</a>"
+"Template Imported: <a target=\"_blank\" href=\"%1$s\">View</a> | <a "
+"target=\"_blank\" href=\"%2$s\">Edit</a>"
 msgstr ""
-"Шаблон импортирован: <a target=\"_blank\" href=\"%2$s\">Просмотреть</a> | <a "
-"target=\"_blank\" href=\"%3$s\">Редактировать</a>"
+"Шаблон импортирован: <a target=\"_blank\" href=\"%1$s\">Просмотреть</a> | <a "
+"target=\"_blank\" href=\"%2$s\">Редактировать</a>"
 
-#: classes/controller/e2pdf-templates.php:866
-#: classes/controller/e2pdf-templates.php:1175 classes/controller/e2pdf.php:742
+#: classes/controller/e2pdf-templates.php:872
+#: classes/controller/e2pdf-templates.php:1181 classes/controller/e2pdf.php:742
 #: classes/model/e2pdf-extension.php:292 classes/model/e2pdf-extension.php:296
 #: classes/model/e2pdf-loader.php:908
 #, php-format
 msgid "The PHP %s extension is required"
 msgstr "Требуется расширения PHP %s"
 
-#: classes/controller/e2pdf-templates.php:879
-#: classes/controller/e2pdf-templates.php:1348 classes/controller/e2pdf.php:45
+#: classes/controller/e2pdf-templates.php:885
+#: classes/controller/e2pdf-templates.php:1354 classes/controller/e2pdf.php:45
 #: classes/controller/e2pdf.php:88 classes/controller/e2pdf.php:452
 #: classes/controller/e2pdf.php:475
 #: classes/extension/e2pdf-woocommerce.php:3503
@@ -190,95 +190,95 @@ msgstr "Требуется расширения PHP %s"
 msgid "--- Select ---"
 msgstr "--- Выбрать ---"
 
-#: classes/controller/e2pdf-templates.php:889
+#: classes/controller/e2pdf-templates.php:895
 msgid "Overwrite Options"
 msgstr "Параметры перезаписи"
 
-#: classes/controller/e2pdf-templates.php:892
+#: classes/controller/e2pdf-templates.php:898
 msgid "Overwrite Template by ID"
 msgstr "Перезаписать шаблон по ID"
 
-#: classes/controller/e2pdf-templates.php:898
+#: classes/controller/e2pdf-templates.php:904
 msgid "Create New E2Pdf Template ID"
 msgstr "Создать новый шаблон E2Pdf"
 
-#: classes/controller/e2pdf-templates.php:899
+#: classes/controller/e2pdf-templates.php:905
 msgid "Existing Template ID"
 msgstr "Существующий шаблон"
 
-#: classes/controller/e2pdf-templates.php:900
+#: classes/controller/e2pdf-templates.php:906
 msgid "Custom Template ID"
 msgstr "Пользовательский ID шаблона"
 
-#: classes/controller/e2pdf-templates.php:901
+#: classes/controller/e2pdf-templates.php:907
 msgid "Backup Template ID"
 msgstr "ID шаблона из резервной копии"
 
-#: classes/controller/e2pdf-templates.php:905
-#: classes/controller/e2pdf-templates.php:916
+#: classes/controller/e2pdf-templates.php:911
 #: classes/controller/e2pdf-templates.php:922
+#: classes/controller/e2pdf-templates.php:928
 msgid "Template ID"
 msgstr "ID шаблона"
 
-#: classes/controller/e2pdf-templates.php:930
+#: classes/controller/e2pdf-templates.php:936
 msgid "Template Options"
 msgstr "Опции шаблона"
 
-#: classes/controller/e2pdf-templates.php:933
+#: classes/controller/e2pdf-templates.php:939
 msgid "Import Images"
 msgstr "Импортировать изображения"
 
-#: classes/controller/e2pdf-templates.php:941
+#: classes/controller/e2pdf-templates.php:947
 msgid "Import Fonts"
 msgstr "Импортировать шрифты"
 
-#: classes/controller/e2pdf-templates.php:951
+#: classes/controller/e2pdf-templates.php:957
 msgid "Connection Options"
 msgstr "Параметры подключения"
 
-#: classes/controller/e2pdf-templates.php:954
+#: classes/controller/e2pdf-templates.php:960
 msgid "Import Connection"
 msgstr "Импортировать подключение"
 
-#: classes/controller/e2pdf-templates.php:1186
+#: classes/controller/e2pdf-templates.php:1192
 #: classes/model/e2pdf-loader.php:605
 #: classes/view/metaboxes/e2pdf_templates_save.php:40
 msgid "Options"
 msgstr "Опции"
 
-#: classes/controller/e2pdf-templates.php:1189
+#: classes/controller/e2pdf-templates.php:1195
 msgid "Include Connection"
 msgstr "Включить подключение"
 
-#: classes/controller/e2pdf-templates.php:1198
+#: classes/controller/e2pdf-templates.php:1204
 msgid "Include Images"
 msgstr "Включить изображения"
 
-#: classes/controller/e2pdf-templates.php:1206
+#: classes/controller/e2pdf-templates.php:1212
 msgid "Include Fonts"
 msgstr "Включить шрифты"
 
-#: classes/controller/e2pdf-templates.php:1291
+#: classes/controller/e2pdf-templates.php:1297
 msgid "Template Saved"
 msgstr "Шаблон сохранён"
 
-#: classes/controller/e2pdf-templates.php:1334
+#: classes/controller/e2pdf-templates.php:1340
 msgid "Merged Connections"
 msgstr "Объединенные подключения"
 
-#: classes/controller/e2pdf-templates.php:1341
+#: classes/controller/e2pdf-templates.php:1347
 msgid "Auto Form from PDF"
 msgstr "Авто Форма из PDF"
 
-#: classes/controller/e2pdf-templates.php:1380
+#: classes/controller/e2pdf-templates.php:1386
 msgid "You must set the Connection to use the Visual Mapper"
 msgstr "Вы должны выбрать Подключение перед использованием Визуального Маппера"
 
-#: classes/controller/e2pdf-templates.php:1384
+#: classes/controller/e2pdf-templates.php:1390
 msgid "Sorry, this Extension doesn't support the Visual Mapper"
 msgstr "К сожалению данное расширение не поддерживает Visual Mapper"
 
-#: classes/controller/e2pdf-templates.php:1411
+#: classes/controller/e2pdf-templates.php:1417
 #: classes/controller/frontend/e2pdf-download.php:277
 #: classes/extension/e2pdf-formidable.php:254
 #: classes/model/e2pdf-revision.php:205 classes/model/e2pdf-template.php:186
@@ -286,47 +286,47 @@ msgstr "К сожалению данное расширение не подде�
 msgid "(no title)"
 msgstr "(нет заголовка)"
 
-#: classes/controller/e2pdf-templates.php:1486
-#: classes/controller/e2pdf-templates.php:1745
+#: classes/controller/e2pdf-templates.php:1492
+#: classes/controller/e2pdf-templates.php:1751
 msgid "Failed to parse PDF"
 msgstr "Не удалось разобрать PDF"
 
-#: classes/controller/e2pdf-templates.php:1559
-#: classes/controller/e2pdf-templates.php:1806
+#: classes/controller/e2pdf-templates.php:1565
+#: classes/controller/e2pdf-templates.php:1812
 msgid "Failed to parse PDF pages"
 msgstr "Не удалось разобрать страницы PDF"
 
-#: classes/controller/e2pdf-templates.php:1721
+#: classes/controller/e2pdf-templates.php:1727
 msgid "Failed to load E2Pdf Template"
 msgstr "Не удалось загрузить шаблон E2Pdf"
 
-#: classes/controller/e2pdf-templates.php:1762
-#: classes/controller/e2pdf-templates.php:1794
+#: classes/controller/e2pdf-templates.php:1768
+#: classes/controller/e2pdf-templates.php:1800
 #, php-format
 msgid "Invalid position of %s page"
 msgstr "Позиция %s страницы указана неверно"
 
-#: classes/controller/e2pdf-templates.php:1979
+#: classes/controller/e2pdf-templates.php:1985
 msgid "Invalid E-mail address format"
 msgstr "Неправильный формат E-mail адреса"
 
-#: classes/controller/e2pdf-templates.php:1983
+#: classes/controller/e2pdf-templates.php:1989
 msgid "Invalid Confirmation Code"
 msgstr "Неверный код подтверждения"
 
-#: classes/controller/e2pdf-templates.php:2048
+#: classes/controller/e2pdf-templates.php:2054
 msgid "(Copy)"
 msgstr "(Копия)"
 
-#: classes/controller/e2pdf-templates.php:2578
+#: classes/controller/e2pdf-templates.php:2584
 msgid "Preset"
 msgstr "Предустановки"
 
-#: classes/controller/e2pdf-templates.php:2581
+#: classes/controller/e2pdf-templates.php:2587
 msgid "PDF Builder"
 msgstr "PDF конструктор"
 
-#: classes/controller/e2pdf-templates.php:2584
+#: classes/controller/e2pdf-templates.php:2590
 #: classes/helper/e2pdf-helper.php:276 classes/model/e2pdf-loader.php:489
 #: classes/view/page-e2pdf-debug.php:44 classes/view/page-e2pdf-settings.php:7
 msgid "Settings"

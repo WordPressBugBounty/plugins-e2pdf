@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 7.0
 Requires PHP: 5.4
-Stable tag: 1.32.22
+Stable tag: 1.32.23
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,12 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.23 =
+*Release Date - May 27, 2026*
+
+* Fix: Fatal Error during template import
+* Fix: Main font error after upload
 
 = 1.32.22 =
 *Release Date - May 27, 2026*
