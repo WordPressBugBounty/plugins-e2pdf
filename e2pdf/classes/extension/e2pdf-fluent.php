@@ -303,7 +303,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
 
     // load filters
     public function load_filters() {
-        add_filter('fluentform/submission_message_parse', array($this, 'filter_submission_message_parse'), 10, 2);
+        add_filter('fluentform/submission_message_parse', array($this, 'filter_submission_message_parse'), 9, 2);
         add_filter('fluentform/filter_email_attachments', array($this, 'filter_email_attachments'), 10, 4);
         add_filter('fluentform/integration_data_trello', array($this, 'filter_integration_data_trello'), 10, 3);
         add_filter('fluentform/insert_response_data', array($this, 'filter_fluentform_insert_response_data'), 99, 3);
@@ -1478,6 +1478,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                 $dom = new DOMDocument();
                 $html = $this->helper->load('convert')->load_html($source, $dom, true);
             }
+
             if (ob_get_length() > 0) {
                 while (@ob_end_clean()); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
             }
@@ -1500,6 +1501,11 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                     foreach ($elements as $element) {
                         $element->parentNode->removeChild($element);
                     }
+                }
+
+                $elements = $xpath->query("//*[contains(@class, 'fluentform-step')]");
+                foreach ($elements as $element) {
+                    $xml->set_node_value($element, 'style', '');
                 }
 
                 $elements = $xpath->query("//*[contains(@class, 'ff_tc_checkbox')]");

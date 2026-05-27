@@ -830,7 +830,7 @@ var e2pdf = {
                         jQuery('.e2pdf-export-options, .e2pdf-export-item, .e2pdf-dataset-shortcode-wr').hide();
                         jQuery('.e2pdf-export-template-actions, .e2pdf-export-dataset-actions').empty();
                         jQuery('.e2pdf-export-dataset').data('options', []).empty();
-                        jQuery('.e2pdf-export-dataset-search').val('');
+                        jQuery('.e2pdf-fieldset-filter').val('');
                         e2pdf.select2.disable(el);
                         break;
                     case 'e2pdf_dataset':
@@ -8154,6 +8154,9 @@ var e2pdf = {
                     }
                 },
                 start: function (ev, ui) {
+                    if (ev.originalEvent && ev.originalEvent.detail >= 2) {
+                        return false;
+                    }
                     e2pdf.element.select(jQuery(this));
                     e2pdf.static.drag.min_left = 0;
                     e2pdf.static.drag.max_left = jQuery(this).closest('.e2pdf-page').width();
@@ -9811,6 +9814,18 @@ jQuery(document).ready(function () {
             parent.find('.e2pdf-argument').last().remove();
         }
     });
+    jQuery(document).on('click', '.e2pdf-search-replace-add', function (e) {
+        var parent = jQuery('.e2pdf-search-replaces').first();
+        var search_replace = parent.find('.e2pdf-search-replace').first().clone();
+        search_replace.find('textarea').val('');
+        search_replace.appendTo(parent);
+    });
+    jQuery(document).on('click', '.e2pdf-search-replace-delete', function (e) {
+        var parent = jQuery(this).closest('.e2pdf-search-replace');
+        if (parent) {
+            parent.remove();
+        }
+    });
     jQuery(document).on('click', '.e2pdf-action-add', function (e) {
         var actions = jQuery(this).closest('.e2pdf-actions-wrapper').find('.e2pdf-actions');
         var form = jQuery(this).closest('form');
@@ -10215,7 +10230,7 @@ jQuery(document).ready(function () {
         data['name'] = jQuery(this).closest('.e2pdf-select2-wrapper').find('select').first().attr('name');
         e2pdf.request.submitRequest('e2pdf_datasets_refresh', jQuery(this), data);
     });
-    jQuery(document).on('change', 'fieldset.e2pdf-export-dataset input[type="checkbox"]', function (e) {
+    jQuery(document).on('change', 'fieldset.e2pdf-fieldset input[type="checkbox"]', function (e) {
         if (jQuery(this).is(':checked')) {
             if (jQuery(this).val() == '') {
                 jQuery(this).closest('fieldset').find('input[type="checkbox"]').prop('checked', true);
@@ -10496,11 +10511,6 @@ jQuery(document).ready(function () {
         var data = {};
         e2pdf.request.submitRequest('e2pdf_deactivate_all_templates', jQuery(this), data);
     });
-    jQuery(document).on('click', '#e2pdf-restore-license-key', function (e) {
-        var data = {};
-        jQuery(this).html(e2pdf.lang.get('In Progress...'));
-        e2pdf.request.submitRequest('e2pdf_restore_license_key', jQuery(this), data);
-    });
     jQuery(document).on('click', '.e2pdf-confirmation-confirm', function (e) {
         jQuery(this).closest('.e2pdf-confirmation').remove();
         jQuery('.e2pdf-w-reupload').attr('disabled', false);
@@ -10529,40 +10539,32 @@ jQuery(document).ready(function () {
     jQuery(document).on('change keyup', '.e2pdf-settings-template-change', function (e) {
         e2pdf.event.fire('after.settings.template.change');
     });
-    jQuery(document).on('keyup', '.e2pdf-export-dataset-search', function (e) {
-        var field_key = jQuery(this).attr('field');
-        var search = jQuery('.e2pdf-export-dataset-search[field="' + field_key + '"]').val();
-        var dataset_field = jQuery('.e2pdf-export-dataset[name="' + field_key + '"]');
-        var options = dataset_field.data('options');
+    jQuery(document).on('keyup', '.e2pdf-fieldset-filter', function (e) {
+        var form = jQuery(this).closest('form');
+        var field = jQuery(this).attr('field');
+        var search = jQuery(this).val();
+        var fieldset = jQuery(this).closest('.e2pdf-fieldset-wrapper').find('.e2pdf-fieldset[name="' + field + '"]').first();
+        var options = fieldset.data('options');
         var regex = new RegExp(search, "gi");
-        var selected = 0;
-        dataset_field.empty();
+        fieldset.empty();
         jQuery.each(options, function (i) {
             var option = options[i];
             if (i == 0 || option.value.match(regex) !== null) {
-                if (e2pdf.url.get('action') == 'bulk') {
-                    dataset_field.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').html(option.value).prepend(jQuery('<input>', {'name': field_key + '[]', 'type': 'checkbox', 'value': option.key}))));
-                } else {
-                    dataset_field.append(jQuery('<option>', {'value': option.key}).html(option.value));
-                    if ((selected == 0 && i !== 0) || (search === '' && i === 0)) {
-                        dataset_field.val(option.key);
-                        selected = 1;
-                    }
-                }
+                fieldset.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').html(option.value).prepend(jQuery('<input>', {'name': field + '[]', 'type': 'checkbox', 'value': option.key}))));
             }
         });
-        dataset_field.find('input[type="checkbox"][value=""]').prop('checked', true).trigger('change');
-        if (dataset_field.find('input[type="checkbox"]').length > 1) {
-            jQuery('.e2pdf-export-form-submit').attr('disabled', false);
+        fieldset.find('input[type="checkbox"][value=""]').prop('checked', true).trigger('change');
+        if (fieldset.find('input[type="checkbox"]').length > 1) {
+            form.find('.e2pdf-submit-form').attr('disabled', false);
         } else {
-            dataset_field.find('input[type="checkbox"]').attr('disabled', true);
-            jQuery('.e2pdf-export-form-submit').attr('disabled', true);
+            fieldset.find('input[type="checkbox"]').attr('disabled', true);
+            form.find('.e2pdf-submit-form').attr('disabled', true);
         }
-        if (this.datasetLoad) {
-            clearTimeout(this.datasetLoad);
+        if (this.changeTrigger) {
+            clearTimeout(this.changeTrigger);
         }
-        this.datasetLoad = setTimeout(function () {
-            dataset_field.trigger('change');
+        this.changeTrigger = setTimeout(function () {
+            fieldset.trigger('change');
         }, 1000);
     });
     jQuery(document).on('change', 'select[name="preset"]', function (e) {

@@ -52,7 +52,6 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
             add_action('wp_ajax_e2pdf_get_styles', [new Controller_E2pdf_Templates(), 'ajax_get_styles']);
             add_action('wp_ajax_e2pdf_email', [new Controller_E2pdf_Templates(), 'ajax_email']);
             add_action('wp_ajax_e2pdf_license_key', [new Controller_E2pdf_License(), 'ajax_change_license_key']);
-            add_action('wp_ajax_e2pdf_restore_license_key', [new Controller_E2pdf_License(), 'ajax_restore_license_key']);
             add_action('wp_ajax_e2pdf_deactivate_all_templates', [new Controller_E2pdf_License(), 'ajax_deactivate_all_templates']);
             add_action('wp_ajax_e2pdf_templates', [new Controller_E2pdf(), 'ajax_templates']);
             add_action('wp_ajax_e2pdf_dataset', [new Controller_E2pdf(), 'ajax_dataset']);
@@ -859,6 +858,8 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'The Template ID used in the backup will be overwritten. Continue?' => __('The Template ID used in the backup will be overwritten. Continue?', 'e2pdf'),
                     /* translators: %d: Template ID */
                     'This will overwrite the Template ID "%d". Continue?' => __('This will overwrite the Template ID "%d". Continue?', 'e2pdf'),
+                    'Filter' => __('Filter...', 'e2pdf'),
+                    'Not linked' => __('Not linked', 'e2pdf'),
                 ];
                 break;
             case 'params':
@@ -930,13 +931,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
             ];
             add_screen_option('per_page', $screen_option);
         }
-
-        $this->helper->set('license', new Model_E2pdf_License());
-        if ($this->helper->get('license')->get('error') === 'Site Url Not Found. Please try to "Reactivate" plugin.') {
-            update_option('e2pdf_version', '1.00.00');
-            $this->action_plugins_loaded();
-            $this->helper->set('license', new Model_E2pdf_License());
-        }
+        $this->helper->load('license')->load();
     }
 
     // wp_loaded action
@@ -1129,16 +1124,10 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         delete_option('e2pdf_wc_cart_template_id_order');
         delete_option('e2pdf_hash_timeout');
 
-        $model_e2pdf_api = new Model_E2pdf_Api();
-        $model_e2pdf_api->set(
-                [
-                    'action' => 'common/activate',
-                ]
-        );
-        $model_e2pdf_api->request();
-
-        $model_e2pdf_license = new Model_E2pdf_License();
-        $model_e2pdf_license->load_templates();
+        $license = $this->helper->load('license');
+        if ($license && method_exists($license, 'activate')) {
+            $license->activate();
+        }
 
         wp_clear_scheduled_hook('e2pdf_cronjob');
         if (!wp_next_scheduled('e2pdf_cache_tmp_cron')) {

@@ -296,14 +296,14 @@ if (!defined('ABSPATH')) {
                 <div class="e2pdf-grid e2pdf-export-item e2pdf-hide">
                     <div class="e2pdf-ib e2pdf-w30 e2pdf-pr10">
                         <?php _e('Dataset', 'e2pdf'); ?>:
-                    </div><div class="e2pdf-ib e2pdf-w70 e2pdf-pl10">
+                    </div><div class="e2pdf-ib e2pdf-w70 e2pdf-pl10 e2pdf-fieldset-wrapper">
                         <div class="e2pdf-ib e2pdf-w100 e2pdf-mb20">
                             <div class="e2pdf-ib e2pdf-w70 e2pdf-pr5"></div><div class="e2pdf-ib e2pdf-w30 e2pdf-pl5">
                                 <?php
                                 $this->render('field', 'text', array(
                                     'field' => array(
                                         'name' => 'search',
-                                        'class' => 'e2pdf-w100 e2pdf-export-dataset-search',
+                                        'class' => 'e2pdf-w100 e2pdf-fieldset-filter',
                                         'field' => 'dataset',
                                         'placeholder' => __('Filter...', 'e2pdf'),
                                     ),
@@ -317,9 +317,9 @@ if (!defined('ABSPATH')) {
                                 $this->render('field', 'fieldset', array(
                                     'field' => array(
                                         'name' => 'dataset',
-                                        'class' => 'e2pdf-export-dataset e2pdf-w100'
+                                        'class' => 'e2pdf-fieldset e2pdf-export-dataset e2pdf-w100'
                                     ),
-                                    'value' => '0',
+                                    'value' => [],
                                     'options' => array(
                                         '' => __('--- Select ---', 'e2pdf')
                                     ),

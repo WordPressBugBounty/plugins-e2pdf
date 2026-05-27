@@ -50,7 +50,7 @@ if (!defined('ABSPATH')) {
         </div>
         <div class="misc-pub-section">
             <div class="e2pdf-grid">
-                <div class="e2pdf-ib e2pdf-w50 e2pdf-pr5 e2pdf-align-left e2pdf-mt5">
+                <div class="e2pdf-ib e2pdf-w50 e2pdf-pr5 e2pdf-align-left">
                     <?php if ($this->view->template->get('pdf')) { ?>
                         <a class="e2pdf-link" title="<?php _e('Download Original PDF', 'e2pdf') ?>" target="_blank" href="<?php echo esc_url($this->helper->get_upload_url('pdf/' . $this->view->template->get('pdf') . '/' . $this->view->template->get('pdf') . '.pdf')); ?>"><i class="dashicons dashicons-download"></i></a>
                         <?php if (!$this->get->get('revision_id')) { ?>
@@ -62,6 +62,7 @@ if (!defined('ABSPATH')) {
                             <a class="e2pdf-link e2pdf-modal" data-modal="pdf-reupload" title="<?php _e('Upload PDF', 'e2pdf') ?>" href="javascript:void(0);"><i class="dashicons dashicons-upload"></i></a>
                         <?php } ?>
                     <?php } ?>
+                    <br/><a <?php if ($this->get->get('action') !== 'edit') { ?>disabled="disabled"<?php } ?> target="_blank" href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'download', 'id' => $this->view->template->get('ID')))); ?>" class="e2pdf-ib e2pdf-link e2pdf-mt6"><?php _e('Download', 'e2pdf'); ?></a>
                 </div><div class="e2pdf-ib e2pdf-w50 e2pdf-pl5 e2pdf-center">
                     <a <?php if ($this->get->get('action') !== 'edit') { ?>disabled="disabled"<?php } ?> target="_blank" href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'view', 'id' => $this->view->template->get('ID')))); ?>" class="e2pdf-ib e2pdf-link"><?php _e('View Saved', 'e2pdf'); ?></a><br/>
                     <a <?php if (!$this->view->template->get('activated')) { ?>disabled="disabled"<?php } ?> target="_blank" href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf', 'id' => $this->view->template->get('ID')))); ?>" class="e2pdf-ib e2pdf-link e2pdf-mt6 e2pdf-generate-pdf-button"><?php _e('Create PDF', 'e2pdf'); ?></a>

@@ -27,27 +27,18 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         } elseif ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_templates')) {
                 if ($this->post->get('action') == '-1' && $this->post->get('action2') == '-1') {
+                    $redirect_url = [
+                        'page' => 'e2pdf-templates',
+                        'status' => $this->get->get('status'),
+                        'orderby' => $this->get->get('orderby'),
+                        'order' => $this->get->get('order'),
+                    ];
                     if ($this->post->get('s')) {
-                        $location = $this->helper->get_url(
-                                array(
-                                    'page' => 'e2pdf-templates',
-                                    'status' => $this->get->get('status'),
-                                    'orderby' => $this->get->get('orderby'),
-                                    'order' => $this->get->get('order'),
-                                    's' => $this->post->get('s'),
-                                )
-                        );
-                    } else {
-                        $location = $this->helper->get_url(
-                                array(
-                                    'page' => 'e2pdf-templates',
-                                    'status' => $this->get->get('status'),
-                                    'orderby' => $this->get->get('orderby'),
-                                    'order' => $this->get->get('order'),
-                                )
-                        );
+                        $redirect_url['s'] = $this->post->get('s');
                     }
-                    $this->redirect($location);
+                    $this->redirect(
+                            $this->helper->get_url($redirect_url)
+                    );
                 } else {
                     $action = $this->post->get('action') != '-1' ? $this->post->get('action') : $this->post->get('action2');
                     if ($this->post->get('post')) {
@@ -55,29 +46,29 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->trash_template($value);
                             }
-                            $this->add_notification('update', sprintf(__('Trashed: %d', 'e2pdf'), count($this->post->get('post'))));
+                            $this->add_notification('update', sprintf(__('Templates Trashed: %d', 'e2pdf'), count($this->post->get('post'))));
                         } elseif ($action == 'activate') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->activate_template($value);
                             }
-                            $this->add_notification('update', sprintf(__('Activated: %d', 'e2pdf'), count($this->post->get('post'))));
+                            $this->add_notification('update', sprintf(__('Templates Activated: %d', 'e2pdf'), count($this->post->get('post'))));
                         } elseif ($action == 'deactivate') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->deactivate_template($value);
                             }
-                            $this->add_notification('update', sprintf(__('Deactivated: %d', 'e2pdf'), count($this->post->get('post'))));
+                            $this->add_notification('update', sprintf(__('Templates Deactivated: %d', 'e2pdf'), count($this->post->get('post'))));
                         } elseif ($action == 'restore') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->restore_template($value);
                             }
-                            $this->add_notification('update', sprintf(__('Restored: %d', 'e2pdf'), count($this->post->get('post'))));
+                            $this->add_notification('update', sprintf(__('Templates Restored: %d', 'e2pdf'), count($this->post->get('post'))));
                         } elseif ($action == 'delete') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->delete_template($value);
                             }
-                            $this->add_notification('update', sprintf(__('Deleted: %d', 'e2pdf'), count($this->post->get('post'))));
+                            $this->add_notification('update', sprintf(__('Templates Deleted: %d', 'e2pdf'), count($this->post->get('post'))));
                         }
-                        $this->helper->get('license')->reload_license();
+                        $this->helper->load('license')->load();
                     }
                 }
             } else {
@@ -191,12 +182,13 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                 $this->render('blocks', 'notifications');
             }
         } else {
-            $location = $this->helper->get_url(
-                    array(
-                        'page' => 'e2pdf',
+            $this->redirect(
+                    $this->helper->get_url(
+                            [
+                                'page' => 'e2pdf',
+                            ]
                     )
             );
-            $this->redirect($location);
         }
     }
 
@@ -392,12 +384,13 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                 $this->render('blocks', 'notifications');
             }
         } else {
-            $location = $this->helper->get_url(
-                    array(
-                        'page' => 'e2pdf-templates',
+            $this->redirect(
+                    $this->helper->get_url(
+                            [
+                                'page' => 'e2pdf-templates',
+                            ]
                     )
             );
-            $this->redirect($location);
         }
     }
 
@@ -405,96 +398,109 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
      * @url admin.php?page=e2pdf-templates&action=trash&id=$id
      */
     public function trash_action() {
+        $notification = '';
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
             if ($this->get->get('id')) {
                 $this->trash_template($this->get->get('id'));
-                $this->add_notification('update', sprintf(__('Trashed: %d', 'e2pdf'), '1'));
+                $notification = $this->add_notification('update', __('Template Trashed', 'e2pdf'));
             }
         } else {
             wp_die($this->message('wp_verify_nonce_error'));
         }
-        $location = $this->helper->get_url(
-                array(
-                    'page' => 'e2pdf-templates',
-                    'status' => $this->get->get('status'),
-                    'orderby' => $this->get->get('orderby'),
-                    'order' => $this->get->get('order'),
-                    's' => $this->get->get('s'),
+        $this->redirect(
+                $this->helper->get_url(
+                        [
+                            'page' => 'e2pdf-templates',
+                            'status' => $this->get->get('status'),
+                            'orderby' => $this->get->get('orderby'),
+                            'order' => $this->get->get('order'),
+                            's' => $this->get->get('s'),
+                            'notification' => $notification,
+                        ]
                 )
         );
-        $this->redirect($location);
     }
 
     /**
      * @url admin.php?page=e2pdf-templates&action=restore&id=$id&status=$status
      */
     public function restore_action() {
+        $notification = '';
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
             if ($this->get->get('id')) {
                 $this->restore_template($this->get->get('id'));
-                $this->add_notification('update', sprintf(__('Restored: %d', 'e2pdf'), '1'));
+                $notification = $this->add_notification('update', __('Template Restored', 'e2pdf'));
             }
         } else {
             wp_die($this->message('wp_verify_nonce_error'));
         }
-        $location = $this->helper->get_url(
-                array(
-                    'page' => 'e2pdf-templates',
-                    'status' => $this->get->get('status'),
-                    'orderby' => $this->get->get('orderby'),
-                    'order' => $this->get->get('order'),
-                    's' => $this->get->get('s'),
+        $this->redirect(
+                $this->helper->get_url(
+                        [
+                            'page' => 'e2pdf-templates',
+                            'status' => $this->get->get('status'),
+                            'orderby' => $this->get->get('orderby'),
+                            'order' => $this->get->get('order'),
+                            's' => $this->get->get('s'),
+                            'notification' => $notification,
+                        ]
                 )
         );
-        $this->redirect($location);
     }
 
     /**
      * @url admin.php?page=e2pdf-templates&action=delete&id=$id&status=$status
      */
     public function delete_action() {
+        $notification = '';
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
             if ($this->get->get('id')) {
                 $this->delete_template($this->get->get('id'));
-                $this->add_notification('update', sprintf(__('Deleted: %d', 'e2pdf'), '1'));
+                $notification = $this->add_notification('update', __('Template Deleted', 'e2pdf'));
             }
         } else {
             wp_die($this->message('wp_verify_nonce_error'));
         }
-        $location = $this->helper->get_url(
-                array(
-                    'page' => 'e2pdf-templates',
-                    'status' => $this->get->get('status'),
-                    'orderby' => $this->get->get('orderby'),
-                    'order' => $this->get->get('order'),
-                    's' => $this->get->get('s'),
+
+        $this->redirect(
+                $this->helper->get_url(
+                        [
+                            'page' => 'e2pdf-templates',
+                            'status' => $this->get->get('status'),
+                            'orderby' => $this->get->get('orderby'),
+                            'order' => $this->get->get('order'),
+                            's' => $this->get->get('s'),
+                            'notification' => $notification,
+                        ]
                 )
         );
-        $this->redirect($location);
     }
 
     /**
      * @url admin.php?page=e2pdf-templates&action=duplicate&id=$id
      */
     public function duplicate_action() {
+        $notification = '';
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
             if ($this->get->get('id')) {
                 $this->duplicate_template($this->get->get('id'));
-                $this->add_notification('update', sprintf(__('Duplicated: %d', 'e2pdf'), '1'));
+                $notification = $this->add_notification('update', __('Template Duplicated', 'e2pdf'));
             }
         } else {
             wp_die($this->message('wp_verify_nonce_error'));
         }
-        $location = $this->helper->get_url(
-                array(
-                    'page' => 'e2pdf-templates',
-                    'status' => $this->get->get('status'),
-                    'orderby' => $this->get->get('orderby'),
-                    'order' => $this->get->get('order'),
-                    's' => $this->get->get('s'),
+        $this->redirect(
+                $this->helper->get_url(
+                        [
+                            'page' => 'e2pdf-templates',
+                            'status' => $this->get->get('status'),
+                            'orderby' => $this->get->get('orderby'),
+                            'order' => $this->get->get('order'),
+                            's' => $this->get->get('s'),
+                            'notification' => $notification,
+                        ]
                 )
         );
-        $this->redirect($location);
     }
 
     /**
@@ -831,8 +837,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                         if ($template->get('ID')) {
                             $this->add_notification(
                                     'update', sprintf(
-                                            __('Imported: %1$d: <a target="_blank" href="%2$s">View</a> | <a target="_blank" href="%3$s">Edit</a>', 'e2pdf'),
-                                            '1',
+                                            __('Template Imported: <a target="_blank" href="%2$s">View</a> | <a target="_blank" href="%3$s">Edit</a>', 'e2pdf'),
                                             $this->helper->get_url(
                                                     [
                                                         'page' => 'e2pdf-templates',
@@ -1223,12 +1228,13 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         if (is_array($option) && isset($option['option']) && isset($option['value']) && $option['value']) {
             update_option($option['option'], $option['value']);
         }
-        $location = $this->helper->get_url(
-                array(
-                    'page' => 'e2pdf-templates',
+        $this->redirect(
+                $this->helper->get_url(
+                        [
+                            'page' => 'e2pdf-templates',
+                        ]
                 )
         );
-        $this->redirect($location);
     }
 
     // ajax save form
@@ -1282,10 +1288,10 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                                 'page' => 'e2pdf-templates',
                                 'action' => 'edit',
                                 'id' => $template->get('ID'),
+                                'notification' => $this->add_notification('update', __('Template Saved', 'e2pdf')),
                             )
                     ),
                 );
-                $this->add_notification('update', sprintf(__('Updated: %d', 'e2pdf'), '1'));
             }
         } else {
             $response['error'] = $this->message('wp_verify_nonce_error');

@@ -141,9 +141,14 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     // render
     public function render($value, $field = [], $convert_shortcodes = true, $raw = false) {
         if ($this->extension() && method_exists($this->extension(), 'render')) {
-            $this->pre_render();
+            $filter = has_filter('e2pdf_pdf_render_filter');
+            if (!$filter) {
+                $this->pre_render();
+            }
             $content = $this->extension()->render($value, $field, $convert_shortcodes, $raw);
-            $this->after_render();
+            if (!$filter) {
+                $this->after_render();
+            }
             $type = isset($field['type']) ? $field['type'] : false;
             if ($type == 'e2pdf-image' || $type == 'e2pdf-signature' || $type == 'e2pdf-qrcode' || $type == 'e2pdf-barcode' || $type == 'e2pdf-graph') {
                 return $content;
@@ -157,15 +162,21 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     // datasets
     public function datasets($item = false, $name = false) {
         if ($this->extension() && method_exists($this->extension(), 'datasets')) {
-            $this->pre_render();
+            $filter = has_filter('e2pdf_pdf_render_filter');
+            if (!$filter) {
+                $this->pre_render();
+            }
             $content = $this->extension()->datasets($item, $name);
-            $this->after_render();
+            if (!$filter) {
+                $this->after_render();
+            }
             return $content;
         }
         return false;
     }
 
     public function pre_render() {
+        add_filter('e2pdf_pdf_render_filter', [$this->helper, '__return_true'], 999);
         add_filter('e2pdf_pdf_render', [$this->helper, '__return_true'], 999);
         if (class_exists('ACF')) {
             if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
@@ -201,6 +212,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
             }
         }
         remove_filter('e2pdf_pdf_render', [$this->helper, '__return_true'], 999);
+        remove_filter('e2pdf_pdf_render_filter', [$this->helper, '__return_true'], 999);
     }
 
     // convert shortcodes

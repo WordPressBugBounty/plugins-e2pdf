@@ -45,7 +45,7 @@ class Helper_E2pdf_View {
         $this->files = new Helper_E2pdf_Files();
         $this->page = $this->get->get_page();
         $this->helper = Helper_E2pdf_Helper::instance();
-        $this->notification = new Model_E2pdf_Notification();
+        $this->notification = Model_E2pdf_Notification::instance();
         $this->view_dir = $this->helper->get('plugin_dir') . 'classes/view/';
     }
 
@@ -186,16 +186,15 @@ class Helper_E2pdf_View {
      * @param string $text - Text of notification
      */
     public function add_notification($type, $text) {
-        $this->notification->add_notification($type, $text);
+        return $this->notification->add_notification($type, $text);
     }
 
     /**
      * Get notifications
      * @return array - List of notifications
      */
-    public function get_notifications() {
-        $notifications = $this->notification->get_notifications();
-        return $notifications;
+    public function get_notifications($notification_id = '') {
+        return $this->notification->get_notifications($notification_id);
     }
 
     /**

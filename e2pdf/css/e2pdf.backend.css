@@ -1956,7 +1956,7 @@ a.e2pdf-vm-element:hover {
     box-sizing: border-box;
 }
 
-.e2pdf-action-delete {
+.e2pdf-action-delete, .e2pdf-search-replace-delete {
     position: absolute;
     top: 0;
     right: 0;
@@ -1975,7 +1975,7 @@ a.e2pdf-vm-element:hover {
     line-height: 20px;
 }
 
-.e2pdf-action {
+.e2pdf-action, .e2pdf-search-replace {
     padding: 20px;
     margin-bottom: 20px;
     background: #fcfcfc;
@@ -2112,6 +2112,7 @@ input[type='radio'].e2pdf-input-height {
 .e2pdf-condition textarea {
     height: 30px;
     line-height: 24px;
+    margin-top: 0;
 }
 
 input[type='checkbox'].e2pdf-input-height:checked:before {
@@ -2184,7 +2185,7 @@ input.e2pdf-mod-rewrite-url {
     position: absolute;
 }
 
-fieldset.e2pdf-export-dataset {
+fieldset.e2pdf-fieldset {
     height: 300px;
     border: 1px solid #8c8f94;
     overflow-y: auto;
@@ -2411,6 +2412,14 @@ ul.add-menu-item-tabs li, ul.category-tabs li, ul.wp-tab-bar li {
 .e2pdf-column-indicator-v {
     width: 5px;
     height: 50px;
+}
+
+.e2pdf-search-replace {
+    box-sizing: border-box;
+}
+
+.e2pdf-search-replaces .e2pdf-search-replace:first-child .e2pdf-search-replace-delete {
+    display: none;
 }
 
 @media screen and (max-width: 1024px) {

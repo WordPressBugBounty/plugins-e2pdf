@@ -84,4 +84,22 @@ class Controller_Frontend_E2pdf_Rpc_V1 extends Helper_E2pdf_View {
             }
         }
     }
+
+    public function restore($rpc) {
+        if (is_a($rpc, 'Model_E2pdf_Rpc')) {
+            switch ($rpc->get('action')) {
+                case 'request':
+                    if (get_transient('e2pdf_restore_key') && $rpc->get_arg('restore_key') === get_transient('e2pdf_restore_key')) {
+                        wp_send_json_success([
+                            'restore_key' => get_transient('e2pdf_restore_key')
+                        ]);
+                    } else {
+                        wp_send_json_error(null, 401);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
 }

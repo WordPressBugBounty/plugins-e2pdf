@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 4.0
 Tested up to: 7.0
 Requires PHP: 5.4
-Stable tag: 1.32.18
+Stable tag: 1.32.22
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,31 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.22 =
+*Release Date - May 27, 2026*
+
+* Fix: PDF uploads fail in some cases
+
+= 1.32.21 =
+*Release Date - May 26, 2026*
+
+* Fix: Inner shortcodes fail to render in some cases
+* Fix: Visual Mapper Fluent Forms Page Breaks
+* Fix: License key does not match this website
+* Improvement: Notifications
+* Improvement: Translation
+* Improvement: UI/UX
+
+= 1.32.20 =
+*Release Date - May 15, 2026*
+
+* Fix: Fluent Forms email attachments fail in some cases
+
+= 1.32.19 =
+*Release Date - May 07, 2026*
+
+* Fix: Cron bulk export ACF fields
 
 = 1.32.18 =
 *Release Date - May 04, 2026*

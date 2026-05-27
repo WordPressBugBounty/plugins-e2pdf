@@ -58,9 +58,9 @@ class Controller_E2pdf extends Helper_E2pdf_View {
 
         if ($this->get->get('uid')) {
             $model_e2pdf_bulk = new Model_E2pdf_Bulk();
-            if ($model_e2pdf_bulk->load_by_uid($this->get->get('uid')) && file_exists($this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '.zip')) {
+            if ($model_e2pdf_bulk->load_by_uid($this->get->get('uid')) && file_exists($this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '.zip') && $model_e2pdf_bulk->load($model_e2pdf_bulk->get('ID'))) {
                 $this->helper->set_time_limit(0);
-                $this->download_response('zip', $this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '.zip', $model_e2pdf_bulk->get('uid'), '', true);
+                $this->download_response('zip', $this->helper->get('bulk_dir') . $model_e2pdf_bulk->get('uid') . '.zip', $model_e2pdf_bulk->get('ID') . ' - ' . $model_e2pdf_bulk->get('template')->get('title'), '', true);
                 exit;
             }
         }
@@ -77,16 +77,16 @@ class Controller_E2pdf extends Helper_E2pdf_View {
         }
 
         $users_tmp = get_users(
-                array(
-                    'fields' => array(
+                [
+                    'fields' => [
                         'ID', 'user_login',
-                    ),
-                )
+                    ],
+                ]
         );
 
-        $users = array(
+        $users = [
             '0' => __('--- Select ---', 'e2pdf'),
-        );
+        ];
         foreach ($users_tmp as $user) {
             $users[$user->ID] = $user->user_login;
         }
@@ -728,7 +728,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
 
     public function ajax_bulk_create() {
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
-            $this->helper->set('license', new Model_E2pdf_License());
+            $this->helper->load('license')->load();
             if ($this->helper->get('license')->get('type') === false) {
                 $response = array(
                     'error' => __('Something went wrong!', 'e2pdf'),
@@ -773,12 +773,12 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                                     array(
                                         'page' => 'e2pdf',
                                         'action' => 'bulk',
+                                        'notification' => $this->add_notification('update', __('The Bulk PDFs generation Task is created successfully', 'e2pdf')),
                                     )
                             ),
                         );
                     }
                     $this->cron_bulk_export();
-                    $this->add_notification('update', 'The Bulk PDFs generation Task is created successfully', 'e2pdf');
                 }
             }
         } else {
@@ -896,7 +896,9 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                                 }
                             }
                         }
+                        add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
                         $model_e2pdf_shortcode->e2pdf_save($atts);
+                        remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
                     }
                 }
             }

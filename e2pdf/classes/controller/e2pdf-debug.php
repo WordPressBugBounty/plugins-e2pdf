@@ -19,9 +19,14 @@ class Controller_E2pdf_Debug extends Helper_E2pdf_View {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_debug')) {
                 if ($this->post->get('e2pdf_updated')) {
                     update_option('e2pdf_version', '1.00.00');
-                    /* translators: %s: Action */
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Reinitialize Activation Hooks', 'e2pdf')));
-                    $this->redirect($this->helper->get_url(['page' => 'e2pdf-debug']));
+                    $this->redirect(
+                            $this->helper->get_url(
+                                    [
+                                        'page' => 'e2pdf-debug',
+                                        'notification' => $this->add_notification('update', __('Success', 'e2pdf')),
+                                    ]
+                            )
+                    );
                 }
             } else {
                 wp_die($this->message('wp_verify_nonce_error'));
@@ -44,24 +49,19 @@ class Controller_E2pdf_Debug extends Helper_E2pdf_View {
                 if ($this->post->get('e2pdf_db_repair')) {
                     $db_prefix = $wpdb->prefix;
                     $this->helper->load('db')->db_repair($db_prefix);
-                    /* translators: %s: Action */
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Repair DB', 'e2pdf')));
                 } elseif ($this->post->get('e2pdf_db_repair_collate')) {
                     $db_prefix = $wpdb->prefix;
                     $this->helper->load('db')->db_repair_collate($db_prefix);
-                    /* translators: %s: Action */
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Repair DB Collate', 'e2pdf')));
                 } elseif ($this->post->get('e2pdf_db')) {
                     $db_prefix = $wpdb->prefix;
                     $this->helper->load('db')->db_init($db_prefix);
-                    /* translators: %s: Action */
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Reinitialize DB Hooks', 'e2pdf')));
                 }
                 $this->redirect(
                         $this->helper->get_url(
                                 [
                                     'page' => 'e2pdf-debug',
                                     'action' => 'db',
+                                    'notification' => $this->add_notification('update', __('Success', 'e2pdf')),
                                 ]
                         )
                 );

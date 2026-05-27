@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
         <?php } else { ?>
             <input type="hidden" name="<?php echo isset($checkbox_field['name']) ? esc_attr($checkbox_field['name']) : '' ?>" value="<?php echo esc_attr($this->tpl_args->get('default_value')); ?>"/>
         <?php } ?>
-        <input type="checkbox" <?php foreach ($this->tpl_args->get('field') as $key => $value) { ?><?php if (($key === 'disabled' && $value != false) || $key != 'disabled') { ?><?php echo esc_attr($key); ?>="<?php echo esc_attr($value); ?>" <?php } ?><?php } ?><?php echo $this->tpl_args->get('value') == $this->tpl_args->get('checkbox_value') ? 'checked="checked"' : '' ?>
+        <input type="checkbox" <?php foreach ($this->tpl_args->get('field') as $field_key => $field_value) { ?><?php if (($field_key === 'disabled' && $field_value != false) || $field_key != 'disabled') { ?><?php echo esc_attr($field_key); ?>="<?php echo esc_attr($field_value); ?>" <?php } ?><?php } ?><?php echo $this->tpl_args->get('value') == $this->tpl_args->get('checkbox_value') ? 'checked="checked"' : '' ?>
                value="<?php echo esc_attr($this->tpl_args->get('checkbox_value')); ?>"/> <?php echo isset($checkbox_field['placeholder']) ? esc_html($checkbox_field['placeholder']) : '' ?>
     </label>
 </fieldset>

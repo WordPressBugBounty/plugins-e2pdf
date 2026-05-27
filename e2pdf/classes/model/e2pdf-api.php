@@ -15,9 +15,16 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
 
     protected $api;
 
+    public function __construct() {
+        parent::__construct();
+        $this->api = new stdClass();
+    }
+
     // request
     public function request($key = false, $api_server = false) {
-        if ($this->api->action) {
+
+        $api_action = $this->get('action');
+        if ($api_action) {
 
             // fix for upgrade via dashboard -> updates
             if (method_exists($this->helper, 'set_time_limit')) {
@@ -25,7 +32,7 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             }
 
             // fix for upgrade via dashboard -> updates
-            if ($this->api->action == 'update/info' && !method_exists($this->helper, 'get_site_url')) {
+            if ($api_action == 'update/info' && !method_exists($this->helper, 'get_site_url')) {
                 return [];
             }
 
@@ -47,7 +54,7 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             if (!$api_server) {
                 $api_server = $this->get_api_server();
             }
-            $request_url = 'https://' . $api_server . '/' . $this->api->action;
+            $request_url = 'https://' . $api_server . '/' . $api_action;
 
             // phpcs:disable WordPress.WP.AlternativeFunctions
             $ch = apply_filters('e2pdf_api_connection', curl_init($request_url));
@@ -85,10 +92,10 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
                 }
             }
 
-            if (!empty($this->api->data)) {
-                $data = array_merge($data, $this->api->data);
+            if (!empty($this->get('data'))) {
+                $data = array_merge($data, $this->get('data'));
             }
-            if ($this->api->action === 'template/upload2') {
+            if ($api_action === 'template/upload2') {
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
             } else {
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
@@ -125,17 +132,6 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
                         $response['file'] = base64_decode($response['file']);
                     }
                 }
-
-                if (($this->api->action === 'common/activate' || $this->api->action === 'license/update' || $this->api->action === 'license/request') && !empty($response['license_key'])) {
-                    update_option('e2pdf_license', $response['license_key']);
-                }
-                if ($this->api->action === 'common/activate' && !empty($response['e2pdf_api']) && get_option('e2pdf_api') === false) {
-                    if ($response['e2pdf_api'] === 'api3.e2pdf.com') {
-                        update_option('e2pdf_api', 'api3.e2pdf.com');
-                    } else {
-                        update_option('e2pdf_api', 'api.e2pdf.com');
-                    }
-                }
                 if (empty($response)) {
                     if ($this->get_api_server() === $this->get_api_server($api_server)) {
                         $response['error'] = __('Something went wrong!', 'e2pdf');
@@ -152,6 +148,20 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
                     return false;
                 }
             } else {
+                if ($api_action == 'template/build' || ($api_action == 'license/info' && $this->get('reload') === false)) {
+                    if (isset($response['error']) && $response['error'] == 'Site Url Not Found. Please try to "Reactivate" plugin.') {
+                        $license = $this->helper->load('license');
+                        if ($license && method_exists($license, 'reactivate') && $license->reactivate()) {
+                            return $this->request($key, $api_server);
+                        }
+                    }
+                    if (isset($response['error']) && $response['error'] == 'License Key does not match this site. Please correct License Key to continue usage.') {
+                        $license = $this->helper->load('license');
+                        if ($license && method_exists($license, 'restore') && $license->restore()) {
+                            return $this->request($key, $api_server);
+                        }
+                    }
+                }
                 return $response;
             }
         }
@@ -186,16 +196,8 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
         return $api_server;
     }
 
-    // flush
-    public function flush() {
-        $this->api = null;
-    }
-
     // set
     public function set($key, $value = false) {
-        if (!$this->api) {
-            $this->api = new stdClass();
-        }
         if (is_array($key)) {
             foreach ($key as $attr => $value) {
                 $this->api->$attr = $value;
@@ -203,6 +205,11 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
         } else {
             $this->api->$key = $value;
         }
+        return $this;
+    }
+
+    public function get($key) {
+        return property_exists($this->api, $key) ? $this->api->$key : null;
     }
 
     // get license

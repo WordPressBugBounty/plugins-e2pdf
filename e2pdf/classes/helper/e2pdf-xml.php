@@ -14,6 +14,11 @@ if (!defined('ABSPATH')) {
 class Helper_E2pdf_Xml {
 
     private $xml;
+    private $helper;
+
+    public function __construct() {
+        $this->helper = Helper_E2pdf_Helper::instance();
+    }
 
     // check
     public function check() {
@@ -166,13 +171,21 @@ class Helper_E2pdf_Xml {
     // parse xml font
     public function parse_xml_font($font) {
 
+        if (!$font) {
+            return;
+        }
+
+        $font_title = isset($font->title) ? (string) $font->title : '';
+        $font_name = isset($font->name) ? (string) $font->name : '';
+        $font_value = isset($font->value) ? (string) $font->value : '';
+
+        if (!$font_title || !$font_name || !$font_value) {
+            return;
+        }
+
         $model_e2pdf_font = new Model_E2pdf_Font();
         $fonts = $model_e2pdf_font->get_fonts();
         $fonts_dir = $this->helper->get('fonts_dir');
-
-        $font_title = (string) $font->title;
-        $font_name = (string) $font->name;
-        $font_value = (string) $font->value;
 
         $exist = array_search($font_title, $fonts, true);
         if ($exist === false) {

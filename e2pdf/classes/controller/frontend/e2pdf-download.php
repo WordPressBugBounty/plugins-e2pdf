@@ -345,7 +345,6 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
 
                     $template->fill();
                     $request = $template->render();
-
                     if (isset($request['error'])) {
                         wp_die($request['error']);
                     } elseif ($request['file'] === '') {

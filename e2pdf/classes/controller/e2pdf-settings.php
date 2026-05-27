@@ -72,7 +72,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
                 }
 
                 Model_E2pdf_Options::update_options('common_group', $this->post->get());
-                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Settings Saved', 'e2pdf')));
+                $this->add_notification('update', __('Settings Saved', 'e2pdf'));
 
                 if ($this->post->get('e2pdf_cache_pdfs')) {
                     if (!wp_next_scheduled('e2pdf_cache_pdfs_cron')) {
@@ -107,69 +107,69 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
                 if ($this->post->get('e2pdf_purge_objects_cache')) {
                     $this->helper->load('cache')->purge_objects_cache();
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Purge Objects Cache', 'e2pdf')));
                     $this->redirect(
                             $this->helper->get_url(
-                                    array(
+                                    [
                                         'page' => 'e2pdf-settings',
                                         'action' => 'maintenance',
-                                    )
+                                        'notification' => $this->add_notification('update', __('Success', 'e2pdf')),
+                                    ]
                             )
                     );
                 } elseif ($this->post->get('e2pdf_purge_fonts_cache')) {
                     $this->helper->load('cache')->purge_fonts_cache();
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Purge Fonts Cache', 'e2pdf')));
                     $this->redirect(
                             $this->helper->get_url(
-                                    array(
+                                    [
                                         'page' => 'e2pdf-settings',
                                         'action' => 'maintenance',
-                                    )
+                                        'notification' => $this->add_notification('update', __('Success', 'e2pdf')),
+                                    ]
                             )
                     );
                 } elseif ($this->post->get('e2pdf_purge_pdfs_cache')) {
                     $this->helper->load('cache')->purge_pdfs_cache();
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Purge PDFs Cache', 'e2pdf')));
                     $this->redirect(
                             $this->helper->get_url(
-                                    array(
+                                    [
                                         'page' => 'e2pdf-settings',
                                         'action' => 'maintenance',
-                                    )
+                                        'notification' => $this->add_notification('update', __('Success', 'e2pdf')),
+                                    ]
                             )
                     );
                 } elseif ($this->post->get('e2pdf_purge_cache')) {
                     $this->helper->load('cache')->purge_cache();
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Purge Full Cache', 'e2pdf')));
                     $this->redirect(
                             $this->helper->get_url(
-                                    array(
+                                    [
                                         'page' => 'e2pdf-settings',
                                         'action' => 'maintenance',
-                                    )
+                                        'notification' => $this->add_notification('update', __('Success', 'e2pdf')),
+                                    ]
                             )
                     );
                 } elseif ($this->post->get('e2pdf_db_optimize')) {
                     $db_prefix = $wpdb->prefix;
                     $this->helper->load('db')->db_optimize($db_prefix);
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Optimize DB', 'e2pdf')));
                     $this->redirect(
                             $this->helper->get_url(
-                                    array(
+                                    [
                                         'page' => 'e2pdf-settings',
                                         'action' => 'maintenance',
-                                    )
+                                        'notification' => $this->add_notification('update', __('Success', 'e2pdf')),
+                                    ]
                             )
                     );
                 } elseif ($this->post->get('e2pdf_recovery_mode_limit')) {
                     delete_option('recovery_mode_email_last_sent');
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Clear Recovery Mode Limit', 'e2pdf')));
                     $this->redirect(
                             $this->helper->get_url(
-                                    array(
+                                    [
                                         'page' => 'e2pdf-settings',
                                         'action' => 'maintenance',
-                                    )
+                                        'notification' => $this->add_notification('update', __('Success', 'e2pdf')),
+                                    ]
                             )
                     );
                 }
@@ -215,7 +215,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
                     $this->add_notification('error', __('A Font with this name already exists', 'e2pdf'));
                 } elseif (move_uploaded_file($font['tmp_name'], $this->helper->get('fonts_dir') . $name)) {
                     if (file_exists($this->helper->get('fonts_dir') . $name)) {
-                        $this->add_notification('update', sprintf(__('Uploaded: %d', 'e2pdf'), '1'));
+                        $this->add_notification('update', __('Font Uploaded', 'e2pdf'));
                     } else {
                         $this->add_notification('error', __('Something went wrong!', 'e2pdf'));
                     }
@@ -239,10 +239,10 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
      * Backward Compatibility
      */
     public function adobesign_action() {
-        $redirect_url = array(
+        $redirect_url = [
             'page' => 'e2pdf-integrations',
             'action' => 'adobesign',
-        );
+        ];
         if ($this->get->get('code') && get_option('e2pdf_adobesign_client_id', '') && get_option('e2pdf_adobesign_client_secret', '')) {
             $redirect_url['code'] = $this->get->get('code');
             $redirect_url['_wpnonce'] = wp_create_nonce('e2pdf_adobe');
@@ -262,7 +262,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
                 Model_E2pdf_Options::update_options($group_key, $this->post->get());
-                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Settings Saved', 'e2pdf')));
+                $this->add_notification('update', __('Settings Saved', 'e2pdf'));
             } else {
                 wp_die($this->message('wp_verify_nonce_error'));
             }
@@ -284,13 +284,13 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
                 } else {
                     update_option('e2pdf_disabled_extensions', array_filter($this->post->get('e2pdf_disabled_extensions')));
                 }
-                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Settings Saved', 'e2pdf')));
                 $this->redirect(
                         $this->helper->get_url(
-                                array(
+                                [
                                     'page' => 'e2pdf-settings',
                                     'action' => 'extensions',
-                                )
+                                    'notification' => $this->add_notification('update', __('Settings Saved', 'e2pdf')),
+                                ]
                         )
                 );
             } else {
@@ -324,7 +324,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
                         }
                     }
                 }
-                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Settings Saved', 'e2pdf')));
+                $this->add_notification('update', __('Settings Saved', 'e2pdf'));
             } else {
                 wp_die($this->message('wp_verify_nonce_error'));
             }
@@ -349,7 +349,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
                 Model_E2pdf_Options::update_options('translation_group', $this->post->get());
-                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Settings Saved', 'e2pdf')));
+                $this->add_notification('update', __('Settings Saved', 'e2pdf'));
             } else {
                 wp_die($this->message('wp_verify_nonce_error'));
             }
@@ -388,12 +388,12 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
             $font = $this->post->get('data');
             $model_e2pdf_font = new Model_E2pdf_Font();
             $model_e2pdf_font->delete_font($font);
-            $this->add_notification('update', sprintf(__('Deleted: %d', 'e2pdf'), '1'));
             $response = array(
                 'redirect' => $this->helper->get_url(
                         array(
                             'page' => 'e2pdf-settings',
                             'action' => 'fonts',
+                            'notification' => $this->add_notification('update', __('Font Deleted', 'e2pdf')),
                         )
                 ),
             );

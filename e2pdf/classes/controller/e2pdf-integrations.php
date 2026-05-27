@@ -15,14 +15,6 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
 
     // url: admin.php?page=e2pdf-integrations
     public function index_action() {
-        if ($this->post->get('_wpnonce')) {
-            if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_integrations')) {
-                /* translators: %s: Action */
-                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Settings Saved', 'e2pdf')));
-            } else {
-                wp_die($this->message('wp_verify_nonce_error'));
-            }
-        }
         $this->view('options', Model_E2pdf_Options::get_options(false, ['zapier_group']));
         $this->view('groups', $this->get_groups());
     }
@@ -44,12 +36,12 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
                     set_transient('e2pdf_adobesign_access_token', false);
                     Model_E2pdf_Options::update_options('adobesign_group', $this->post->get());
                     if (!get_option('e2pdf_adobesign_client_id', '') || !get_option('e2pdf_adobesign_client_secret', '') || !get_option('e2pdf_adobesign_region', '')) {
-                        $this->add_notification('update', __('Not Authorized', 'e2pdf'));
                         $this->redirect(
                                 $this->helper->get_url(
                                         [
                                             'page' => 'e2pdf-integrations',
                                             'action' => 'adobesign',
+                                            'notification' => $this->add_notification('update', __('Not Authorized', 'e2pdf')),
                                         ]
                                 )
                         );
@@ -67,16 +59,12 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
             if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_adobe')) {
                 update_option('e2pdf_adobesign_code', sanitize_text_field(wp_unslash($this->get->get('code'))));
                 $request = (new Model_E2pdf_AdobeSign())->get_token();
-                if (isset($request['error'])) {
-                    $this->add_notification('error', $request['error']);
-                } else {
-                    $this->add_notification('update', __('App Authorized', 'e2pdf'));
-                }
                 $this->redirect(
                         $this->helper->get_url(
                                 [
                                     'page' => 'e2pdf-integrations',
                                     'action' => 'adobesign',
+                                    'notification' => isset($request['error']) ? $this->add_notification('error', $request['error']) : $this->add_notification('update', __('App Authorized', 'e2pdf')),
                                 ]
                         )
                 );
@@ -104,12 +92,12 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
                     delete_transient('e2pdf_gdrive_access_token');
                     Model_E2pdf_Options::update_options('gdrive_group', $this->post->get());
                     if (!get_option('e2pdf_gdrive_client_id', '') || !get_option('e2pdf_gdrive_client_secret', '')) {
-                        $this->add_notification('update', __('Not Authorized', 'e2pdf'));
                         $this->redirect(
                                 $this->helper->get_url(
                                         [
                                             'page' => 'e2pdf-integrations',
                                             'action' => 'gdrive',
+                                            'notification' => $this->add_notification('update', __('Not Authorized', 'e2pdf')),
                                         ]
                                 )
                         );

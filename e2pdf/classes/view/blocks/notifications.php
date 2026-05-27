@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     die('Access denied.');
 }
 ?>
-<?php foreach ($this->get_notifications() as $key => $notify) { ?>
+<?php foreach ($this->get_notifications($this->get->get('notification')) as $key => $notify) { ?>
     <?php if ($notify['type'] === 'update') { ?>
         <div id="message" class="e2pdf-notice notice notice-success is-dismissible">
             <p><?php echo wp_kses_post($notify['text']); ?></p>

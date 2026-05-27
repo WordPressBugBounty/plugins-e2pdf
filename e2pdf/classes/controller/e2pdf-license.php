@@ -46,84 +46,12 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
     public function ajax_change_license_key() {
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_license')) {
             $data = $this->post->get('data');
-            $model_e2pdf_api = new Model_E2pdf_Api();
-            $model_e2pdf_api->set(
-                    [
-                        'action' => 'license/update',
-                        'data' => [
-                            'license_key' => isset($data['license_key']) ? trim($data['license_key']) : '',
-                        ],
-                    ]
-            );
-            $request = $model_e2pdf_api->request();
-            if (isset($request['error'])) {
-                $this->add_notification('error', $request['error']);
-            } else {
-                /* translators: %s: Action */
-                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('License Key Updated', 'e2pdf')));
-            }
+            $this->helper->load('license')->change(isset($data['license_key']) ? $data['license_key'] : '');
             $response = [
                 'redirect' => $this->helper->get_url(
                         [
                             'page' => 'e2pdf-license',
-                        ]
-                ),
-            ];
-        } else {
-            $response['error'] = $this->message('wp_verify_nonce_error');
-        }
-        $this->json_response($response);
-    }
-
-    /**
-     * Restore license key via ajax
-     * action: wp_ajax_e2pdf_restore_license_key
-     * function: e2pdf_restore_license_key
-     * @return json
-     */
-    public function ajax_restore_license_key() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_license')) {
-            $model_e2pdf_api = new Model_E2pdf_Api();
-            $model_e2pdf_api->set(
-                    [
-                        'action' => 'license/activation',
-                        'data' => [],
-                    ]
-            );
-            $request = $model_e2pdf_api->request();
-            if (isset($request['error'])) {
-                $this->add_notification('error', $request['error']);
-            } elseif (isset($request['success']) && isset($request['activation_key'])) {
-                $activation_key = $request['activation_key'];
-                $file = ABSPATH . $activation_key . '.html';
-                set_transient('e2pdf_activation_key', $activation_key, 600);
-                if (!file_exists($file)) {
-                    $this->helper->create_file($file, $activation_key);
-                }
-                $model_e2pdf_api = new Model_E2pdf_Api();
-                $model_e2pdf_api->set(
-                        [
-                            'action' => 'license/request',
-                            'data' => [],
-                        ]
-                );
-                $request = $model_e2pdf_api->request();
-                if (isset($request['success'])) {
-                    /* translators: %s: Action */
-                    $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('License Key Restored', 'e2pdf')));
-                } else {
-                    /* translators: %1$s: Url, %2$s: Url   */
-                    $this->add_notification('error', sprintf(__('Failed to Restore License Key. Contact Support at <a target="_blank" href="%1$s">%2$s</a>', 'e2pdf'), 'https://e2pdf.com/support/contact', 'https://e2pdf.com/support/contact'));
-                }
-                if (file_exists($file)) {
-                    unlink($file);
-                }
-                delete_transient('e2pdf_activation_key');
-            }
-            $response = [
-                'redirect' => $this->helper->get_url(
-                        [
-                            'page' => 'e2pdf-license',
+                            'notification' => isset($request['error']) ? $this->add_notification('error', $request['error']) : $this->add_notification('update', __('License Key Changed', 'e2pdf')),
                         ]
                 ),
             ];
@@ -142,16 +70,11 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
                     ]
             );
             $request = $model_e2pdf_api->request();
-            if (isset($request['error'])) {
-                $this->add_notification('error', $request['error']);
-            } else {
-                /* translators: %s: Action */
-                $this->add_notification('update', sprintf(__('Success: %s', 'e2pdf'), __('Deactivated', 'e2pdf')));
-            }
             $response = [
                 'redirect' => $this->helper->get_url(
                         [
                             'page' => 'e2pdf-license',
+                            'notification' => isset($request['error']) ? $this->add_notification('error', $request['error']) : $this->add_notification('update', __('Templates Deactivated', 'e2pdf')),
                         ]
                 ),
             ];

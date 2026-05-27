@@ -111,14 +111,12 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     }
                                 }
                             }
-
                             if (!isset($processed_fields_values['_wp_http_referer'])) {
                                 $processed_fields_values['_wp_http_referer'] = array(
                                     'value' => isset($cached_entry['_wp_http_referer']) ? $cached_entry['_wp_http_referer'] : '',
                                     'label' => '_wp_http_referer',
                                 );
                             }
-
                             if (!isset($processed_fields_values['e2pdf_entry_id'])) {
                                 $processed_fields_values['e2pdf_entry_id'] = array(
                                     'value' => (int) $this->get('dataset'),
@@ -816,7 +814,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         if ($this->get('item')) {
             $post = $this->get_form($this->get('item'));
             if ($post && isset($post->post_content)) {
-
                 $content = $post->post_content;
 
                 if (false !== strpos($content, '[')) {
@@ -1387,7 +1384,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
             }
             $this->helper->deset('divi_attachments');
         }
-
 
         return $output;
     }
