@@ -362,3 +362,7 @@ h1.et_pb_contact_main_title {
     font-size: 0;
     content: " ";
 }
+
+.et_pb_contact_form_container.et_flex_module .et_flex_module {
+    margin-bottom: 20px;
+}

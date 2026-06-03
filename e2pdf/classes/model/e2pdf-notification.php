@@ -34,7 +34,7 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
 
         $notification_id = (int) round(microtime(true) * 1000) . '-' . bin2hex(random_bytes(3));
         $notifications = $this->load();
-        
+
         $notifications[$notification_id] = [
             'type' => $type,
             'text' => $text,

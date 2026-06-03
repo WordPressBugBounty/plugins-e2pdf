@@ -17,9 +17,7 @@ class Helper_E2pdf_Db {
 
     /**
      * Prepare WHERE for sql requests
-     * 
      * @param string $condition - Array of conditions
-     * 
      * @return array - Filtered WHERE request
      */
     public function prepare_where($condition = array(), $sub_query = false) {
@@ -27,7 +25,7 @@ class Helper_E2pdf_Db {
         $sql = array();
         $filter = array();
         if (!$sub_query) {
-            $sql[] = " WHERE '1' = '1'";
+            $sql[] = " WHERE 1 = 1";
         }
         $condition = apply_filters('e2pdf_helper_db_prepare_where_condition', $condition);
 
@@ -68,7 +66,7 @@ class Helper_E2pdf_Db {
 
         $where = array(
             'sql' => implode(' AND', $sql),
-            'filter' => $filter
+            'filter' => $filter,
         );
 
         return apply_filters('e2pdf_helper_db_prepare_where', $where, $condition);
@@ -76,9 +74,7 @@ class Helper_E2pdf_Db {
 
     /**
      * Prepare ORDER_BY for sql requests
-     * 
      * @param string $condition - Array of conditions
-     * 
      * @return array - Filtered ORDER_BY request
      */
     public function prepare_orderby($condition = array()) {
@@ -164,6 +160,7 @@ class Helper_E2pdf_Db {
         `line_height` varchar(255) NOT NULL,
         `text_align` varchar(255) NOT NULL,
         `fonts` longtext NOT NULL,
+        `attachments` longtext NOT NULL,
         `trash` enum('0','1') NOT NULL DEFAULT '0',
         `activated` enum('0','1') NOT NULL DEFAULT '0',
         `locked` enum('0','1') NOT NULL DEFAULT '0',
@@ -194,7 +191,7 @@ class Helper_E2pdf_Db {
         }
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'lang_code';")) {
-            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `lang_code` text NOT NULL AFTER meta_keywords;");
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `lang_code` varchar(255) NOT NULL AFTER meta_keywords;");
         }
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'actions';")) {
@@ -457,6 +454,7 @@ class Helper_E2pdf_Db {
         `line_height` varchar(255) NOT NULL,
         `text_align` varchar(255) NOT NULL,
         `fonts` longtext NOT NULL,
+        `attachments` longtext NOT NULL,
         `author` int(11) NOT NULL,
         `properties` longtext NOT NULL,
         `actions` longtext NOT NULL,
@@ -474,7 +472,7 @@ class Helper_E2pdf_Db {
         }
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'lang_code';")) {
-            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `lang_code` text NOT NULL AFTER meta_keywords;");
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `lang_code` varchar(255) NOT NULL AFTER meta_keywords;");
         }
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'actions';")) {
@@ -687,17 +685,17 @@ class Helper_E2pdf_Db {
                     'TABLE_SCHEMA' => array(
                         'condition' => '=',
                         'value' => DB_NAME,
-                        'type' => '%s'
+                        'type' => '%s',
                     ),
                     'TABLE_NAME' => array(
                         'condition' => '=',
                         'value' => $db_prefix . $table,
-                        'type' => '%s'
+                        'type' => '%s',
                     ),
                     'TABLE_COLLATION' => array(
                         'condition' => '=',
                         'value' => $wpdb->collate,
-                        'type' => '%s'
+                        'type' => '%s',
                     ),
                 );
                 $where = $this->prepare_where($condition);
@@ -770,7 +768,7 @@ class Helper_E2pdf_Db {
                     'author' => array(),
                     'properties' => array(),
                     'actions' => array(),
-                )
+                ),
             ),
             'e2pdf_entries' => array(
                 'format' => __('Undefined', 'e2pdf'),
@@ -780,7 +778,7 @@ class Helper_E2pdf_Db {
                     'uid' => array(),
                     'entry' => array(),
                     'pdf_num' => array(),
-                )
+                ),
             ),
             'e2pdf_datasets' => array(
                 'format' => '',
@@ -791,7 +789,7 @@ class Helper_E2pdf_Db {
                     'item' => array(),
                     'entry' => array(),
                     'created_at' => array(),
-                )
+                ),
             ),
             'e2pdf_pages' => array(
                 'format' => __('Undefined', 'e2pdf'),
@@ -803,7 +801,7 @@ class Helper_E2pdf_Db {
                     'properties' => array(),
                     'actions' => array(),
                     'revision_id' => array(),
-                )
+                ),
             ),
             'e2pdf_elements' => array(
                 'format' => __('Undefined', 'e2pdf'),
@@ -823,7 +821,7 @@ class Helper_E2pdf_Db {
                     'properties' => array(),
                     'actions' => array(),
                     'revision_id' => array(),
-                )
+                ),
             ),
             'e2pdf_revisions' => array(
                 'format' => __('Undefined', 'e2pdf'),
@@ -879,8 +877,24 @@ class Helper_E2pdf_Db {
                     'author' => array(),
                     'properties' => array(),
                     'actions' => array(),
-                )
-            )
+                ),
+            ),
+            'e2pdf_bulks' => array(
+                'format' => __('Undefined', 'e2pdf'),
+                'check' => false,
+                'columns' => array(
+                    'ID' => array(),
+                    'uid' => array(),
+                    'template_id' => array(),
+                    'count' => array(),
+                    'total' => array(),
+                    'dataset' => array(),
+                    'datasets' => array(),
+                    'options' => array(),
+                    'status' => array(),
+                    'created_at' => array(),
+                ),
+            ),
         );
 
         if ($check) {
@@ -889,12 +903,12 @@ class Helper_E2pdf_Db {
                     'TABLE_SCHEMA' => array(
                         'condition' => '=',
                         'value' => DB_NAME,
-                        'type' => '%s'
+                        'type' => '%s',
                     ),
                     'TABLE_NAME' => array(
                         'condition' => '=',
                         'value' => $db_prefix . $table_key,
-                        'type' => '%s'
+                        'type' => '%s',
                     ),
                 );
                 $where = $this->prepare_where($condition);

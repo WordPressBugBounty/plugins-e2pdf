@@ -2,10 +2,10 @@
 Contributors: rasmarcus, oleksandrz
 Donate link: https://e2pdf.com/
 Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpforms, elementor, woocommerce, contact form 7, jetformbuilder
-Requires at least: 4.0
+Requires at least: 5.9
 Tested up to: 7.0
 Requires PHP: 5.4
-Stable tag: 1.32.23
+Stable tag: 1.32.26
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,22 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.26 =
+*Release Date - June 03, 2026*
+
+* Improvement: Divi 5 integration
+
+= 1.32.25 =
+*Release Date - June 02, 2026*
+
+* Fix: DB initialization
+
+= 1.32.24 =
+*Release Date - June 01, 2026*
+
+* Add: Divi 5 Support
+* Fix: ACF shortcodes fail to render in some cases
 
 = 1.32.23 =
 *Release Date - May 27, 2026*

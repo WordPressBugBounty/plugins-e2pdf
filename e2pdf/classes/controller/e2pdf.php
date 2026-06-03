@@ -158,7 +158,6 @@ class Controller_E2pdf extends Helper_E2pdf_View {
             if ($template->load($template_id)) {
 
                 $entry = new Model_E2pdf_Entry();
-
                 $entry->set_data('template_id', $template_id);
                 $template->extension()->set('template_id', $template_id);
 
@@ -206,7 +205,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                 }
 
                 if ($template->extension()->verify()) {
-
+                    add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
                     if (array_key_exists('inline', $atts)) {
                         $inline = $atts['inline'];
                         if ($template->get('inline') !== $inline) {
@@ -340,6 +339,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                         $this->download_response($template->get('format'), $request['file'], $template->get_name(), $disposition, false, true);
                         exit;
                     }
+                    remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
                 } else {
                     $this->add_notification('error', __('Incorrect Dataset', 'e2pdf'));
                     $this->render('blocks', 'notifications');
