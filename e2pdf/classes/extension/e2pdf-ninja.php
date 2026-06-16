@@ -187,6 +187,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                                 }
                             }
                             $fields_merge_tag_object->include_all_fields_merge_tags();
+                            add_filter('ninja_forms_merge_tag_value_signature', [$this, 'filter_ninja_forms_merge_tag_value_signature'], 999);
                             foreach ($fields as $field) {
                                 if (isset($field['type']) && ($field['type'] === 'repeater' || $field['type'] === 'file_upload')) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                 } else {
@@ -211,6 +212,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                                     $fields_merge_tag_object->add_field($field); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
                                 }
                             }
+                            remove_filter('ninja_forms_merge_tag_value_signature', [$this, 'filter_ninja_forms_merge_tag_value_signature'], 999);
                         }
                     }
                 }
@@ -350,13 +352,13 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
 
     // load filters
     public function load_filters() {
-        add_filter('ninja_forms_run_action_settings', array($this, 'filter_ninja_forms_run_action_settings'), 10, 4);
-        add_filter('ninja_forms_post_run_action_type_save', array($this, 'filter_ninja_forms_post_run_action_type_save'));
-        add_filter('ninja_forms_post_run_action_type_email', array($this, 'filter_ninja_forms_post_run_action_type_email'));
-        add_filter('ninja_forms_action_email_attachments', array($this, 'filter_ninja_forms_action_email_attachments'), 10, 3);
-        add_filter('ninja_forms_action_email_message', array($this, 'filter_ninja_forms_action_email_message'), 10, 3);
+        add_filter('ninja_forms_run_action_settings', [$this, 'filter_ninja_forms_run_action_settings'], 10, 4);
+        add_filter('ninja_forms_post_run_action_type_save', [$this, 'filter_ninja_forms_post_run_action_type_save']);
+        add_filter('ninja_forms_post_run_action_type_email', [$this, 'filter_ninja_forms_post_run_action_type_email']);
+        add_filter('ninja_forms_action_email_attachments', [$this, 'filter_ninja_forms_action_email_attachments'], 10, 3);
+        add_filter('ninja_forms_action_email_message', [$this, 'filter_ninja_forms_action_email_message'], 10, 3);
         // 1.25.14 trigger email action fix
-        add_filter('rest_dispatch_request', array($this, 'filter_rest_dispatch_request'), 10, 3);
+        add_filter('rest_dispatch_request', [$this, 'filter_rest_dispatch_request'], 10, 3);
     }
 
     // run action settings filter
@@ -469,6 +471,17 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
             }
         }
         return $result;
+    }
+
+    // filter ninja forms signature merge tag
+    public function filter_ninja_forms_merge_tag_value_signature($value) {
+        if (empty($value)) {
+            return '';
+        }
+        if (!is_string($value)) {
+            return $value;
+        }
+        return strip_tags($value, '<img>');
     }
 
     // filter content
@@ -960,7 +973,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                     }
                 }
                 break;
-            case 'asignature':
+            case 'signature':
                 $elements[] = $this->auto_field(
                         $field,
                         array(

@@ -191,6 +191,8 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
             if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
                 add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
             }
+            add_filter('acf/load_value', [$this, 'filter_acf_load_value'], 999);
+            add_filter('do_shortcode_tag', [$this, 'filter_do_shortcode_tag_acf'], 999, 2);
         }
         add_filter('jet-engine/listings/data/default-object', [$this, 'filter_jet_listings_data_default_object'], 999);
     }
@@ -210,6 +212,8 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
             if (!apply_filters('e2pdf_prevent_access_to_fields_on_non_public_posts', true)) {
                 remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
             }
+            remove_filter('acf/load_value', [$this, 'filter_acf_load_value'], 999);
+            remove_filter('do_shortcode_tag', [$this, 'filter_do_shortcode_tag_acf'], 999);
         }
         remove_filter('e2pdf_pdf_render', [$this->helper, '__return_true'], 999);
         remove_filter('e2pdf_pdf_render_filter', [$this->helper, '__return_true'], 999);
@@ -404,6 +408,26 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
             $field['allow_in_bindings'] = 1;
         }
         return $field;
+    }
+
+    // filter acf load value
+    public function filter_acf_load_value($output) {
+        if (is_array($output)) {
+            foreach ($output as $key => $value) {
+                if (is_string($value)) {
+                    $output[$key] = $this->helper->load('translator')->translate($value, 'partial');
+                }
+            }
+        }
+        return $output;
+    }
+
+    // filter do shortcode tag acf
+    public function filter_do_shortcode_tag_acf($output, $tag) {
+        if ($tag === 'acf') {
+            return $this->helper->load('translator')->translate($output, 'partial');
+        }
+        return $output;
     }
 
     // filter jet engine default object

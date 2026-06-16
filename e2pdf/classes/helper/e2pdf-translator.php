@@ -84,7 +84,8 @@ class Helper_E2pdf_Translator {
                 case 'partial':
                     if (
                             $this->translation === '1' ||
-                            (is_a($this->translator, 'E2pdf_Polylang_Translator') && $this->translation === '2')
+                            (is_a($this->translator, 'E2pdf_Polylang_Translator') && $this->translation === '2') ||
+                            (is_a($this->translator, 'E2pdf_TRP_Translator') && $this->translation === '2')
                     ) {
                         $translation = true;
                     }
@@ -385,7 +386,7 @@ if (class_exists('TRP_Translate_Press')) {
 
             $translated = $wpdb->get_var(
                     $wpdb->prepare(
-                            'SELECT translated FROM `' . $wpdb->prefix . 'trp_gettext_' . $this->lang . '` WHERE original = %s AND domain = %s AND (status = 2 OR status = 1) LIMIT 1',
+                            'SELECT translated FROM `' . $wpdb->prefix . 'trp_gettext_' . strtolower($this->lang) . '` WHERE original = %s AND domain = %s AND (status = 2 OR status = 1) LIMIT 1',
                             $string,
                             $domain
                     )

@@ -132,6 +132,12 @@ class Helper_E2pdf_Graph {
             'aspect_ratio' => $this->get_value('g_aspect_ratio', '1', $field),
             'bar_width' => $this->get_value('g_bar_width', '0', $field),
             'bar_width_min' => $this->get_value('g_bar_width_min', '1', $field),
+            'show_labels' => $this->is_exists('g_show_labels', $field) ? $this->get_boolean('g_show_labels', $field) : true,
+            'show_label_key' => $this->is_exists('g_show_label_key', $field) ? $this->get_boolean('g_show_label_key', $field) : true,
+            'show_label_percent' => $this->get_boolean('g_show_label_percent', $field),
+            'show_label_amount' => $this->get_boolean('g_show_label_amount', $field),
+            'inner_radius' => $this->get_number('g_inner_radius', '0.5', $field),
+            'start_angle' => $this->get_value('g_start_angle', '0', $field),
         ];
 
         if ($this->is_exists('g_legend_entry_height', $field)) {
@@ -422,6 +428,10 @@ class Helper_E2pdf_Graph {
 
     public function get_value($key = '', $default = '', $field = array()) {
         return isset($field['properties'][$key]) && $field['properties'][$key] ? $field['properties'][$key] : $default;
+    }
+
+    public function get_number($key = '', $default = '', $field = array()) {
+        return isset($field['properties'][$key]) ? (float) $field['properties'][$key] : (float) $default;
     }
 
     public function get_array($key = '', $default = '', $field = array()) {

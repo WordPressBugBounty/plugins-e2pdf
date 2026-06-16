@@ -860,6 +860,11 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'This will overwrite the Template ID "%d". Continue?' => __('This will overwrite the Template ID "%d". Continue?', 'e2pdf'),
                     'Filter' => __('Filter...', 'e2pdf'),
                     'Not linked' => __('Not linked', 'e2pdf'),
+                    'Inner Radius' => __('Inner Radius', 'e2pdf'),
+                    'Start Angle' => __('Start Angle', 'e2pdf'),
+                    'Key Labels' => __('Key Labels', 'e2pdf'),
+                    'Amount Labels' => __('Amount Labels', 'e2pdf'),
+                    'Percent Labels' => __('Percent Labels', 'e2pdf'),
                 ];
                 break;
             case 'params':
@@ -926,7 +931,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         if ($current_screen->id == 'e2pdf_page_e2pdf-templates' && !isset($_GET['action'])) {
             $screen_option = [
                 'label' => __('Templates per page', 'e2pdf') . ':',
-                'default' => get_option('e2pdf_templates_screen_per_page') ? get_option('e2pdf_templates_screen_per_page') : '20',
+                'default' => (int) get_option('e2pdf_templates_screen_per_page', '20'),
                 'option' => 'e2pdf_templates_screen_per_page',
             ];
             add_screen_option('per_page', $screen_option);
@@ -1113,6 +1118,10 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
             } else {
                 update_option('e2pdf_adobe_api_version', '1');
             }
+        }
+
+        if ((int) get_option('e2pdf_templates_screen_per_page', '20') <= 0) {
+            update_option('e2pdf_templates_screen_per_page', '20');
         }
 
         delete_option('e2pdf_developer');

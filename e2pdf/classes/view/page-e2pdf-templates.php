@@ -282,7 +282,7 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                 }
                 $this->render('blocks', 'pagination', array(
                     'total' => $this->controller->get_templates_list($this->get->get(), true),
-                    'limit' => (int) get_option('e2pdf_templates_screen_per_page', '20') > '0' ? get_option('e2pdf_templates_screen_per_page', '20') : '20',
+                    'limit' => (int) get_option('e2pdf_templates_screen_per_page', '20'),
                     'paged' => $this->get->get('paged') && (int) $this->get->get('paged') > '0' ? (int) $this->get->get('paged') : '1',
                     'url' => array('page' => 'e2pdf-templates', 'action' => $this->get->get('action'), 'status' => $this->get->get('status'), 's' => $this->get->get('s'), 'orderby' => $this->get->get('orderby'), 'order' => $this->get->get('order'))
                 ));

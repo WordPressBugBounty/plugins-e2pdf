@@ -1231,8 +1231,11 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
     // screen action
     public function screen_action() {
         $option = $this->post->get('wp_screen_options');
-        if (is_array($option) && isset($option['option']) && isset($option['value']) && $option['value']) {
-            update_option($option['option'], $option['value']);
+        if (is_array($option) && isset($option['option'], $option['value']) && $option['option'] === 'e2pdf_templates_screen_per_page') {
+            $per_page = (int) $option['value'];
+            if ($per_page > 0) {
+                update_option($option['option'], $per_page);
+            }
         }
         $this->redirect(
                 $this->helper->get_url(
@@ -2164,8 +2167,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         if (!$count) {
             $paged = isset($filters['paged']) && $filters['paged'] ? $filters['paged'] : '0';
             $paged = (int) $paged <= 0 ? 1 : (int) $paged;
-            $per_page = get_option('e2pdf_templates_screen_per_page', '20');
-
+            $per_page = (int) get_option('e2pdf_templates_screen_per_page', '20');
             $limit_condition = array(
                 'limit' => (int) $per_page,
                 'offset' => (int) ($paged - 1) * $per_page,

@@ -3370,7 +3370,7 @@ var e2pdf = {
                         'name': e2pdf.lang.get('Position Top'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(el.css('top')),
-                        'atts': ['number']
+                        'atts': ['number', 'keep']
                     };
                     break;
                 case 'left':
@@ -3378,7 +3378,7 @@ var e2pdf = {
                         'name': e2pdf.lang.get('Position Left'),
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(el.css('left')),
-                        'atts': ['number']
+                        'atts': ['number', 'keep']
                     };
                     break;
                 case 'name':
@@ -4712,7 +4712,7 @@ var e2pdf = {
                         'name': e2pdf.lang.get('Space'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
-                        'atts': ['number']
+                        'atts': ['number', 'keep']
                     };
                     break;
                 case 'g_bar_label_colour':
@@ -4779,6 +4779,40 @@ var e2pdf = {
                 case 'g_show_bar_labels':
                     obj = {
                         'name': e2pdf.lang.get('Bar Labels'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
+                    };
+                    break;
+                case 'g_show_labels':
+                    obj = {
+                        'name': e2pdf.lang.get('Labels'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1',
+                        'atts': ['keep'],
+                    };
+                    break;
+                case 'g_show_label_key':
+                    obj = {
+                        'name': e2pdf.lang.get('Key Labels'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1',
+                        'atts': ['keep'],
+                    };
+                    break;
+                case 'g_show_label_amount':
+                    obj = {
+                        'name': e2pdf.lang.get('Amount Labels'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
+                    };
+                    break;
+                case 'g_show_label_percent':
+                    obj = {
+                        'name': e2pdf.lang.get('Percent Labels'),
                         'type': 'checkbox',
                         'value': e2pdf.helper.getCheckbox(properties[field]),
                         'option': '1'
@@ -5093,7 +5127,7 @@ var e2pdf = {
                         'name': e2pdf.lang.get('Height'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field]),
-                        'atts': ['number']
+                        'atts': ['number', 'keep']
                     };
                     break;
                 case 'g_legend_padding_x':
@@ -5364,6 +5398,22 @@ var e2pdf = {
                         'name': e2pdf.lang.get('Colors'),
                         'type': 'textarea',
                         'value': e2pdf.helper.getString(properties[field])
+                    };
+                    break;
+                case 'g_inner_radius':
+                    obj = {
+                        'name': e2pdf.lang.get('Inner Radius'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getFloat(properties[field]),
+                        'atts': ['number', 'keep']
+                    };
+                    break;
+                case 'g_start_angle':
+                    obj = {
+                        'name': e2pdf.lang.get('Start Angle'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getFloat(properties[field]),
+                        'atts': ['number']
                     };
                     break;
             }
@@ -6426,6 +6476,10 @@ var e2pdf = {
                             e2pdf.properties.getField('g_label_space', el),
                             e2pdf.properties.getField('g_label_v', el),
                             e2pdf.properties.getField('g_label_h', el),
+                            e2pdf.properties.getField('g_show_labels', el),
+                            e2pdf.properties.getField('g_show_label_key', el),
+                            e2pdf.properties.getField('g_show_label_amount', el),
+                            e2pdf.properties.getField('g_show_label_percent', el),
                         ],
                         'position': 'left',
                         'classes': [
@@ -6434,6 +6488,10 @@ var e2pdf = {
                             'e2pdf-w30',
                             'e2pdf-w50 e2pdf-pr10',
                             'e2pdf-w50',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
+                            'e2pdf-pr10',
                         ]
                     };
                     obj['marker'] = {
@@ -6508,10 +6566,14 @@ var e2pdf = {
                             e2pdf.properties.getField('g_project_angle', el),
                             e2pdf.properties.getField('g_line_curve', el),
                             e2pdf.properties.getField('g_depth', el),
-                            e2pdf.properties.getField('g_aspect_ratio', el)
+                            e2pdf.properties.getField('g_aspect_ratio', el),
+                            e2pdf.properties.getField('g_inner_radius', el),
+                            e2pdf.properties.getField('g_start_angle', el)
                         ],
                         'position': 'left',
                         'classes': [
+                            'e2pdf-w50 e2pdf-pr10',
+                            'e2pdf-w50',
                             'e2pdf-w50 e2pdf-pr10',
                             'e2pdf-w50',
                             'e2pdf-w50 e2pdf-pr10',
@@ -6954,6 +7016,7 @@ var e2pdf = {
                             var field = '';
                             var label = '';
                             var wrap = '';
+                            var hidden = '';
                             if (group_field.type === 'text') {
                                 label = jQuery('<div>', {'class': 'e2pdf-small e2pdf-label'}).html(group_field.name + ":");
                                 field = jQuery('<input>', {'type': 'text', 'class': 'e2pdf-w100', 'name': group_field.key, 'value': group_field.value});
@@ -6972,6 +7035,13 @@ var e2pdf = {
                                 field = jQuery('<input>', {'type': 'checkbox', 'class': 'e2pdf-ib', 'name': group_field.key, 'value': group_field.option});
                                 if (group_field.value == group_field.option) {
                                     field.prop('checked', true);
+                                }
+                                if (jQuery.inArray('keep', group_field.atts) !== -1) {
+                                    hidden = jQuery('<input>', {
+                                        type: 'hidden',
+                                        name: group_field.key,
+                                        value: '0'
+                                    });
                                 }
                             } else if (group_field.type === 'color') {
                                 wrap = jQuery('<div>', {'class': 'e2pdf-colorpicker-wr'});
@@ -7028,6 +7098,9 @@ var e2pdf = {
                                 wrap.prepend(field);
                             }
                             if (group_field.type === 'checkbox') {
+                                if (hidden) {
+                                    wrap.prepend(hidden);
+                                }
                                 wrap.append(" " + label);
                                 if (classes.includes('e2pdf-sublabel')) {
                                     var sublabel = jQuery('<div>', {'class': 'e2pdf-small e2pdf-label'}).html("&nbsp;");
@@ -7068,10 +7141,7 @@ var e2pdf = {
                             switch (group_field['type']) {
                                 case 'text':
                                     if ((jQuery.inArray('number', group_field['atts']) !== -1 && data[property] == '0') || !data[property]) {
-                                        // backward compatibility
-                                        if (property !== 'left' && property !== 'top' && property !== 'g_legend_entry_height' && property !== 'g_bar_space') {
-                                            delete data[property];
-                                        }
+                                        delete data[property];
                                     }
                                     break;
                                 case 'color':
@@ -8822,6 +8892,9 @@ var e2pdf = {
                         properties['g_bar_width'] = '0';
                         properties['g_bar_width_min'] = '1';
                         properties['g_bar_space'] = '10';
+                        properties['g_show_labels'] = '1';
+                        properties['g_show_label_key'] = '1';
+                        properties['g_inner_radius'] = '0.5';
                     } else {
                         // backward compatibility
                         if (!properties.hasOwnProperty('g_depth')) {
@@ -8841,6 +8914,16 @@ var e2pdf = {
                         }
                         if (!properties.hasOwnProperty('g_bar_space')) {
                             properties['g_bar_space'] = '10';
+                        }
+                        // backward compatibility
+                        if (!properties.hasOwnProperty('g_show_labels')) {
+                            properties['g_show_labels'] = '1';
+                        }
+                        if (!properties.hasOwnProperty('g_show_label_key')) {
+                            properties['g_show_label_key'] = '1';
+                        }
+                        if (!properties.hasOwnProperty('g_inner_radius')) {
+                            properties['g_inner_radius'] = '0.5';
                         }
                     }
                     var element = jQuery('<div>', {'class': 'e2pdf-el-wrapper e2pdf-loader e2pdf-resizable', 'width': '250px', height: '150px'}).append(
