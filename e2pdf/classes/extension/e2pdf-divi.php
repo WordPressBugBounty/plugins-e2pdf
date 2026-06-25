@@ -1629,7 +1629,12 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         }
 
         if (!$et_contact_error && $nonce_result) {
-
+            // divi contact form helper 2.1.3 bug fix wp_mail filter removed at maybe_filter_wp_mail
+            if (defined('KS_PAC_DCFH_PLUGIN_VERSION') && version_compare(KS_PAC_DCFH_PLUGIN_VERSION, '2.1.3', '>=')) {
+                add_filter('wp_mail', function ($args) {
+                    return $args;
+                }, 999);
+            }
             add_filter('wp_mail', [$this, 'filter_wp_mail'], 1000);
 
             $dataset = false;

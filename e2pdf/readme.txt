@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 5.9
 Tested up to: 7.0
 Requires PHP: 5.4
-Stable tag: 1.32.31
+Stable tag: 1.32.32
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,11 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.32 =
+*Release Date - June 24, 2026*
+
+* Fix: Divi Contact Form Helper 2.1.3 compatibility
 
 = 1.32.31 =
 *Release Date - June 16, 2026*
