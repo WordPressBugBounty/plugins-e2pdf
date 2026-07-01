@@ -108,8 +108,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $request = $template->render();
 
             if (!isset($request['error'])) {
-
-                $tmp_dir = $this->helper->get('tmp_dir') . 'e2pdf' . md5($entry->get('uid')) . '/';
+                $attach = $attributes->get('attach') === 'always' ? '_' . bin2hex(random_bytes(8)) : '';
+                $tmp_dir = $this->helper->get('tmp_dir') . 'e2pdf' . md5($entry->get('uid') . $attach) . '/';
                 $this->helper->create_dir($tmp_dir);
 
                 $filename = $template->get('name') . '.' . $template->get('format');

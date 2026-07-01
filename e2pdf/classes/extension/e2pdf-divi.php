@@ -242,7 +242,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                 }
             }
         }
-
         return $forms;
     }
 
@@ -393,7 +392,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                     [
                         'post_content' => [
                             'condition' => 'LIKE',
-                            'value' => '%"meta":{"adminLabel":{"desktop":{"value":"' . $item_id . '"}}}%',
+                            'value' => '%"meta":{"adminLabel":{"desktop":{"value":"' . $item_id . '"%',
                             'type' => '%s',
                         ],
                     ],
