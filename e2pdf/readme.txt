@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 5.9
 Tested up to: 7.0
 Requires PHP: 5.4
-Stable tag: 1.32.34
+Stable tag: 1.32.40
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,29 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.40 =
+*Release Date - July 09, 2026*
+
+* Fix: Divi 5 Contact Forms compatibility
+
+= 1.32.39 =
+*Release Date - July 08, 2026*
+
+* Add: Annotation tab order
+
+= 1.32.38 =
+*Release Date - July 06, 2026*
+
+* Add: Formidable Forms child forms Visual Mapper support
+* Add: Formidable Forms child entry parent values render
+* Improvement: Styles
+* Improvement: Graph Non-numeric value
+
+= 1.32.35 =
+*Release Date - July 03, 2026*
+
+* Add: Graph additional properties
 
 = 1.32.34 =
 *Release Date - June 30, 2026*

@@ -138,6 +138,17 @@ class Helper_E2pdf_Graph {
             'show_label_amount' => $this->get_boolean('g_show_label_amount', $field),
             'inner_radius' => $this->get_number('g_inner_radius', '0.5', $field),
             'start_angle' => $this->get_value('g_start_angle', '0', $field),
+            'grid_straight' => $this->get_boolean('g_grid_straight', $field),
+            'fill_opacity' => $this->get_value('g_fill_opacity', '1', $field),
+            'grid_dash' => $this->get_value('g_grid_dash', '', $field),
+            'grid_dash_h' => $this->get_value('g_grid_dash_h', '', $field),
+            'grid_dash_v' => $this->get_value('g_grid_dash_v', '', $field),
+            'axis_colour_h' => $this->get_value('g_axis_colour_h', '', $field),
+            'axis_font_size_h' => $this->get_value('g_axis_font_size_h', '', $field),
+            'axis_colour_v' => $this->get_value('g_axis_colour_v', '', $field),
+            'axis_font_size_v' => $this->get_value('g_axis_font_size_v', '', $field),
+            'axis_font_weight_h' => $this->get_boolean('g_axis_font_weight_h', $field) ? 'bold' : null,
+            'axis_font_weight_v' => $this->get_boolean('g_axis_font_weight_v', $field) ? 'bold' : null,
         ];
 
         if ($this->is_exists('g_legend_entry_height', $field)) {
@@ -372,7 +383,7 @@ class Helper_E2pdf_Graph {
         if ($multiline != '0') {
             $lines = preg_split('/\r\n|\n/', $value);
             foreach ($lines as $key => $line) {
-                $line_data = $this->get_line_data(trim($line), $separators);
+                $line_data = $this->get_line_data($line, $separators);
                 if ($multiline == '1') {
                     $data[] = $line_data;
                 } elseif ($multiline == '2') {
@@ -392,26 +403,27 @@ class Helper_E2pdf_Graph {
             $key = null;
             if (strpos($line_data, $separators['key']) !== false) {
                 list($key, $line_data) = explode($separators['key'], $line_data, 2);
+                $key = trim($key);
             }
+
             if (strpos($line_data, $separators['sub_array']) !== false) {
+                $sub_array = array_map(
+                        function ($item) {
+                            $item = trim($item);
+                            return $item === '' ? null : $item;
+                        }, explode($separators['sub_array'], $line_data)
+                );
                 if ($key !== null) {
-                    $value[$key] = explode($separators['sub_array'], $line_data);
+                    $value[$key] = $sub_array;
                 } else {
-                    $value[] = explode($separators['sub_array'], $line_data);
+                    $value[] = $sub_array;
                 }
             } else {
+                $line_data = trim($line_data);
                 if ($key !== null) {
-                    if ($line_data === '') {
-                        $value[$key] = null;
-                    } else {
-                        $value[$key] = $line_data;
-                    }
+                    $value[$key] = $line_data === '' ? null : $line_data;
                 } else {
-                    if ($line_data === '') {
-                        $value[] = null;
-                    } else {
-                        $value[] = $line_data;
-                    }
+                    $value[] = $line_data === '' ? null : $line_data;
                 }
             }
         }

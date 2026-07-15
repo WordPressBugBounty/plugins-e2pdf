@@ -93,6 +93,12 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     } else {
                         $entry = FrmEntry::getOne($this->get('dataset'));
                         if ($entry && isset($entry->form_id) && $entry->form_id == $this->get('cached_form')->id) {
+                            if (!empty($entry->parent_item_id)) {
+                                $parent_entry = FrmEntry::getOne($entry->parent_item_id);
+                                if ($parent_entry && isset($parent_entry->form_id)) {
+                                    $entry->parent_entry = $parent_entry;
+                                }
+                            }
                             $this->set('cached_entry', $entry);
                         }
                     }
@@ -102,6 +108,12 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 if ($this->get('cached_form2') && $this->get('dataset2') && class_exists('FrmEntry')) {
                     $entry = FrmEntry::getOne($this->get('dataset2'));
                     if ($entry && isset($entry->form_id) && $entry->form_id == $this->get('cached_form2')->id) {
+                        if (!empty($entry->parent_item_id)) {
+                            $parent_entry = FrmEntry::getOne($entry->parent_item_id);
+                            if ($parent_entry && isset($parent_entry->form_id)) {
+                                $entry->parent_entry = $parent_entry;
+                            }
+                        }
                         $this->set('cached_entry2', $entry);
                     }
                 }
@@ -3515,8 +3527,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         $source = '';
 
         if ($this->get('item') && class_exists('FrmformsController')) {
-            if ($this->get('cached_form') && $this->get('cached_form')->parent_form_id) {
-                return '<div class="e2pdf-vm-error">' . __("Child form doesn't support Visual Mapper", 'e2pdf') . '</div>';
+            $child = false;
+            if ($this->get('cached_form') && !empty($this->get('cached_form')->parent_form_id)) {
+                $child = true;
+                $this->set('item', $this->get('cached_form')->parent_form_id);
             }
             if (class_exists('FrmProFieldsHelper')) {
                 add_filter('frm_get_paged_fields', array($this, 'filter_remove_pagebreaks'), 9);
@@ -3622,10 +3636,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                  * Metas patterns to replace field names
                  * @since 0.01.42
                  */
-                $metas_pattern = array(
-                    '/item_meta\[(?:.*?)\]\[0\]\[(.*?)\](?:\[\])?/i' => '$1:1',
+                $metas_pattern = [
+                    '/item_meta\[(?:.*?)\]\[0\]\[(.*?)\](?:\[\])?/i' => $child ? '$1' : '$1:1',
                     '/item_meta\[(.*?)\](\[\])?/i' => '$1',
-                );
+                ];
 
                 // replace names
                 $metas = $xpath->query("//*[contains(@name, 'item_meta')]");

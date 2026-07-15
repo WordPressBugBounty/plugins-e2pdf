@@ -353,7 +353,6 @@ h1.et_pb_contact_main_title {
     justify-content: space-between;
 }
 
-
 .clearfix:after {
     display: block;
     visibility: hidden;
@@ -365,4 +364,30 @@ h1.et_pb_contact_main_title {
 
 .et_pb_contact_form_container.et_flex_module .et_flex_module {
     margin-bottom: 20px;
+}
+
+.et_flex_module .et_pb_contact .et_pb_contact_field input[type=checkbox], .et_flex_module .et_pb_contact .et_pb_contact_field input[type=radio] {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+}
+
+.et_flex_module .et_pb_contact .et_pb_contact_field input[type=checkbox]+label, .et_flex_module .et_pb_contact .et_pb_contact_field input[type=radio]+label {
+    display: inline;
+}
+
+.et_flex_module .et_pb_contact .et_pb_contact_field input[type=checkbox]+label i, .et_flex_module .et_pb_contact .et_pb_contact_field input[type=radio]+label i {
+    display: none;
+}
+
+.et_flex_module .stars_wapper, .et_flex_module .canvas__container,
+.et_flex_module .et_pb_file_upload_button,
+.et_flex_module .et_pb_files_container
+{
+    display: none;
+}
+
+.et_flex_module [data-type="signature-pad"] input {
+    height: 150px;
 }

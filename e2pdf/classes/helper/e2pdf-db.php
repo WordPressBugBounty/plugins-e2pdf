@@ -122,7 +122,7 @@ class Helper_E2pdf_Db {
         `created_at` datetime NOT NULL,
         `updated_at` datetime NOT NULL,
         `flatten` enum('0','1','2') NOT NULL DEFAULT '0',
-        `tab_order` enum('0','1','2','3') NOT NULL DEFAULT '0',
+        `tab_order` enum('0','1','2','3','4') NOT NULL DEFAULT '0',
         `compression` int(1) NOT NULL DEFAULT '-1',
         `optimization` int(1) NOT NULL DEFAULT '-1',
         `appearance` enum('0','1') NOT NULL DEFAULT '0',
@@ -218,8 +218,11 @@ class Helper_E2pdf_Db {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `text_align`  varchar(255) NOT NULL AFTER line_height;");
         }
 
-        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'tab_order';")) {
-            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `tab_order` enum('0','1','2','3') NOT NULL DEFAULT '0' AFTER flatten;");
+        $tab_order = $wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'tab_order';", 1);
+        if ($tab_order === null) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `tab_order` enum('0','1','2','3','4') NOT NULL DEFAULT '0' AFTER flatten;");
+        } elseif (strpos($tab_order, "'4'") === false) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` MODIFY COLUMN `tab_order` enum('0','1','2','3','4') NOT NULL DEFAULT '0';");
         }
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'item1';")) {
@@ -416,7 +419,7 @@ class Helper_E2pdf_Db {
         `created_at` datetime NOT NULL,
         `updated_at` datetime NOT NULL,
         `flatten` enum('0','1','2') NOT NULL DEFAULT '0',
-        `tab_order` enum('0','1','2','3') NOT NULL DEFAULT '0',
+        `tab_order` enum('0','1','2','3','4') NOT NULL DEFAULT '0',
         `compression` int(1) NOT NULL DEFAULT '-1',
         `optimization` int(1) NOT NULL DEFAULT '-1',
         `appearance` enum('0','1') NOT NULL DEFAULT '0',
@@ -499,8 +502,11 @@ class Helper_E2pdf_Db {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `text_align`  varchar(255) NOT NULL AFTER line_height;");
         }
 
-        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'tab_order';")) {
-            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `tab_order` enum('0','1','2','3') NOT NULL DEFAULT '0' AFTER flatten;");
+        $tab_order = $wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'tab_order';", 1);
+        if ($tab_order === null) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `tab_order` enum('0','1','2','3','4') NOT NULL DEFAULT '0' AFTER flatten;");
+        } elseif (strpos($tab_order, "'4'") === false) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` MODIFY COLUMN `tab_order` enum('0','1','2','3','4') NOT NULL DEFAULT '0';");
         }
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'item1';")) {

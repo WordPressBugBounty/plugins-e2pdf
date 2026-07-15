@@ -473,9 +473,10 @@ if (!defined('ABSPATH')) {
                         'value' => $this->view->template->get('tab_order'),
                         'options' => array(
                             '0' => __('Unspecified', 'e2pdf'),
-                            '1' => __('Use Row Order', 'e2pdf'),
-                            '2' => __('Use Column Order', 'e2pdf'),
-                            '3' => __('Use Document Structure', 'e2pdf'),
+                            '1' => __('Row Order', 'e2pdf'),
+                            '2' => __('Column Order', 'e2pdf'),
+                            '3' => __('Document Structure', 'e2pdf'),
+                            '4' => __('Annotation Structure', 'e2pdf'),
                         ),
                     ));
                     ?>

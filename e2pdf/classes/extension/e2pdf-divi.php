@@ -61,9 +61,29 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         $meta_data = [];
                         if ($cached_entry && is_array($cached_entry)) {
                             // Divi5
-                            if (!empty($cached_entry['ET_CORE_VERSION'])) {
-                                foreach ($cached_entry as $field_key => $field_value) {
-                                    $meta_data['%%' . $field_key . '%%'] = $field_value;
+                            if (!empty($cached_entry['E2PDF_VERSION'])) {
+                                foreach ($cached_entry['fields'] as $field_key => $field) {
+                                    if (isset($field['type'])) {
+                                        switch ($field['type']) {
+                                            case 'signature-pad':
+                                                $meta_data['%%' . $field_key . '%%'] = $this->pwh_dcfh_resolve_file_url($field['value'], $cached_entry['options']);
+                                                break;
+                                            case 'file':
+                                                $attachments = is_array($field['value']) ? $field['value'] : explode(',', $field['value']);
+                                                foreach ($attachments as $attachment_key => $attachment) {
+                                                    $attachments[$attachment_key] = $this->pwh_dcfh_resolve_file_url($attachment, $cached_entry['options']);
+                                                }
+                                                $meta_data['%%' . $field_key . '%%'] = implode(',', $attachments);
+                                                break;
+                                            default:
+                                                $meta_data['%%' . $field_key . '%%'] = is_array($field['value']) ? implode(', ', $field['value']) : $field['value'];
+                                                break;
+                                        }
+                                    }
+                                }
+                            } elseif (!empty($cached_entry['ET_CORE_VERSION'])) {
+                                foreach ($cached_entry as $field_key => $value) {
+                                    $meta_data['%%' . $field_key . '%%'] = is_array($value) ? implode(', ', $value) : $value;
                                 }
                                 if (!isset($meta_data['%%e2pdf_entry_id%%'])) {
                                     $meta_data['%%e2pdf_entry_id%%'] = (int) $this->get('dataset');
@@ -574,7 +594,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     );
                                 }
 
-                                $fields = $xpath->query("//*[contains(@class, 'et_pb_contact_field_radio')]", $element);
+                                $fields = $xpath->query(".//*[contains(@class, 'et_pb_contact_field_radio')]", $element);
                                 foreach ($fields as $field) {
                                     $radio_label = $xpath->query('.//label', $field)->item(0);
                                     $radio = $xpath->query(".//input[@type='radio']", $field)->item(0);
@@ -593,7 +613,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                                         'width' => 'auto',
                                                         'height' => 'auto',
                                                         'value' => '%%' . $xml->get_node_value($radio, 'data-original_id') . '%%',
-                                                        'option' => $xml->get_node_value($radio, 'value'),
+                                                        'option' => sanitize_text_field($xml->get_node_value($radio, 'value')),
                                                         'group' => '%%' . $xml->get_node_value($radio, 'data-original_id') . '%%',
                                                     ],
                                                 ]
@@ -645,7 +665,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     );
                                 }
 
-                                $fields = $xpath->query("//*[contains(@class, 'et_pb_contact_field_checkbox')]", $element);
+                                $fields = $xpath->query(".//*[contains(@class, 'et_pb_contact_field_checkbox')]", $element);
                                 foreach ($fields as $field) {
                                     $checkbox_label = $xpath->query('.//label', $field)->item(0);
                                     $checkbox = $xpath->query(".//input[@type='checkbox']", $field)->item(0);
@@ -660,7 +680,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                                     'width' => 'auto',
                                                     'height' => 'auto',
                                                     'value' => $name,
-                                                    'option' => $xml->get_node_value($checkbox, 'value'),
+                                                    'option' => sanitize_text_field($xml->get_node_value($checkbox, 'value')),
                                                 ],
                                             ]
                                     );
@@ -708,24 +728,56 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                 }
 
                                 if ($input_text) {
-                                    $elements[] = $this->auto_field(
-                                            $input_text,
-                                            [
-                                                'type' => 'e2pdf-input',
-                                                'class' => $xml->get_node_value($input_text, 'class'),
-                                                'properties' => [
-                                                    'top' => '5',
-                                                    'width' => '100%',
-                                                    'height' => 'auto',
-                                                    'value' => '%%' . $xml->get_node_value($input_text, 'data-original_id') . '%%',
-                                                ],
-                                            ]
-                                    );
+                                    $data_type = $input_text->parentNode->getAttribute('data-type');
+                                    if ($data_type === 'signature-pad') {
+                                        $elements[] = $this->auto_field(
+                                                $input_text,
+                                                array(
+                                                    'type' => 'e2pdf-signature',
+                                                    'properties' => array(
+                                                        'top' => '5',
+                                                        'width' => '100%',
+                                                        'height' => '150',
+                                                        'dimension' => '1',
+                                                        'block_dimension' => '1',
+                                                        'value' => '%%' . $xml->get_node_value($input_text, 'data-original_id') . '%%',
+                                                    ),
+                                                )
+                                        );
+                                    } elseif ($data_type === 'file') {
+                                        $elements[] = $this->auto_field(
+                                                $input_text,
+                                                [
+                                                    'type' => 'e2pdf-textarea',
+                                                    'class' => $xml->get_node_value($input_text, 'class'),
+                                                    'properties' => [
+                                                        'top' => '5',
+                                                        'width' => '100%',
+                                                        'height' => '150',
+                                                        'value' => '%%' . $xml->get_node_value($input_text, 'data-original_id') . '%%',
+                                                    ],
+                                                ]
+                                        );
+                                    } else {
+                                        $elements[] = $this->auto_field(
+                                                $input_text,
+                                                [
+                                                    'type' => 'e2pdf-input',
+                                                    'class' => $xml->get_node_value($input_text, 'class'),
+                                                    'properties' => [
+                                                        'top' => '5',
+                                                        'width' => '100%',
+                                                        'height' => 'auto',
+                                                        'value' => '%%' . $xml->get_node_value($input_text, 'data-original_id') . '%%',
+                                                    ],
+                                                ]
+                                        );
+                                    }
                                 } elseif ($select) {
                                     $options_tmp = [];
                                     $options = $xpath->query('.//option', $select);
                                     foreach ($options as $option) {
-                                        $options_tmp[] = $xml->get_node_value($option, 'value');
+                                        $options_tmp[] = sanitize_text_field($xml->get_node_value($option, 'value'));
                                     }
 
                                     $elements[] = $this->auto_field(
@@ -966,6 +1018,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         $xml->set_node_value($xml_element, 'name', '%%' . $xml->get_node_value($xml_element, 'data-original_id') . '%%');
                     }
 
+                    // checkboxes
                     $checkboxes = $xpath->query("//*[contains(@class, 'et_pb_contact_field') and @data-type='checkbox']");
                     foreach ($checkboxes as $xml_element) {
                         $check_handler = $xpath->query(".//input[contains(@class, 'et_pb_checkbox_handle')]", $xml_element)->item(0);
@@ -976,7 +1029,24 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         $checks = $xpath->query(".//input[@type='checkbox']", $xml_element);
                         foreach ($checks as $check) {
                             $xml->set_node_value($check, 'name', $name);
+                            $xml->set_node_value($check, 'value', sanitize_text_field($xml->get_node_value($check, 'value')));
                         }
+                    }
+
+                    // uploads
+                    $uploads = $xpath->query("//*[contains(@class, 'et_pb_contact_hidden_files')]");
+                    foreach ($uploads as $xml_element) {
+                        $xml->set_node_value($xml_element, 'type', 'file');
+                    }
+
+                    $radios = $xpath->query("//input[@type='radio']");
+                    foreach ($radios as $xml_element) {
+                        $xml->set_node_value($xml_element, 'value', sanitize_text_field($xml->get_node_value($xml_element, 'value')));
+                    }
+
+                    $selects = $xpath->query('//select/option');
+                    foreach ($selects as $xml_element) {
+                        $xml->set_node_value($xml_element, 'value', sanitize_text_field($xml->get_node_value($xml_element, 'value')));
                     }
 
                     // remove by class
@@ -984,12 +1054,19 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         'et_pb_contact_submit',
                         'et_pb_contactform_validate_field',
                         'et_pb_checkbox_handle',
+                        'et_pb_form_bottom_stepper_container',
+                        'stepper__progress',
                     ];
                     foreach ($remove_by_class as $key => $class) {
                         $xml_elements = $xpath->query("//*[contains(@class, '{$class}')]");
                         foreach ($xml_elements as $xml_element) {
                             $xml_element->parentNode->removeChild($xml_element);
                         }
+                    }
+
+                    $xml_elements = $xpath->query('//*[@data-step]');
+                    foreach ($xml_elements as $xml_element) {
+                        $xml_element->removeAttribute('style');
                     }
 
                     // remove parent by class
@@ -1142,6 +1219,13 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         $module_id = !empty($filter_args['id']) ? $filter_args['id'] : '';
         $store_instance = !empty($filter_args['storeInstance']) ? $filter_args['storeInstance'] : 0;
 
+        if (
+                !class_exists('\ET\Builder\FrontEnd\BlockParser\BlockParserStore') ||
+                !method_exists('\ET\Builder\FrontEnd\BlockParser\BlockParserStore', 'get')
+        ) {
+            return $module_attrs;
+        }
+
         $module = \ET\Builder\FrontEnd\BlockParser\BlockParserStore::get($module_id, $store_instance);
 
         if (!$module) {
@@ -1244,17 +1328,43 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
             return $module_attrs;
         }
 
-        $fields_raw = [];
+        if (
+                !class_exists('\ET\Builder\Packages\ModuleLibrary\ModuleRegistration') ||
+                !method_exists('\ET\Builder\Packages\ModuleLibrary\ModuleRegistration', 'get_default_attrs')) {
+            return $module_attrs;
+        }
 
+        $fields_raw = [];
+        $filtered_field_attrs = [];
         $fields = \ET\Builder\FrontEnd\BlockParser\BlockParserStore::get_children($module_id, $store_instance);
+        $default_child_attrs = \ET\Builder\Packages\ModuleLibrary\ModuleRegistration::get_default_attrs(
+                'divi/contact-field'
+        );
         foreach ($fields as $field) {
             // Skip nested modules (Text, Button, Divider, etc.), only process Contact Field modules.
             if ('divi/contact-field' !== $field->blockName) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- This is a property of the WP Core class.
                 continue;
             }
+            $merged_child_attrs = array_replace_recursive(
+                    $default_child_attrs,
+                    $field->attrs ?? []
+            );
+            $child_filter_args = [
+                'id' => $field->id,
+                'name' => $field->blockName,
+                'parentId' => $module_id,
+                'parentName' => 'divi/contact-form',
+                'parentAttrs' => $module_attrs,
+                'storeInstance' => $store_instance,
+            ];
+            $filtered_field_attrs[$field->id] = apply_filters(
+                    'divi_module_library_register_module_attrs',
+                    $merged_child_attrs,
+                    $child_filter_args
+            );
 
             // Use pre-filtered field attributes if provided, otherwise use field attributes from storage.
-            $field_attrs = $field->attrs;
+            $field_attrs = !empty($filtered_field_attrs[$field->id]) ? $filtered_field_attrs[$field->id] : $field->attrs;
             $field_unique_id = \ET\Builder\Packages\ModuleLibrary\ContactField\ContactFieldModule::get_field_unique_id($field->id, $store_instance);
             $field_type = $field_attrs['fieldItem']['advanced']['type']['desktop']['value'] ?? 'input';
             $field_id = $field_attrs['fieldItem']['advanced']['id']['desktop']['value'] ?? '';
@@ -1349,7 +1459,6 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         }
 
         $obj->validate_fields();
-
         $errorObj = $refError->getValue($obj);
 
         if ($errorObj->has_errors()) {
@@ -1364,17 +1473,30 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         }
 
         $data = [
-            'ET_CORE_VERSION' => '5',
+            'E2PDF_VERSION' => '1.32.40',
+            'fields' => [],
+            'options' => [
+                'timestamp' => current_time('mysql'),
+                'saveFilesToMedia' => !empty($module_attrs['entryPreferences']['advanced']['saveFilesToMedia']['desktop']['value']) ? $module_attrs['entryPreferences']['advanced']['saveFilesToMedia']['desktop']['value'] : '',
+                'uniqueId' => !empty($module_attrs['module']['advanced']['uniqueId']['desktop']['value']) ? $module_attrs['module']['advanced']['uniqueId']['desktop']['value'] : '',
+            ],
         ];
+
         if (!empty($fields_raw) && is_array($fields_raw)) {
             foreach ($fields_raw as $field_key => $field_raw) {
-                if (!empty($field_raw['value'])) {
-                    $data[$field_key] = $field_raw['value'];
+                if (isset($field_raw['value'])) {
+                    $data['fields'][$field_key] = [
+                        'type' => isset($field_raw['type']) ? $field_raw['type'] : '',
+                        'value' => $field_raw['value'],
+                    ];
                 }
             }
         }
-        if (empty($data['_wp_http_referer']) && !empty($_POST['_wp_http_referer'])) {
-            $data['_wp_http_referer'] = esc_url_raw($_POST['_wp_http_referer']);
+        if (empty($data['fields']['_wp_http_referer']) && !empty($_POST['_wp_http_referer'])) {
+            $data['fields']['_wp_http_referer'] = [
+                'type' => '',
+                'value' => esc_url_raw($_POST['_wp_http_referer']),
+            ];
         }
 
         $entry = new Model_E2pdf_Dataset();
@@ -1630,9 +1752,11 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         if (!$et_contact_error && $nonce_result) {
             // divi contact form helper 2.1.3 bug fix wp_mail filter removed at maybe_filter_wp_mail
             if (defined('KS_PAC_DCFH_PLUGIN_VERSION') && version_compare(KS_PAC_DCFH_PLUGIN_VERSION, '2.1.3', '>=')) {
-                add_filter('wp_mail', function ($args) {
-                    return $args;
-                }, 999);
+                add_filter(
+                        'wp_mail', function ($args) {
+                            return $args;
+                        }, 999
+                );
             }
             add_filter('wp_mail', [$this, 'filter_wp_mail'], 1000);
 
@@ -1978,5 +2102,59 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
     // is divi 5 form
     public function divi5_form($content = '') {
         return (false !== strpos($content, 'wp:divi/contact-form'));
+    }
+
+    // pwh dcfh resolve file url
+    public function pwh_dcfh_resolve_file_url($file, $options) {
+
+        if (!$file) {
+            return $file;
+        }
+
+        if (!function_exists('ks_pac_dcfh_app') || !function_exists('path_join')) {
+            return $file;
+        }
+
+        $contact_form_id = $options['uniqueId'];
+        $timestamp = strtotime($options['timestamp']);
+        $saveFilesToMedia = $options['saveFilesToMedia'] === 'on' ? true : false;
+
+        $upload_dir = path_join(
+                'pwh-dcfh-uploads',
+                'forms/' . $contact_form_id . '/'
+        );
+        $upload_path = ks_pac_dcfh_app()->file_utils()::get_wp_upload_dir(
+                $upload_dir,
+                'basedir'
+        );
+        $upload_url = ks_pac_dcfh_app()->file_utils()::get_wp_upload_dir(
+                $upload_dir,
+                'baseurl'
+        );
+        if ($saveFilesToMedia) {
+            $wp_upload_dir = wp_upload_dir();
+            $upload_path = $wp_upload_dir['basedir'];
+            $upload_url = $wp_upload_dir['baseurl'];
+        }
+        $dates = [
+            date('Y/m', $timestamp),
+            date('Y/m', strtotime('-1 month', $timestamp)),
+            date('Y/m', strtotime('+1 month', $timestamp)),
+        ];
+
+        foreach ($dates as $date) {
+            $date_path = path_join(
+                    $upload_path,
+                    $date
+            );
+            if (@file_exists(path_join($date_path, $file))) {
+                $file = path_join(
+                        trailingslashit($upload_url) . $date,
+                        $file
+                );
+                break;
+            }
+        }
+        return $file;
     }
 }

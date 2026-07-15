@@ -4612,6 +4612,24 @@ var e2pdf = {
                         'options': e2pdf.helper.font.sizes(field)
                     };
                     break;
+                case 'g_axis_font_size_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Font Size'),
+                        'key': 'g_axis_font_size_h',
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field]),
+                        'options': e2pdf.helper.font.sizes(field)
+                    };
+                    break;
+                case 'g_axis_font_size_v':
+                    obj = {
+                        'name': e2pdf.lang.get('Font Size'),
+                        'key': 'g_axis_font_size_v',
+                        'type': 'select',
+                        'value': e2pdf.helper.getString(properties[field]),
+                        'options': e2pdf.helper.font.sizes(field)
+                    };
+                    break;
                 case 'g_axis_overlap':
                     obj = {
                         'name': e2pdf.lang.get('Axis Overlap'),
@@ -4677,6 +4695,20 @@ var e2pdf = {
                     };
                     break;
                 case 'g_axis_colour':
+                    obj = {
+                        'name': e2pdf.lang.get('Axis Color'),
+                        'type': 'color',
+                        'value': e2pdf.helper.getString(properties[field])
+                    };
+                    break;
+                case 'g_axis_colour_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Axis Color'),
+                        'type': 'color',
+                        'value': e2pdf.helper.getString(properties[field])
+                    };
+                    break;
+                case 'g_axis_colour_v':
                     obj = {
                         'name': e2pdf.lang.get('Axis Color'),
                         'type': 'color',
@@ -5315,7 +5347,7 @@ var e2pdf = {
                         'name': e2pdf.lang.get('Space'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field], 2),
-                        'atts': ['number']
+                        'atts': ['number', 'number-negative', 'keep']
                     };
                     break;
                 case 'g_axis_text_space_h':
@@ -5323,7 +5355,7 @@ var e2pdf = {
                         'name': e2pdf.lang.get('Space'),
                         'type': 'text',
                         'value': e2pdf.helper.getInt(properties[field], 2),
-                        'atts': ['number']
+                        'atts': ['number', 'number-negative', 'keep']
                     };
                     break;
                 case 'g_axis_text_offset_x_v':
@@ -5414,6 +5446,62 @@ var e2pdf = {
                         'type': 'text',
                         'value': e2pdf.helper.getFloat(properties[field]),
                         'atts': ['number']
+                    };
+                    break;
+                case 'g_grid_straight':
+                    obj = {
+                        'name': e2pdf.lang.get('Straight'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1',
+                    };
+                    break;
+                case 'g_grid_dash':
+                    obj = {
+                        'name': e2pdf.lang.get('Grid Dash'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getFloat(properties[field]),
+                        'atts': ['number']
+                    };
+                    break;
+                case 'g_grid_dash_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Grid Dash (H)'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getFloat(properties[field]),
+                        'atts': ['number']
+                    };
+                    break;
+                case 'g_grid_dash_v':
+                    obj = {
+                        'name': e2pdf.lang.get('Grid Dash (V)'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getFloat(properties[field]),
+                        'atts': ['number']
+                    };
+                    break;
+                case 'g_fill_opacity':
+                    obj = {
+                        'name': e2pdf.lang.get('Fill Opacity'),
+                        'type': 'text',
+                        'value': e2pdf.helper.getFloat(properties[field]),
+                        'atts': ['number', 'keep']
+                    };
+                    break;
+                case 'g_axis_font_weight_h':
+                    obj = {
+                        'name': e2pdf.lang.get('Bold'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
+                    };
+                    break;
+                case 'g_axis_font_weight_v':
+                    obj = {
+                        'name': e2pdf.lang.get('Bold'),
+                        'type': 'checkbox',
+                        'value': e2pdf.helper.getCheckbox(properties[field]),
+                        'option': '1'
                     };
                     break;
             }
@@ -6568,7 +6656,8 @@ var e2pdf = {
                             e2pdf.properties.getField('g_depth', el),
                             e2pdf.properties.getField('g_aspect_ratio', el),
                             e2pdf.properties.getField('g_inner_radius', el),
-                            e2pdf.properties.getField('g_start_angle', el)
+                            e2pdf.properties.getField('g_start_angle', el),
+                            e2pdf.properties.getField('g_fill_opacity', el)
                         ],
                         'position': 'left',
                         'classes': [
@@ -6581,7 +6670,8 @@ var e2pdf = {
                             'e2pdf-w50 e2pdf-pr10',
                             'e2pdf-w50',
                             'e2pdf-w50 e2pdf-pr10',
-                            'e2pdf-w50'
+                            'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pr10',
                         ]
                     };
                     obj['grid'] = {
@@ -6592,10 +6682,14 @@ var e2pdf = {
                             e2pdf.properties.getField('g_minimum_grid_spacing', el),
                             e2pdf.properties.getField('g_minimum_grid_spacing_h', el),
                             e2pdf.properties.getField('g_minimum_grid_spacing_v', el),
+                            e2pdf.properties.getField('g_grid_dash', el),
+                            e2pdf.properties.getField('g_grid_dash_h', el),
+                            e2pdf.properties.getField('g_grid_dash_v', el),
                             e2pdf.properties.getField('g_grid_division_h', el),
                             e2pdf.properties.getField('g_grid_division_v', el),
                             e2pdf.properties.getField('g_show_grid', el),
-                            e2pdf.properties.getField('g_show_grid_subdivisions', el)
+                            e2pdf.properties.getField('g_show_grid_subdivisions', el),
+                            e2pdf.properties.getField('g_grid_straight', el)
                         ],
                         'position': 'right',
                         'classes': [
@@ -6604,8 +6698,12 @@ var e2pdf = {
                             'e2pdf-w100',
                             'e2pdf-w50 e2pdf-pr10',
                             'e2pdf-w50',
+                            'e2pdf-w100',
                             'e2pdf-w50 e2pdf-pr10',
                             'e2pdf-w50',
+                            'e2pdf-w50 e2pdf-pr10',
+                            'e2pdf-w50',
+                            'e2pdf-pr10',
                             'e2pdf-pr10',
                             'e2pdf-pr10'
                         ]
@@ -6629,6 +6727,9 @@ var e2pdf = {
                     obj['axis_v'] = {
                         'name': e2pdf.lang.get('Axis (V)'),
                         'fields': [
+                            e2pdf.properties.getField('g_axis_colour_v', el),
+                            e2pdf.properties.getField('g_axis_font_size_v', el),
+                            e2pdf.properties.getField('g_axis_font_weight_v', el),
                             e2pdf.properties.getField('g_axis_stroke_width_v', el),
                             e2pdf.properties.getField('g_show_axis_v', el),
                             e2pdf.properties.getField('g_show_axis_text_v', el),
@@ -6644,6 +6745,9 @@ var e2pdf = {
                         ],
                         'position': 'right',
                         'classes': [
+                            'e2pdf-w60 e2pdf-pr10',
+                            'e2pdf-w40',
+                            'e2pdf-w100',
                             'e2pdf-w33 e2pdf-pr10',
                             'e2pdf-w33 e2pdf-sublabel',
                             'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
@@ -6661,6 +6765,9 @@ var e2pdf = {
                     obj['axis_h'] = {
                         'name': e2pdf.lang.get('Axis (H)'),
                         'fields': [
+                            e2pdf.properties.getField('g_axis_colour_h', el),
+                            e2pdf.properties.getField('g_axis_font_size_h', el),
+                            e2pdf.properties.getField('g_axis_font_weight_h', el),
                             e2pdf.properties.getField('g_axis_stroke_width_h', el),
                             e2pdf.properties.getField('g_show_axis_h', el),
                             e2pdf.properties.getField('g_show_axis_text_h', el),
@@ -6676,6 +6783,9 @@ var e2pdf = {
                         ],
                         'position': 'right',
                         'classes': [
+                            'e2pdf-w60 e2pdf-pr10',
+                            'e2pdf-w40',
+                            'e2pdf-w100',
                             'e2pdf-w33 e2pdf-pr10',
                             'e2pdf-w33 e2pdf-sublabel',
                             'e2pdf-w33 e2pdf-pl10 e2pdf-sublabel',
@@ -8895,6 +9005,9 @@ var e2pdf = {
                         properties['g_show_labels'] = '1';
                         properties['g_show_label_key'] = '1';
                         properties['g_inner_radius'] = '0.5';
+                        properties['g_fill_opacity'] = '1';
+                        properties['g_axis_text_space_v'] = '2';
+                        properties['g_axis_text_space_h'] = '2';
                     } else {
                         // backward compatibility
                         if (!properties.hasOwnProperty('g_depth')) {
@@ -8924,6 +9037,15 @@ var e2pdf = {
                         }
                         if (!properties.hasOwnProperty('g_inner_radius')) {
                             properties['g_inner_radius'] = '0.5';
+                        }
+                        if (!properties.hasOwnProperty('g_fill_opacity')) {
+                            properties['g_fill_opacity'] = '1';
+                        }
+                        if (!properties.hasOwnProperty('g_axis_text_space_v')) {
+                            properties['g_axis_text_space_v'] = '2';
+                        }
+                        if (!properties.hasOwnProperty('g_axis_text_space_h')) {
+                            properties['g_axis_text_space_h'] = '2';
                         }
                     }
                     var element = jQuery('<div>', {'class': 'e2pdf-el-wrapper e2pdf-loader e2pdf-resizable', 'width': '250px', height: '150px'}).append(

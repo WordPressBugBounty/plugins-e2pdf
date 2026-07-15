@@ -1173,14 +1173,14 @@ a.e2pdf-be:hover {
 
 .postbox-container .e2pdf-colorpicker-wr .wp-picker-container .iris-picker {
     position: absolute;
-    top: -205px;
+    top: -185px;
     margin-right: 25px;
     right: 100%;
 }
 
 .e2pdf-colorpicker-wr .wp-color-result, .e2pdf-colorpicker-wr .wp-picker-container .wp-color-result.button {
-    height: 30px;
-    line-height: 30px;
+    height: 40px;
+    line-height: 40px;
     margin: 0;
     border: none;
     border-radius: 0;
@@ -1192,9 +1192,13 @@ a.e2pdf-be:hover {
     border: 1px solid #ddd;
 }
 
+.e2pdf-colorpicker-wr .wp-picker-container .wp-color-result.button {
+    min-height: 40px;
+}
+
 .e2pdf-colorpicker-wr .wp-color-result .wp-color-result-text {
-    height: 30px;
-    line-height: 30px;
+    height: 40px;
+    line-height: 40px;
     margin: 0;
     border: none;
     border-radius: 0;
@@ -1231,8 +1235,8 @@ a.e2pdf-be:hover {
 
 .e2pdf-colorpicker-wr .wp-picker-container input[type=text].wp-color-picker {
     width: 60%;
-    height: 30px;
-    line-height: 30px;
+    height: 40px;
+    line-height: 40px;
 }
 
 .e2pdf-colorpicker-wr .wp-picker-container .wp-picker-input-wrap label input[type=text].wp-color-picker {
@@ -1751,7 +1755,7 @@ a.e2pdf-vm-element:hover {
 
 .e2pdf-dialog label.e2pdf-label {
     font-weight: normal;
-    line-height: 30px;
+    line-height: 40px;
 }
 
 .e2pdf-dialog .visual-mapper label {
@@ -1992,7 +1996,7 @@ a.e2pdf-vm-element:hover {
     margin-top: 5px;
 }
 
-.e2pdf-action .wp-picker-default, .e2pdf-aciton .wp-color-result-text {
+.e2pdf-action .wp-picker-default, .e2pdf-colorpicker-wr .wp-picker-default, .e2pdf-aciton .wp-color-result-text {
     display: none;
 }
 
