@@ -15,19 +15,19 @@ if (!defined('ABSPATH')) {
 class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
 
     private $options;
-    private $info = array(
+    private $info = [
         'key' => 'wordpress',
         'title' => 'WordPress',
-    );
+    ];
 
     // info
     public function info($key = false) {
         if ($key && isset($this->info[$key])) {
             return $this->info[$key];
         } else {
-            return array(
+            return [
                 $this->info['key'] => $this->info['title'],
-            );
+            ];
         }
     }
 
@@ -75,7 +75,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         } else {
             switch ($key) {
                 case 'args':
-                    $value = array();
+                    $value = [];
                     break;
                 default:
                     $value = false;
@@ -87,8 +87,8 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
 
     // items
     public function items() {
-        $items = array();
-        $forms = get_post_types(array(), 'names');
+        $items = [];
+        $forms = get_post_types([], 'names');
         foreach ($forms as $form) {
             if ($form != 'attachment') {
                 $items[] = $this->item($form);
@@ -100,15 +100,15 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
 
     // datasets
     public function datasets($item_id = false, $name = false) {
-        $datasets = array();
+        $datasets = [];
         if ($item_id) {
             if ($item_id == '-3') {
                 $entries = get_users(
-                        array(
-                            'fields' => array(
+                        [
+                            'fields' => [
                                 'ID', 'user_login',
-                            ),
-                        )
+                            ],
+                        ]
                 );
 
                 if ($entries) {
@@ -119,10 +119,10 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                         if (!$entry_title) {
                             $entry_title = isset($entry->user_login) && $entry->user_login ? $entry->user_login : $entry->ID;
                         }
-                        $datasets[] = array(
+                        $datasets[] = [
                             'key' => $entry->ID,
                             'value' => $entry_title,
-                        );
+                        ];
                     }
                 }
             } else {
@@ -130,21 +130,21 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 if ($wpml) {
                     $lang = apply_filters('wpml_current_language', null);
                     $entries = get_posts(
-                            array(
+                            [
                                 'post_type' => $item_id,
                                 'numberposts' => -1,
                                 'post_status' => 'any',
                                 'lang' => $lang,
                                 'suppress_filters' => false,
-                            )
+                            ]
                     );
                 } else {
                     $entries = get_posts(
-                            array(
+                            [
                                 'post_type' => $item_id,
                                 'numberposts' => -1,
                                 'post_status' => 'any',
-                            )
+                            ]
                     );
                 }
                 if ($entries) {
@@ -155,10 +155,10 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                         if (!$entry_title) {
                             $entry_title = isset($entry->post_title) && $entry->post_title ? $entry->post_title : $entry->ID;
                         }
-                        $datasets[] = array(
+                        $datasets[] = [
                             'key' => $entry->ID,
                             'value' => $entry_title,
-                        );
+                        ];
                     }
                 }
             }
@@ -175,16 +175,16 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         $actions = new stdClass();
         if ($this->get('item') == '-3') {
             $actions->view = $this->helper->get_url(
-                    array(
+                    [
                         'user_id' => $dataset_id,
-                    ), 'user-edit.php?'
+                    ], 'user-edit.php?'
             );
         } else {
             $actions->view = $this->helper->get_url(
-                    array(
+                    [
                         'post' => $dataset_id,
                         'action' => 'edit',
-                    ), 'post.php?'
+                    ], 'post.php?'
             );
         }
         $actions->delete = false;
@@ -211,13 +211,13 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         if ($item_id == '-3') {
             $item->id = $item_id;
             $item->name = __('Users');
-            $item->url = $this->helper->get_url(array(), 'users.php');
+            $item->url = $this->helper->get_url([], 'users.php');
         } else {
             $form = get_post_type_object($item_id);
             if ($form) {
                 $item->id = $item_id;
                 $item->name = $form->label ? $form->label : $item_id;
-                $item->url = $this->helper->get_url(array('post_type' => $item_id), 'edit.php?');
+                $item->url = $this->helper->get_url(['post_type' => $item_id], 'edit.php?');
             } else {
                 $item->id = '';
                 $item->name = '';
@@ -229,97 +229,103 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
 
     // load filters
     public function load_filters() {
-        add_filter('the_content', array($this, 'filter_the_content'), 10, 2);
-        add_filter('widget_text', array($this, 'filter_content_custom'));
-        add_filter('widget_block_content', array($this, 'filter_content_custom'));
+        add_filter('the_content', [$this, 'filter_the_content'], 10, 2);
+        add_filter('widget_text', [$this, 'filter_content_custom']);
+        add_filter('widget_block_content', [$this, 'filter_content_custom']);
 
         /**
          * Popup Maker – Popup for opt-ins, lead gen, & more
          * https://wordpress.org/plugins/popup-maker/
          */
-        add_filter('pum_popup_content', array($this, 'filter_the_content'), 10, 2);
+        add_filter('pum_popup_content', [$this, 'filter_the_content'], 10, 2);
 
         /**
          * Events Manager
          * https://wordpress.org/plugins/events-manager/
          */
-        add_filter('em_event_output_placeholder', array($this, 'filter_content_custom'), 0);
-        add_filter('em_event_output', array($this, 'filter_content_custom'));
-        add_filter('em_booking_output_placeholder', array($this, 'filter_content_custom'), 0);
-        add_filter('em_booking_output', array($this, 'filter_content_custom'));
-        add_filter('em_location_output_placeholder', array($this, 'filter_content_custom'), 0);
-        add_filter('em_location_output', array($this, 'filter_content_custom'));
-        add_filter('em_category_output_placeholder', array($this, 'filter_content_custom'), 0);
+        add_filter('em_event_output_placeholder', [$this, 'filter_content_custom'], 0);
+        add_filter('em_event_output', [$this, 'filter_content_custom']);
+        add_filter('em_booking_output_placeholder', [$this, 'filter_content_custom'], 0);
+        add_filter('em_booking_output', [$this, 'filter_content_custom']);
+        add_filter('em_location_output_placeholder', [$this, 'filter_content_custom'], 0);
+        add_filter('em_location_output', [$this, 'filter_content_custom']);
+        add_filter('em_category_output_placeholder', [$this, 'filter_content_custom'], 0);
 
         /**
          * Beaver Builder – WordPress Page Builder
          * https://wordpress.org/plugins/beaver-builder-lite-version/
          */
-        add_filter('fl_builder_before_render_shortcodes', array($this, 'filter_content_loop'));
+        add_filter('fl_builder_before_render_shortcodes', [$this, 'filter_content_loop']);
 
         /**
          * WPBakery Page Builder Image Object Link
          */
-        add_filter('vc_map_get_attributes', array($this, 'filter_vc_map_get_attributes'), 10, 2);
+        add_filter('vc_map_get_attributes', [$this, 'filter_vc_map_get_attributes'], 10, 2);
 
         /**
          * Flatsome theme global tab content
          */
-        add_filter('theme_mod_tab_content', array($this, 'filter_content_custom'));
+        add_filter('theme_mod_tab_content', [$this, 'filter_content_custom']);
 
         /**
          * MemberPress Mail attachments
          * https://memberpress.com/
          */
-        add_filter('mepr_email_send_attachments', array($this, 'filter_mepr_email_send_attachments'), 10, 4);
-        add_filter('the_content', array($this, 'filter_mepr_the_content'), 99);
-        add_filter('mepr_custom_thankyou_message', array($this, 'filter_mepr_custom_thankyou_message'));
+        add_filter('mepr_email_send_attachments', [$this, 'filter_mepr_email_send_attachments'], 10, 4);
+        add_filter('the_content', [$this, 'filter_mepr_the_content'], 99);
+        add_filter('mepr_custom_thankyou_message', [$this, 'filter_mepr_custom_thankyou_message']);
 
         /**
          * Thrive Theme Builder dynamic shortcode support
          */
-        add_filter('thrive_theme_template_content', array($this, 'filter_thrive_theme_template_content'));
+        add_filter('thrive_theme_template_content', [$this, 'filter_thrive_theme_template_content']);
 
         /**
          * WPBakery Page Builder Grid Item
          * [e2pdf-download id="1" dataset="{{ post_data:ID }}"]
          */
-        add_filter('vc_basic_grid_items_list', array($this, 'filter_vc_basic_grid_items_list'));
+        add_filter('vc_basic_grid_items_list', [$this, 'filter_vc_basic_grid_items_list']);
 
         /**
          * Themify Builder dynamic shortcode support
          * https://wordpress.org/plugins/themify-builder/
          */
-        add_filter('themify_builder_module_content', array($this, 'filter_themify_builder_module_content'));
+        add_filter('themify_builder_module_content', [$this, 'filter_themify_builder_module_content']);
 
         /**
          * Impreza theme by Up Solutions
          * https://themeforest.net/item/impreza-retina-responsive-wordpress-theme/6434280
          */
-        add_filter('us_content_template_the_content', array($this, 'filter_content_custom'));
+        add_filter('us_content_template_the_content', [$this, 'filter_content_custom']);
 
         /**
          * Cornerstone Builder
          * https://theme.co/cornerstone/
          */
-        add_filter('cs_element_pre_render', array($this, 'filter_cs_element_pre_render'));
+        add_filter('cs_element_pre_render', [$this, 'filter_cs_element_pre_render']);
 
         /**
          * Divi Theme Builder
          * https://www.elegantthemes.com/
          */
-        add_filter('et_pb_module_content', array($this, 'filter_et_pb_module_content'), 30, 6);
+        add_filter('et_pb_module_content', [$this, 'filter_et_pb_module_content'], 30, 6);
 
         /**
          * User Registration & Membership – Custom Registration Form, Login Form, and User Profile
          * https://wordpress.org/plugins/user-registration/
          */
-        add_filter('user_registration_smart_tag_values', array($this, 'filter_user_registration_smart_tag_values'), 0);
+        add_filter('user_registration_smart_tag_values', [$this, 'filter_user_registration_smart_tag_values'], 0);
+
+        /**
+         * Ultimate Member – User Profile, Registration, Login, Member Directory, Content Restriction & Membership Plugin
+         * https://wordpress.org/plugins/ultimate-member/
+         */
+        add_filter('um_email_send_message_content', [$this, 'filter_um_email_send_message_content']);
 
         /* Hooks */
-        add_filter('post_row_actions', array($this, 'hook_wordpress_row_actions'), 10, 2);
-        add_filter('page_row_actions', array($this, 'hook_wordpress_row_actions'), 10, 2);
-        add_filter('user_row_actions', array($this, 'hook_wordpress_row_actions'), 10, 2);
+        add_filter('post_row_actions', [$this, 'hook_wordpress_row_actions'], 10, 2);
+        add_filter('page_row_actions', [$this, 'hook_wordpress_row_actions'], 10, 2);
+        add_filter('user_row_actions', [$this, 'hook_wordpress_row_actions'], 10, 2);
     }
 
     // load actions
@@ -328,41 +334,48 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
          * Elementor Website Builder – More than Just a Page Builder
          * https://wordpress.org/plugins/elementor/
          */
-        add_action('elementor/widget/before_render_content', array($this, 'action_elementor_widget_before_render_content'));
-        add_action('elementor/frontend/widget/before_render', array($this, 'action_elementor_widget_before_render_content'), 5);
+        add_action('elementor/widget/before_render_content', [$this, 'action_elementor_widget_before_render_content']);
+        add_action('elementor/frontend/widget/before_render', [$this, 'action_elementor_widget_before_render_content'], 5);
 
         /**
          * JetEngine: WordPress Plugin for Elementor
          * https://crocoblock.com
          */
-        add_action('jet-engine/listing/grid/before-render', array($this, 'action_jet_engine_listing_grid_before_render'));
-        add_action('jet-engine/listing/grid/after-render', array($this, 'action_jet_engine_listing_grid_after_render'));
+        add_action('jet-engine/listing/grid/before-render', [$this, 'action_jet_engine_listing_grid_before_render']);
+        add_action('jet-engine/listing/grid/after-render', [$this, 'action_jet_engine_listing_grid_after_render']);
 
         /**
          * Happy Addons for Elementor
          * https://wordpress.org/plugins/happy-elementor-addons/ compatibility fix
          */
-        add_action('elementor/frontend/before_render', array($this, 'action_elementor_widget_before_render_content'), 0);
+        add_action('elementor/frontend/before_render', [$this, 'action_elementor_widget_before_render_content'], 0);
 
         /**
          * MemberPress Mail attachments remove
          * https://memberpress.com/
          */
-        add_action('mepr_email_sent', array($this, 'action_mepr_email_sent'), 10, 3);
+        add_action('mepr_email_sent', [$this, 'action_mepr_email_sent']);
 
         /**
          * User Registration & Membership – Custom Registration Form, Login Form, and User Profile
          * https://wordpress.org/plugins/user-registration/
          */
-        add_action('user_registration_email_send_before', array($this, 'action_user_registration_email_send_before'));
-        add_action('user_registration_email_send_after', array($this, 'action_user_registration_email_send_after'));
+        add_action('user_registration_email_send_before', [$this, 'action_user_registration_email_send_before']);
+        add_action('user_registration_email_send_after', [$this, 'action_user_registration_email_send_after']);
+
+        /**
+         * Ultimate Member – User Profile, Registration, Login, Member Directory, Content Restriction & Membership Plugin
+         * https://wordpress.org/plugins/ultimate-member/
+         */
+        add_action('um_before_email_notification_sending', [$this, 'action_um_before_email_notification_sending']);
+        add_action('um_after_email_notification_sending', [$this, 'action_um_after_email_notification_sending']);
 
         /* Hooks */
-        add_action('add_meta_boxes', array($this, 'hook_wordpress_page_edit'));
+        add_action('add_meta_boxes', [$this, 'hook_wordpress_page_edit']);
     }
 
     // render
-    public function render($value, $field = array(), $convert_shortcodes = true, $raw = false) {
+    public function render($value, $field = [], $convert_shortcodes = true, $raw = false) {
         $value = $this->render_shortcodes($value, $field);
         if (!$raw) {
             $value = $this->strip_shortcodes($value);
@@ -373,7 +386,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
     }
 
     // render shortcodes
-    public function render_shortcodes($value, $field = array()) {
+    public function render_shortcodes($value, $field = []) {
 
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
 
@@ -384,7 +397,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
              */
             do_action('wpv_action_wpv_set_top_current_post', $this->get('cached_post'));
 
-            $wordpress_shortcodes = array(
+            $wordpress_shortcodes = [
                 'id',
                 'post_author',
                 'post_date',
@@ -414,24 +427,24 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 'get_the_post_thumbnail_url',
                 'get_permalink',
                 'get_post_permalink',
-            );
+            ];
 
             if (false !== strpos($value, '[')) {
                 $value = $this->helper->load('field')->pre_shortcodes($value, $this, $field);
                 $value = $this->helper->load('field')->inner_shortcodes($value, $this, $field);
                 if ($this->get('item') == '-3') {
-                    $shortcode_tags = array(
+                    $shortcode_tags = [
                         'acf',
-                    );
+                    ];
                 } else {
-                    $shortcode_tags = array(
+                    $shortcode_tags = [
                         'meta',
                         'terms',
                         'e2pdf-wp',
                         'e2pdf-wp-term',
                         'e2pdf-content',
                         'acf',
-                    );
+                    ];
                     $shortcode_tags = array_merge($shortcode_tags, $wordpress_shortcodes);
                 }
                 preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $value, $matches);
@@ -458,7 +471,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                             }
                             if (substr($shortcode_value, -11) === '[/e2pdf-wp]' || substr($shortcode_value, -8) === '[/terms]' || substr($shortcode_value, -7) === '[/meta]') {
                                 if ($shortcode[5]) {
-                                    $shortcode[5] = $this->render($shortcode[5], array(), false);
+                                    $shortcode[5] = $this->render($shortcode[5], [], false);
                                 }
                                 $value = str_replace($shortcode_value, '[e2pdf-wp' . $shortcode[3] . ']' . $shortcode[5] . '[/e2pdf-wp]', $value);
                             } else {
@@ -467,7 +480,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                         } elseif ($shortcode[2] === 'e2pdf-wp-term') {
                             if (substr($shortcode_value, -16) === '[/e2pdf-wp-term]') {
                                 if ($shortcode[5]) {
-                                    $shortcode[5] = $this->render($shortcode[5], array(), false);
+                                    $shortcode[5] = $this->render($shortcode[5], [], false);
                                 }
                                 $value = str_replace($shortcode_value, '[e2pdf-wp-term' . $shortcode[3] . ']' . $shortcode[5] . '[/e2pdf-wp-term]', $value);
                             }
@@ -492,14 +505,14 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 $value = $this->helper->load('field')->wrapper_shortcodes($value, $this, $field);
             }
 
-            add_filter('frm_filter_view', array($this, 'filter_frm_filter_view'));
+            add_filter('frm_filter_view', [$this, 'filter_frm_filter_view']);
             $value = $this->helper->load('field')->do_shortcodes($value, $this, $field);
             $value = $this->helper->load('field')->render(
                     apply_filters('e2pdf_extension_render_shortcodes_pre_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), false, false),
                     $this,
                     $field
             );
-            remove_filter('frm_filter_view', array($this, 'filter_frm_filter_view'));
+            remove_filter('frm_filter_view', [$this, 'filter_frm_filter_view']);
         }
         return apply_filters(
                 'e2pdf_extension_render_shortcodes_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), false, false
@@ -530,26 +543,26 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
     // auto
     public function auto() {
 
-        $response = array();
-        $elements = array();
+        $response = [];
+        $elements = [];
 
         if ($this->get('item') == '-3') {
-            $elements[] = array(
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => '<h1>[e2pdf-user key="user_login"]</h1>',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-image',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
@@ -557,172 +570,172 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     'height' => '100',
                     'vertical' => 'top',
                     'value' => '[e2pdf-user key="get_avatar_url"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'ID: [e2pdf-user key="ID"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'First Name: [e2pdf-user key="user_firstname"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'Last Name: [e2pdf-user key="user_lastname"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'Email: [e2pdf-user key="user_email"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'Registered: [e2pdf-user key="user_registered"]',
-                ),
-            );
+                ],
+            ];
         } else {
-            $elements[] = array(
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => '<h1>[e2pdf-wp key="post_title"]</h1>',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'Post name: [e2pdf-wp key="post_name"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'Post type: [e2pdf-wp key="post_type"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'ID: [e2pdf-wp key="id"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'Author: [e2pdf-wp key="post_author"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => '300',
                     'value' => '[e2pdf-wp key="post_content"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'Created: [e2pdf-wp key="post_date"]',
-                ),
-            );
-            $elements[] = array(
+                ],
+            ];
+            $elements[] = [
                 'type' => 'e2pdf-html',
                 'block' => true,
-                'properties' => array(
+                'properties' => [
                     'top' => '20',
                     'left' => '20',
                     'right' => '20',
                     'width' => '100%',
                     'height' => 'auto',
                     'value' => 'Modified: [e2pdf-wp key="post_modified"]',
-                ),
-            );
+                ],
+            ];
         }
-        $response['page'] = array(
+        $response['page'] = [
             'bottom' => '20',
             'top' => '20',
             'left' => '20',
             'right' => '20',
-        );
+        ];
 
         $response['elements'] = $elements;
         return $response;
@@ -763,7 +776,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
      * Delete attachments that were sent by MemberPress email
      * https://memberpress.com/
      */
-    public function action_mepr_email_sent($email, $values, $attachments) {
+    public function action_mepr_email_sent() {
         $files = $this->helper->get('wordpress_attachments_mepr');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
@@ -775,12 +788,12 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
 
     // registration email send before action
     public function action_user_registration_email_send_before() {
-        add_filter('wp_mail', array($this, 'filter_wp_mail'), 11);
+        add_filter('wp_mail', [$this, 'filter_wp_mail'], 11);
     }
 
     // registration email send after action
     public function action_user_registration_email_send_after() {
-        remove_filter('wp_mail', array($this, 'filter_wp_mail'), 11);
+        remove_filter('wp_mail', [$this, 'filter_wp_mail'], 11);
         $files = $this->helper->get('wordpress_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
@@ -790,19 +803,43 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         }
     }
 
+    /**
+     * Ultimate Member – User Profile, Registration, Login, Member Directory, Content Restriction & Membership Plugin
+     * https://wordpress.org/plugins/ultimate-member/
+     */
+    public function action_um_before_email_notification_sending() {
+        add_filter('wp_mail', [$this, 'filter_wp_mail_um'], 11);
+    }
+
+    /**
+     * Ultimate Member – User Profile, Registration, Login, Member Directory, Content Restriction & Membership Plugin
+     * https://wordpress.org/plugins/ultimate-member/
+     */
+    public function action_um_after_email_notification_sending() {
+        remove_filter('wp_mail', [$this, 'filter_wp_mail_um'], 11);
+        $files = $this->helper->get('wordpress_attachments_um_del');
+        if (is_array($files) && !empty($files)) {
+            foreach ($files as $key => $file) {
+                $this->helper->delete_dir(dirname($file) . '/');
+            }
+            $this->helper->deset('wordpress_attachments_um');
+            $this->helper->deset('wordpress_attachments_um_del');
+        }
+    }
+
     // filter content
     public function filter_content($content, $post_id = false, $wp_reset_postdata = true) {
         global $post;
         if (!is_string($content) || false === strpos($content, '[')) {
             return $content;
         }
-        $shortcode_tags = array(
+        $shortcode_tags = [
             'e2pdf-download',
             'e2pdf-save',
             'e2pdf-view',
             'e2pdf-adobesign',
             'e2pdf-zapier',
-        );
+        ];
         preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
         $tagnames = array_intersect($shortcode_tags, $matches[1]);
         if (!empty($tagnames)) {
@@ -939,10 +976,10 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         $message = $body ? $body : $mail->body();
         if ($message && false !== strpos($message, '[')) {
             $message = $mail->replace_variables($message, $values);
-            $shortcode_tags = array(
+            $shortcode_tags = [
                 'e2pdf-attachment',
                 'e2pdf-save',
-            );
+            ];
             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $message, $matches);
             $tagnames = array_intersect($shortcode_tags, $matches[1]);
             if (!empty($tagnames)) {
@@ -1006,11 +1043,11 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
 
     // mepr custom thank you message filter
     public function filter_mepr_custom_thankyou_message($content) {
-        add_shortcode('e2pdf-download', array(new Model_E2pdf_Shortcode(), 'e2pdf_download'));
-        add_shortcode('e2pdf-view', array(new Model_E2pdf_Shortcode(), 'e2pdf_view'));
-        add_shortcode('e2pdf-save', array(new Model_E2pdf_Shortcode(), 'e2pdf_save'));
-        add_shortcode('e2pdf-zapier', array(new Model_E2pdf_Shortcode(), 'e2pdf_zapier'));
-        add_shortcode('e2pdf-adobesign', array(new Model_E2pdf_Shortcode(), 'e2pdf_adobesign'));
+        add_shortcode('e2pdf-download', [new Model_E2pdf_Shortcode(), 'e2pdf_download']);
+        add_shortcode('e2pdf-view', [new Model_E2pdf_Shortcode(), 'e2pdf_view']);
+        add_shortcode('e2pdf-save', [new Model_E2pdf_Shortcode(), 'e2pdf_save']);
+        add_shortcode('e2pdf-zapier', [new Model_E2pdf_Shortcode(), 'e2pdf_zapier']);
+        add_shortcode('e2pdf-adobesign', [new Model_E2pdf_Shortcode(), 'e2pdf_adobesign']);
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         if (isset($_REQUEST['trans_num']) && class_exists('MeprTransaction') && method_exists('MeprTransaction', 'get_one_by_trans_num')) {
             $txn = new MeprTransaction();
@@ -1019,13 +1056,13 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             if (method_exists($txn, 'load_data')) {
                 $txn->load_data($data);
                 if (false !== strpos($content, '[')) {
-                    $shortcode_tags = array(
+                    $shortcode_tags = [
                         'e2pdf-download',
                         'e2pdf-view',
                         'e2pdf-save',
                         'e2pdf-zapier',
                         'e2pdf-adobesign',
-                    );
+                    ];
                     preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
                     $tagnames = array_intersect($shortcode_tags, $matches[1]);
                     if (!empty($tagnames)) {
@@ -1076,17 +1113,104 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         return $values;
     }
 
+    /**
+     * Ultimate Member – User Profile, Registration, Login, Member Directory, Content Restriction & Membership Plugin
+     * https://wordpress.org/plugins/ultimate-member/
+     */
+    public function filter_um_email_send_message_content($content) {
+        if (!is_string($content) || false === strpos($content, '[')) {
+            return $content;
+        }
+        $shortcode_tags = [
+            'e2pdf-download',
+            'e2pdf-save',
+            'e2pdf-attachment',
+            'e2pdf-view',
+            'e2pdf-adobesign',
+            'e2pdf-zapier',
+        ];
+        preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
+        $tagnames = array_intersect($shortcode_tags, $matches[1]);
+        if (!empty($tagnames)) {
+            preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $content, $shortcodes);
+            foreach ($shortcodes[0] as $key => $shortcode_value) {
+                $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
+                $atts = shortcode_parse_atts($shortcode[3]);
+                if (!isset($atts['apply'])) {
+                    $shortcode[3] .= ' apply="true"';
+                }
+                if (!isset($atts['filter'])) {
+                    $shortcode[3] .= ' filter="true"';
+                }
+                if (isset($atts['id'])) {
+                    $template = new Model_E2pdf_Template();
+                    $template->load($atts['id']);
+                    if ($template->get('extension') === 'wordpress') { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
+                        if (!isset($atts['dataset'])) {
+                            if ($template->get('item') == '-3' && function_exists('um_user')) {
+                                $dataset = um_user('ID');
+                                $atts['dataset'] = $dataset;
+                                $shortcode[3] .= ' dataset="' . $dataset . '"';
+                            }
+                        }
+                    }
+                }
+                if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                    $file = do_shortcode_tag($shortcode);
+                    if ($file) {
+                        $tmp = false;
+                        if (substr($file, 0, 4) === 'tmp:') {
+                            $file = substr($file, 4);
+                            $tmp = true;
+                        }
+                        if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            if ($tmp) {
+                                $this->helper->add('wordpress_attachments_um_del', $file);
+                            }
+                        } else {
+                            $this->helper->add('wordpress_attachments_um_del', $file);
+                        }
+                        $this->helper->add('wordpress_attachments_um', $file);
+                    }
+                    $content = str_replace($shortcode_value, '', $content);
+                } else {
+                    $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
+                }
+            }
+        }
+        return $content;
+    }
+
+    /**
+     * Ultimate Member – User Profile, Registration, Login, Member Directory, Content Restriction & Membership Plugin
+     * https://wordpress.org/plugins/ultimate-member/
+     */
+    public function filter_wp_mail_um($args) {
+        $files = $this->helper->get('wordpress_attachments_um');
+        if (is_array($files) && !empty($files)) {
+            if (empty($args['attachments'])) {
+                $args['attachments'] = [];
+            } elseif (!is_array($args['attachments'])) {
+                $args['attachments'] = [$args['attachments']];
+            }
+            foreach ($files as $key => $file) {
+                $args['attachments'][] = $file;
+            }
+        }
+        return $args;
+    }
+
     // wp mail filter
     public function filter_wp_mail($args) {
         if (isset($args['message'])) {
             if (false !== strpos($args['message'], '[')) {
-                $shortcode_tags = array(
+                $shortcode_tags = [
                     'e2pdf-download',
                     'e2pdf-save',
                     'e2pdf-attachment',
                     'e2pdf-adobesign',
                     'e2pdf-zapier',
-                );
+                ];
                 preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $args['message'], $matches);
                 $tagnames = array_intersect($shortcode_tags, $matches[1]);
                 if (!empty($tagnames)) {
@@ -1127,22 +1251,21 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 }
             }
         }
-        $wp_mail = array(
+        return [
             'to' => $args['to'],
             'subject' => $args['subject'],
             'message' => $args['message'],
             'headers' => $args['headers'],
             'attachments' => $args['attachments'],
-        );
-        return $wp_mail;
+        ];
     }
 
-    // Thrive Theme Builder dynamic shortcode support   
+    // Thrive Theme Builder dynamic shortcode support
     public function filter_thrive_theme_template_content($html) {
-        add_filter('e2pdf_model_shortcode_e2pdf_download_atts', array($this, 'filter_global_post_id'));
-        add_filter('e2pdf_model_shortcode_e2pdf_view_atts', array($this, 'filter_global_post_id'));
-        add_filter('e2pdf_model_shortcode_e2pdf_save_atts', array($this, 'filter_global_post_id'));
-        add_filter('e2pdf_model_shortcode_e2pdf_zapier_atts', array($this, 'filter_global_post_id'));
+        add_filter('e2pdf_model_shortcode_e2pdf_download_atts', [$this, 'filter_global_post_id']);
+        add_filter('e2pdf_model_shortcode_e2pdf_view_atts', [$this, 'filter_global_post_id']);
+        add_filter('e2pdf_model_shortcode_e2pdf_save_atts', [$this, 'filter_global_post_id']);
+        add_filter('e2pdf_model_shortcode_e2pdf_zapier_atts', [$this, 'filter_global_post_id']);
         return $html;
     }
 
@@ -1177,13 +1300,13 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 !et_core_is_builder_used_on_current_request()
         ) {
             global $post;
-            $shortcode_tags = array(
+            $shortcode_tags = [
                 'e2pdf-download',
                 'e2pdf-save',
                 'e2pdf-view',
                 'e2pdf-adobesign',
                 'e2pdf-zapier',
-            );
+            ];
             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $content, $matches);
             $tagnames = array_intersect($shortcode_tags, $matches[1]);
             if (!empty($tagnames)) {
@@ -1320,23 +1443,23 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
 
         if (class_exists('ACF') && function_exists('acf_get_field_groups')) {
             $user_groups = acf_get_field_groups(
-                    array(
+                    [
                         'user_id' => 'new',
                         'user_form' => 'all',
-                    )
+                    ]
             );
             if (!empty($user_groups)) {
                 $user_groups = array_column($user_groups, 'key');
             }
             if ($this->get('item') == '-3') {
                 $groups = acf_get_field_groups(
-                        array(
+                        [
                             'user_id' => 'new',
                             'user_form' => 'all',
-                        )
+                        ]
                 );
             } else {
-                $groups = acf_get_field_groups(array('post_type' => $this->get('item')));
+                $groups = acf_get_field_groups(['post_type' => $this->get('item')]);
             }
             if (!empty($groups)) {
                 $vc .= "<h3 class='e2pdf-plr5'>ACF</h3>";
@@ -1366,7 +1489,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
     // get acf field
     public function get_acf_field($vc, $field, $post_id) {
         if ($field['type'] == 'repeater' && !empty($field['sub_fields'])) {
-            $sub_fields = array();
+            $sub_fields = [];
             foreach ($field['sub_fields'] as $sub_field_key => $sub_field) {
                 $sub_fields[] = '[acf field="' . $sub_field['name'] . '"' . $post_id . ']';
                 $sub_field['label'] = $field['label'] . ' ' . $sub_field['label'];
@@ -1377,7 +1500,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                 $vc .= '<div class="e2pdf-ib e2pdf-w50 e2pdf-vm-item">' . $this->get_vm_element($field['label'] . ' Iteration', 'e2pdf-acf-repeater field="' . $field['name'] . '"' . $post_id . ']' . implode(' ', $sub_fields) . "\r\n" . '[/e2pdf-acf-repeater') . '</div>';
             }
         } elseif ($field['type'] == 'group' && !empty($field['sub_fields'])) {
-            $sub_fields = array();
+            $sub_fields = [];
             foreach ($field['sub_fields'] as $sub_field_key => $sub_field) {
                 $sub_field['label'] = $field['label'] . ' ' . $sub_field['label'];
                 $sub_field['name'] = $field['name'] . '_' . $sub_field['name'];
@@ -1394,19 +1517,19 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
     // get post meta keys
     public function get_post_meta_keys() {
         global $wpdb;
-        $meta_keys = array();
+        $meta_keys = [];
         if ($this->get('item')) {
-            $condition = array(
-                'p.post_type' => array(
+            $condition = [
+                'p.post_type' => [
                     'condition' => '=',
                     'value' => $this->get('item'),
                     'type' => '%s',
-                ),
-            );
-            $order_condition = array(
+                ],
+            ];
+            $order_condition = [
                 'orderby' => 'meta_key',
                 'order' => 'desc',
-            );
+            ];
             $where = $this->helper->load('db')->prepare_where($condition);
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
             // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
@@ -1418,12 +1541,12 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
     // get user meta keys
     public function get_user_meta_keys() {
         global $wpdb;
-        $meta_keys = array();
+        $meta_keys = [];
         if ($this->get('item')) {
-            $order_condition = array(
+            $order_condition = [
                 'orderby' => 'meta_key',
                 'order' => 'desc',
-            );
+            ];
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
             // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
             $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `meta_key` FROM `' . $wpdb->usermeta . '` ' . $orderby . ''));
@@ -1434,12 +1557,12 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
     // get post taxonomy keys
     public function get_post_taxonomy_keys() {
         global $wpdb;
-        $meta_keys = array();
+        $meta_keys = [];
         if ($this->get('item')) {
-            $order_condition = array(
+            $order_condition = [
                 'orderby' => 'taxonomy',
                 'order' => 'desc',
-            );
+            ];
             $orderby = $this->helper->load('db')->prepare_orderby($order_condition);
             // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
             $meta_keys = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT `taxonomy` FROM `' . $wpdb->term_taxonomy . '` `t` ' . $orderby . ''));
@@ -1464,7 +1587,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             add_meta_box(
                     'e2pdf',
                     apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_wordpress_page_edit'),
-                    array($this, 'hook_wordpress_page_edit_callback'),
+                    [$this, 'hook_wordpress_page_edit_callback'],
                     $items,
                     'side',
                     'default'
@@ -1489,18 +1612,18 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     ) {
                         $action = apply_filters(
                                 'e2pdf_hook_action_button',
-                                array(
+                                [
                                     'html' => '<p><a class="e2pdf-download-hook" target="_blank" title="%2$s" href="%1$s"><span class="dashicons dashicons-pdf"></span> %2$s</a></p>',
                                     'url' => $this->helper->get_url(
-                                            array(
+                                            [
                                                 'page' => 'e2pdf',
                                                 'action' => 'export',
                                                 'id' => $hook,
                                                 'dataset' => $post->ID,
-                                            ), 'admin.php?'
+                                            ], 'admin.php?'
                                     ),
                                     'title' => 'PDF #' . $hook,
-                                ), 'hook_wordpress_page_edit', $hook, $post->ID
+                                ], 'hook_wordpress_page_edit', $hook, $post->ID
                         );
                         if (!empty($action)) {
                             echo sprintf(
@@ -1530,18 +1653,18 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     ) {
                         $action = apply_filters(
                                 'e2pdf_hook_action_button',
-                                array(
+                                [
                                     'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
                                     'url' => $this->helper->get_url(
-                                            array(
+                                            [
                                                 'page' => 'e2pdf',
                                                 'action' => 'export',
                                                 'id' => $hook,
                                                 'dataset' => $post->ID,
-                                            ), 'admin.php?'
+                                            ], 'admin.php?'
                                     ),
                                     'title' => 'PDF #' . $hook,
-                                ), 'hook_wordpress_row_actions', $hook, $post->ID
+                                ], 'hook_wordpress_row_actions', $hook, $post->ID
                         );
                         if (!empty($action)) {
                             $actions['e2pdf_' . $hook] = sprintf(
@@ -1566,18 +1689,18 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     ) {
                         $action = apply_filters(
                                 'e2pdf_hook_action_button',
-                                array(
+                                [
                                     'html' => '<a class="e2pdf-download-hook" target="_blank" href="%s">%s</a>',
                                     'url' => $this->helper->get_url(
-                                            array(
+                                            [
                                                 'page' => 'e2pdf',
                                                 'action' => 'export',
                                                 'id' => $hook,
                                                 'dataset' => $post->ID,
-                                            ), 'admin.php?'
+                                            ], 'admin.php?'
                                     ),
                                     'title' => 'PDF #' . $hook,
-                                ), 'hook_wordpress_row_actions', $hook, $post->ID
+                                ], 'hook_wordpress_row_actions', $hook, $post->ID
                         );
                         if (!empty($action)) {
                             $actions['e2pdf_' . $hook] = sprintf(

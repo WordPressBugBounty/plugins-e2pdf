@@ -1,13 +1,11 @@
 <?php
 
 /**
- * E2Pdf View Helper
- * 
- * @copyright  Copyright 2017 https://e2pdf.com
- * @license    GPLv3
- * @version    1
- * @link       https://e2pdf.com
- * @since      0.00.01
+ * File: /helper/e2pdf-view.php
+ *
+ * @package  E2Pdf
+ * @license  GPLv3
+ * @link     https://e2pdf.com
  */
 if (!defined('ABSPATH')) {
     die('Access denied.');
@@ -49,76 +47,61 @@ class Helper_E2pdf_View {
         $this->view_dir = $this->helper->get('plugin_dir') . 'classes/view/';
     }
 
-    /**
-     * Get Tpl Value
-     * @param string $key - Tpl key
-     * @return mixed - Tpl value
-     */
+    // render
     public function render($type, $element, $args = array()) {
         $this->tpl_args = new Helper_E2pdf_Tplargs($args);
         $this->tpl = $this->view_dir . $type . '/' . $element . '.php';
         if (file_exists($this->tpl)) {
-            include($this->tpl);
+            include $this->tpl;
         }
     }
 
-    /**
-     * Get Tpl Value
-     * @param string $key - Tpl key
-     * @return mixed - Tpl value
-     */
+    // render metabox
     public function render_metabox($post, $metabox) {
         $this->render('metaboxes', $metabox['args']['tpl']);
     }
 
-    /**
-     * Get Tpl Value
-     * @param string $key - Tpl key
-     * @return mixed - Tpl value
-     */
+    // render page
     public function render_page() {
         $this->tpl_page = $this->view_dir . 'page-' . $this->page . '.php';
         $controller = $this->page_to_controller($this->page);
         if (class_exists($controller)) {
             $this->controller = new $controller();
+            $method = 'index_action';
             if ($this->get->get('action')) {
                 $method = $this->get->get('action') . '_action';
-            } else {
-                $method = 'index_action';
             }
             if (method_exists($this->controller, $method)) {
                 $this->controller->$method();
                 $this->view = $this->controller->view;
+                if (file_exists($this->tpl_page)) {
+                    include $this->tpl_page;
+                }
             } else {
                 $this->handle_404();
             }
         }
-
-        if (file_exists($this->tpl_page)) {
-            include($this->tpl_page);
-        }
     }
 
+    // render frontend page
     public function render_frontend_page() {
         if ($this->page == 'e2pdf-download' || get_query_var('e2pdf')) {
             $this->tpl_page = $this->view_dir . '/frontend/page-e2pdf-download.php';
             $controller = $this->page_to_controller('e2pdf-download', true);
             if (class_exists($controller)) {
                 $this->controller = new $controller();
+                $method = 'index_action';
                 if ($this->get->get('action')) {
                     $method = $this->get->get('action') . '_action';
-                } else {
-                    $method = 'index_action';
                 }
                 if (method_exists($this->controller, $method)) {
                     $this->controller->$method();
+                    if (file_exists($this->tpl_page)) {
+                        include $this->tpl_page;
+                    }
                 } else {
                     $this->handle_404();
                 }
-            }
-
-            if (file_exists($this->tpl_page)) {
-                include($this->tpl_page);
             }
         } elseif ($this->page == 'e2pdf-activation') {
             if (get_transient('e2pdf_activation_key')) {
@@ -135,6 +118,7 @@ class Helper_E2pdf_View {
         }
     }
 
+    // rpc
     public function rpc() {
         if (ob_get_length() > 0) {
             while (@ob_end_clean());
@@ -143,21 +127,20 @@ class Helper_E2pdf_View {
         $controller = $this->page_to_controller('e2pdf-rpc-' . $rpc->get('version'), true);
         if (class_exists($controller)) {
             $this->controller = new $controller();
-            $method = $rpc->get('method');
-            if ($method && method_exists($this->controller, $method)) {
+            $method = 'index_action';
+            if ($rpc->get('method')) {
+                $method = $rpc->get('method') . '_action';
+            }
+            if (method_exists($this->controller, $method)) {
                 $this->controller->$method($rpc);
             }
         }
     }
 
-    /**
-     * Get Tpl Value
-     * @param string $key - Tpl key
-     * @return mixed - Tpl value
-     */
+    // page to controller
     public function page_to_controller($page, $frontend = false) {
         $controller = array(
-            'Controller'
+            'Controller',
         );
         if ($frontend) {
             $controller[] = 'Frontend';
@@ -167,10 +150,7 @@ class Helper_E2pdf_View {
         return implode("_", $controller);
     }
 
-    /**
-     * Redirect to page
-     * @param string $location - Full url where to redirect
-     */
+    // redirect
     public function redirect($location) {
         if (headers_sent()) {
             die("<script>window.location='{$location}';</script>");
@@ -180,28 +160,17 @@ class Helper_E2pdf_View {
         }
     }
 
-    /**
-     * Add notification
-     * @param string $type - Type of notification error|update
-     * @param string $text - Text of notification
-     */
+    // add notification
     public function add_notification($type, $text) {
         return $this->notification->add_notification($type, $text);
     }
 
-    /**
-     * Get notifications
-     * @return array - List of notifications
-     */
+    // get notifications
     public function get_notifications($notification_id = '') {
         return $this->notification->get_notifications($notification_id);
     }
 
-    /**
-     * Force Json response
-     * @param array $data - Array of data
-     * @return json
-     */
+    // json response
     public function json_response($data = array()) {
         @header('Content-Type: application/json; charset=' . get_option('blog_charset'));
         if (function_exists('wp_json_encode')) {
@@ -212,6 +181,7 @@ class Helper_E2pdf_View {
         wp_die();
     }
 
+    // json response ajax
     public function json_response_ajax($data = array(), $status = 200) {
         if (ob_get_length() > 0) {
             while (@ob_end_clean());
@@ -227,9 +197,7 @@ class Helper_E2pdf_View {
         exit;
     }
 
-    /**
-     * Force close browser tab from PHP
-     */
+    // close tab response
     public function close_tab_response() {
         echo "
             <script>
@@ -238,14 +206,7 @@ class Helper_E2pdf_View {
             ";
     }
 
-    /**
-     * Force Download response
-     * @param string $format - Format of file
-     * @param string $file - Base64 Encoded File
-     * @param string $name - Name of file when download
-     * @param string $disposition - Disposition of file inline|attachment
-     * @return string
-     */
+    // download response
     public function download_response($format, $file, $name = '', $disposition = '', $fpassthru = false, $preview = false) {
 
         $content_length = true;
@@ -423,13 +384,7 @@ class Helper_E2pdf_View {
         }
     }
 
-    /**
-     * Check if exists in array
-     * @param string $value - Array Key
-     * @param mixed $compare 
-     * @param array $data - Array of data
-     * @return bool
-     */
+    // exist
     public function exist($value, $compare = false, $data = array()) {
         if (isset($data[$value]) && $value === $compare) {
             return true;
@@ -438,10 +393,7 @@ class Helper_E2pdf_View {
         }
     }
 
-    /**
-     * Force Error
-     * @param string $code - Error Code
-     */
+    // handle 404
     public function handle_404() {
         global $wp_query;
         $wp_query->set_404();
@@ -452,20 +404,12 @@ class Helper_E2pdf_View {
         }
     }
 
-    /**
-     * Set var available to view template
-     * @param string $key - Key of value
-     * @param mixed $value - Value
-     */
+    // view
     public function view($key, $value) {
         $this->view->$key = $value;
     }
 
-    /**
-     * Check if Array/Object Empty
-     * @param mixed $data - Object/Array to check
-     * @return bool
-     */
+    // is empty
     public function is_empty($data) {
         if (is_object($data) || is_array($data)) {
 
@@ -480,6 +424,7 @@ class Helper_E2pdf_View {
         return true;
     }
 
+    // message
     public function message($key) {
         $message = '';
         switch ($key) {

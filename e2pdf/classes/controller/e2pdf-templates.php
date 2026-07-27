@@ -513,22 +513,13 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                 wp_die($this->message('wp_verify_nonce_error'));
             }
 
-            $errors = array();
-            $import = $this->files->get('template');
-            $name = $import['name'];
-            $tmp = $import['tmp_name'];
-            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-            if (!$tmp) {
-                $this->add_notification('error', __('Choose Template file to upload', 'e2pdf'));
-            } elseif ($import['error']) {
-                $this->add_notification('error', $import['error']);
-            } elseif (!in_array($ext, array('xml'))) {
-                $this->add_notification('error', sprintf(__('Only %s files allowed', 'e2pdf'), '.xml'));
-            } elseif ($import['type'] != 'text/xml') {
-                $this->add_notification('error', __('Invalid Type', 'e2pdf'));
+            $file = $this->helper->load('files')->upload($this->files->get('template'), ['xml'], ['text/xml', 'application/xml']);
+            if (isset($file['error'])) {
+                $this->add_notification('error', $file['error']);
             } else {
+                $errors = [];
                 $options = $this->post->get('options');
-                $xml = simplexml_load_file($import['tmp_name'], 'SimpleXMLElement', LIBXML_PARSEHUGE);
+                $xml = simplexml_load_file($file['tmp_name'], 'SimpleXMLElement', LIBXML_PARSEHUGE);
                 if (!isset($xml->template->pages)) {
                     $this->add_notification('error', __('The file is not a valid E2Pdf Template', 'e2pdf'));
                 } else {
@@ -863,7 +854,9 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                         }
                     }
                 }
-                unlink($import['tmp_name']);
+                if (is_file($file['tmp_name'])) {
+                    unlink($file['tmp_name']);
+                }
             }
         }
 
@@ -1420,35 +1413,21 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         $title = isset($data['title']) ? $data['title'] : __('(no title)', 'e2pdf');
         $rtl = isset($data['rtl']) && $data['rtl'] ? '1' : '0';
         $text_align = isset($data['text_align']) ? $data['text_align'] : 'left';
-        $pdf = $this->files->get('pdf');
-        $name = strtolower($pdf['name']);
-        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
-        if (!empty($pdf['error'])) {
+        $file = $this->helper->load('files')->upload($this->files->get('pdf'), ['pdf'], ['application/pdf']);
+        if (isset($file['error'])) {
             $this->json_response(
                     [
-                        'error' => $pdf['error'],
-                    ]
-            );
-        } elseif (!in_array($ext, array('pdf'))) {
-            $this->json_response(
-                    [
-                        'error' => sprintf(__('Only %s files allowed', 'e2pdf'), '.pdf'),
-                    ]
-            );
-        } elseif ($pdf['type'] != 'application/pdf') {
-            $this->json_response(
-                    [
-                        'error' => __('Invalid Type', 'e2pdf'),
+                        'error' => $file['error'],
                     ]
             );
         }
 
         wp_raise_memory_limit('admin');
-        if (get_option('e2pdf_api_protocol', '0') == '1') {
-            $upload = class_exists('CURLFile') ? new CURLFile(realpath($pdf['tmp_name'])) : '@' . realpath($pdf['tmp_name']);
+        if (get_option('e2pdf_api_protocol', '0') == '1' && ($tmp = realpath($file['tmp_name']))) {
+            $upload = class_exists('CURLFile') ? new CURLFile($tmp) : '@' . $tmp;
         } else {
-            $upload = base64_encode(file_get_contents($pdf['tmp_name']));
+            $upload = base64_encode(file_get_contents($file['tmp_name']));
         }
 
         $model_e2pdf_api = new Model_E2pdf_Api();
@@ -1456,7 +1435,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                 array(
                     'action' => 'template/upload2',
                     'data' => array(
-                        'title' => $name,
+                        'title' => $file['name'],
                         'pdf' => $upload,
                     ),
                 )
@@ -1484,7 +1463,14 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         $pdf_images_dir = $pdf_dir . 'images/';
         $this->helper->create_dir($pdf_dir);
         $this->helper->create_dir($pdf_images_dir);
-        move_uploaded_file($pdf['tmp_name'], $pdf_dir . $pdf_name . '.pdf');
+
+        if (!move_uploaded_file($file['tmp_name'], $pdf_dir . $pdf_name . '.pdf')) {
+            $this->json_response(
+                    [
+                        'error' => 'Failed to move uploaded file',
+                    ]
+            );
+        }
 
         try {
             $xml_template = [];
@@ -1672,35 +1658,20 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             return false;
         }
 
-        $pdf = $this->files->get('pdf');
-        $name = strtolower($pdf['name']);
-        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-
-        if (!empty($pdf['error'])) {
+        $file = $this->helper->load('files')->upload($this->files->get('pdf'), ['pdf'], ['application/pdf']);
+        if (isset($file['error'])) {
             $this->json_response(
                     [
-                        'error' => $pdf['error'],
-                    ]
-            );
-        } elseif (!in_array($ext, array('pdf'))) {
-            $this->json_response(
-                    [
-                        'error' => sprintf(__('Only %s files allowed', 'e2pdf'), '.pdf'),
-                    ]
-            );
-        } elseif ($pdf['type'] != 'application/pdf') {
-            $this->json_response(
-                    [
-                        'error' => __('Invalid Type', 'e2pdf'),
+                        'error' => $file['error'],
                     ]
             );
         }
 
         wp_raise_memory_limit('admin');
-        if (get_option('e2pdf_api_protocol', '0') == '1') {
-            $upload = class_exists('CURLFile') ? new CURLFile(realpath($pdf['tmp_name'])) : '@' . realpath($pdf['tmp_name']);
+        if (get_option('e2pdf_api_protocol', '0') == '1' && ($tmp = realpath($file['tmp_name']))) {
+            $upload = class_exists('CURLFile') ? new CURLFile($tmp) : '@' . $tmp;
         } else {
-            $upload = base64_encode(file_get_contents($pdf['tmp_name']));
+            $upload = base64_encode(file_get_contents($file['tmp_name']));
         }
 
         $model_e2pdf_api = new Model_E2pdf_Api();
@@ -1708,7 +1679,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                 array(
                     'action' => 'template/upload2',
                     'data' => array(
-                        'title' => $name,
+                        'title' => $file['name'],
                         'pdf' => $upload,
                     ),
                 )
@@ -1743,7 +1714,14 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         $pdf_images_dir = $pdf_dir . 'images/';
         $this->helper->create_dir($pdf_dir);
         $this->helper->create_dir($pdf_images_dir);
-        move_uploaded_file($pdf['tmp_name'], $pdf_dir . $pdf_name . '.pdf');
+
+        if (!move_uploaded_file($file['tmp_name'], $pdf_dir . $pdf_name . '.pdf')) {
+            $this->json_response(
+                    [
+                        'error' => 'Failed to move uploaded file',
+                    ]
+            );
+        }
 
         try {
             $pages = [];

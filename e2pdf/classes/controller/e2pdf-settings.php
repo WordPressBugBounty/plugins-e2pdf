@@ -187,41 +187,34 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
     public function fonts_action() {
         $model_e2pdf_font = new Model_E2pdf_Font();
         if ($this->post->get('_wpnonce')) {
-            if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
-                $font = $this->files->get('font');
-                $name = $font['name'];
-                $tmp = $font['tmp_name'];
-                $filename = pathinfo($name, PATHINFO_FILENAME);
-                $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-                $name = $filename . '.' . $extension;
-                $fonts = $model_e2pdf_font->get_fonts();
+
+            if (!wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
+                wp_die($this->message('wp_verify_nonce_error'));
+            }
+
+            $file = $this->helper->load('files')->upload($this->files->get('font'), $model_e2pdf_font->get_allowed_extensions());
+            if (isset($file['error'])) {
+                $this->add_notification('error', $file['error']);
+            } else {
                 $font_name = false;
                 $exist = false;
-                if (in_array($extension, $model_e2pdf_font->get_allowed_extensions())) {
-                    $font_name = $model_e2pdf_font->get_font_info(false, 4, $tmp);
-                    if ($font_name) {
-                        $exist = array_search($font_name, $fonts);
-                    }
+                $fonts = $model_e2pdf_font->get_fonts();
+                $font_name = $model_e2pdf_font->get_font_info(false, 4, $file['tmp_name']);
+                $name = pathinfo($file['name'], PATHINFO_FILENAME) . '.' . $file['ext'];
+                if ($font_name) {
+                    $exist = array_search($font_name, $fonts);
                 }
-                if (!$tmp) {
-                    $this->add_notification('error', __('Choose Font file to upload', 'e2pdf'));
-                } elseif ($font['error']) {
-                    $this->add_notification('error', $font['error']);
-                } elseif (!in_array($extension, $model_e2pdf_font->get_allowed_extensions())) {
-                    $this->add_notification('error', sprintf(__('Only %s files allowed', 'e2pdf'), '.' . implode(', .', $model_e2pdf_font->get_allowed_extensions())));
-                } elseif (!$font_name) {
+                if (!$font_name) {
                     $this->add_notification('error', __('Invalid Type', 'e2pdf'));
                 } elseif (array_key_exists($name, $fonts) || $exist) {
                     $this->add_notification('error', __('A Font with this name already exists', 'e2pdf'));
-                } elseif (move_uploaded_file($font['tmp_name'], $this->helper->get('fonts_dir') . $name)) {
-                    if (file_exists($this->helper->get('fonts_dir') . $name)) {
-                        $this->add_notification('update', __('Font Uploaded', 'e2pdf'));
+                } else {
+                    if (!move_uploaded_file($file['tmp_name'], $this->helper->get('fonts_dir') . $name)) {
+                        $this->add_notification('error', __('Failed to move uploaded file', 'e2pdf'));
                     } else {
-                        $this->add_notification('error', __('Something went wrong!', 'e2pdf'));
+                        $this->add_notification('update', __('Font Uploaded', 'e2pdf'));
                     }
                 }
-            } else {
-                wp_die($this->message('wp_verify_nonce_error'));
             }
         }
 

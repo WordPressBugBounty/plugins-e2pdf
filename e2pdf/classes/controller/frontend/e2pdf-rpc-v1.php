@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 class Controller_Frontend_E2pdf_Rpc_V1 extends Helper_E2pdf_View {
 
     // zapier rpc service
-    public function zapier($rpc) {
+    public function zapier_action($rpc) {
         if (is_a($rpc, 'Model_E2pdf_Rpc')) {
             switch ($rpc->get('action')) {
                 case 'auth':
@@ -31,7 +31,7 @@ class Controller_Frontend_E2pdf_Rpc_V1 extends Helper_E2pdf_View {
     }
 
     // adobe rpc service
-    public function adobe($rpc) {
+    public function adobe_action($rpc) {
         if (is_a($rpc, 'Model_E2pdf_Rpc')) {
             switch ($rpc->get('action')) {
                 case 'auth':
@@ -57,7 +57,7 @@ class Controller_Frontend_E2pdf_Rpc_V1 extends Helper_E2pdf_View {
     }
 
     // gdrive rpc service
-    public function gdrive($rpc) {
+    public function gdrive_action($rpc) {
         if (is_a($rpc, 'Model_E2pdf_Rpc')) {
             switch ($rpc->get('action')) {
                 case 'auth':
@@ -85,14 +85,16 @@ class Controller_Frontend_E2pdf_Rpc_V1 extends Helper_E2pdf_View {
         }
     }
 
-    public function restore($rpc) {
+    public function restore_action($rpc) {
         if (is_a($rpc, 'Model_E2pdf_Rpc')) {
             switch ($rpc->get('action')) {
                 case 'request':
                     if (get_transient('e2pdf_restore_key') && $rpc->get_arg('restore_key') === get_transient('e2pdf_restore_key')) {
-                        wp_send_json_success([
-                            'restore_key' => get_transient('e2pdf_restore_key')
-                        ]);
+                        wp_send_json_success(
+                                [
+                                    'restore_key' => get_transient('e2pdf_restore_key'),
+                                ]
+                        );
                     } else {
                         wp_send_json_error(null, 401);
                     }

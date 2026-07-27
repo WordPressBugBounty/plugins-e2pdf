@@ -732,17 +732,17 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     if ($data_type === 'signature-pad') {
                                         $elements[] = $this->auto_field(
                                                 $input_text,
-                                                array(
+                                                [
                                                     'type' => 'e2pdf-signature',
-                                                    'properties' => array(
+                                                    'properties' => [
                                                         'top' => '5',
                                                         'width' => '100%',
                                                         'height' => '150',
                                                         'dimension' => '1',
                                                         'block_dimension' => '1',
                                                         'value' => '%%' . $xml->get_node_value($input_text, 'data-original_id') . '%%',
-                                                    ),
-                                                )
+                                                    ],
+                                                ]
                                         );
                                     } elseif ($data_type === 'file') {
                                         $elements[] = $this->auto_field(
