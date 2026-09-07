@@ -20,7 +20,7 @@ class Helper_E2pdf_Graph {
         $this->helper = Helper_E2pdf_Helper::instance();
     }
 
-    public function graph($value = '', $field = array()) {
+    public function graph($value = '', $field = []) {
 
         if (!$value) {
             return '';
@@ -35,6 +35,7 @@ class Helper_E2pdf_Graph {
 
         $settings = [
             'auto_fit' => false,
+            'keep_colour_order' => true,
             'back_stroke_width' => 0,
             'back_stroke_colour' => '',
             'link_base' => '/',
@@ -249,7 +250,7 @@ class Helper_E2pdf_Graph {
             'PopulationPyramid'
         );
         if (in_array($this->get_value('g_type', 'BarGraph', $field), $single_array_conversion) && $this->get_value('g_multiline', '0', $field) == '2') {
-            $new_data = array();
+            $new_data = [];
             foreach ($data as $key => $tmp) {
                 if (is_array($tmp)) {
                     foreach ($tmp as $sub_key => $sub_tmp) {
@@ -267,7 +268,7 @@ class Helper_E2pdf_Graph {
          */
         if ($this->get_value('g_structured_data', '0', $field)) {
             $settings['structured_data'] = true;
-            $structure = array();
+            $structure = [];
             if (!$this->is_empty('g_structure_key', $field)) {
                 $structure['key'] = $this->get_value('g_structure_key', '0', $field);
             }
@@ -315,7 +316,7 @@ class Helper_E2pdf_Graph {
         }
 
         if (!$this->get_boolean('g_structured_data', $field) && $this->get_boolean('g_show_legend', $field)) {
-            $legends = array();
+            $legends = [];
             if ($this->get_value('g_multiline', '0', $field) == '1') {
                 if (isset($data[0]) && is_array($data[0])) {
                     $legends = $data[0];
@@ -327,12 +328,29 @@ class Helper_E2pdf_Graph {
         }
 
         if (!$this->is_empty('g_legends', $field)) {
-            $tmp_legends = explode("\r\n", $this->get_value('g_legends', '', $field));
-            $legends = array();
-            foreach ($tmp_legends as $legend) {
+            $legends = [];
+            foreach (explode("\r\n", $this->get_value('g_legends', '', $field)) as $legend) {
                 $legends[] = implode("\n", explode('\n', $legend));
             }
             $settings['legend_entries'] = $legends;
+        }
+
+        if (!$this->is_empty('g_axis_text_callback_y', $field)) {
+            $texts = explode("\r\n", $this->get_value('g_axis_text_callback_y', '', $field));
+            if (!empty($texts)) {
+                $settings['axis_text_callback_y'] = function ($v, $key = '') use ($texts) {
+                    return isset($texts[$v]) ? $texts[$v] : $key;
+                };
+            }
+        }
+
+        if (!$this->is_empty('g_axis_text_callback_x', $field)) {
+            $texts = explode("\r\n", $this->get_value('g_axis_text_callback_x', '', $field));
+            if (!empty($texts)) {
+                $settings['axis_text_callback_x'] = function ($v, $key = '') use ($texts) {
+                    return isset($texts[$v]) ? $texts[$v] : $key;
+                };
+            }
         }
 
         $count = max(count($data), 1);
@@ -341,10 +359,9 @@ class Helper_E2pdf_Graph {
                 $count = max($count, count($sub_data));
             }
         }
-        $colors = array();
+        $colors = [];
         if (!$this->is_empty('g_colors', $field)) {
-            $tmp_colors = explode("\r\n", $this->get_value('g_colors', '', $field));
-            foreach ($tmp_colors as $color) {
+            foreach (explode("\r\n", $this->get_value('g_colors', '', $field)) as $color) {
                 $colors[] = $this->get_array_value($color, '');
             }
         } else {
@@ -378,8 +395,8 @@ class Helper_E2pdf_Graph {
         }
     }
 
-    public function get_graph_data($value, $separators = array(), $multiline = false) {
-        $data = array();
+    public function get_graph_data($value, $separators = [], $multiline = false) {
+        $data = [];
         if ($multiline != '0') {
             $lines = preg_split('/\r\n|\n/', $value);
             foreach ($lines as $key => $line) {
@@ -396,8 +413,8 @@ class Helper_E2pdf_Graph {
         return $data;
     }
 
-    public function get_line_data($line, $separators = array()) {
-        $value = array();
+    public function get_line_data($line, $separators = []) {
+        $value = [];
         $data = explode($separators['array'], $line);
         foreach ($data as $line_data) {
             $key = null;
@@ -430,23 +447,23 @@ class Helper_E2pdf_Graph {
         return $value;
     }
 
-    public function is_empty($key = '', $field = array()) {
+    public function is_empty($key = '', $field = []) {
         return isset($field['properties'][$key]) && $field['properties'][$key] !== '' ? false : true;
     }
 
-    public function is_exists($key = '', $field = array()) {
+    public function is_exists($key = '', $field = []) {
         return isset($field['properties'][$key]) ? true : false;
     }
 
-    public function get_value($key = '', $default = '', $field = array()) {
+    public function get_value($key = '', $default = '', $field = []) {
         return isset($field['properties'][$key]) && $field['properties'][$key] ? $field['properties'][$key] : $default;
     }
 
-    public function get_number($key = '', $default = '', $field = array()) {
+    public function get_number($key = '', $default = '', $field = []) {
         return isset($field['properties'][$key]) ? (float) $field['properties'][$key] : (float) $default;
     }
 
-    public function get_array($key = '', $default = '', $field = array()) {
+    public function get_array($key = '', $default = '', $field = []) {
         $value = isset($field['properties'][$key]) && $field['properties'][$key] ? $field['properties'][$key] : '';
         if ($value && (strpos($value, ',') !== false)) {
             return $value = array_map('trim', explode(',', $value));
@@ -463,7 +480,7 @@ class Helper_E2pdf_Graph {
         }
     }
 
-    public function get_boolean($key = '', $field = array()) {
+    public function get_boolean($key = '', $field = []) {
         return isset($field['properties'][$key]) && $field['properties'][$key] ? true : false;
     }
 }

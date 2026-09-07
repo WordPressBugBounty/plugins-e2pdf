@@ -70,7 +70,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         if (is_admin()) {
             add_action('wpmu_new_blog', [&$this, 'action_wpmu_new_blog']);
             add_action('admin_menu', [&$this, 'action_admin_menu']);
-            add_action('admin_init', [&$this, 'action_admin_init']);
+            add_action('admin_init', [&$this, 'action_admin_init'], 9);
             add_action('admin_enqueue_scripts', [&$this, 'action_admin_enqueue_scripts']);
             add_action('current_screen', [&$this, 'action_current_screen']);
             add_action('plugins_loaded', [&$this, 'action_plugins_loaded']);
@@ -502,6 +502,39 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
     // settings page
     public function action_admin_init() {
         register_setting('e2pdf-settings', 'e2pdf_debug');
+
+        /**
+         * Compatibility fix with Gallery : FooGallery
+         * https://wordpress.org/plugins/foogallery/
+         */
+        if (class_exists('FooGallery_Admin_Extensions')) {
+            if (!wp_doing_ajax()) {
+                return;
+            }
+            $action = isset($_REQUEST['action']) && is_string($_REQUEST['action']) ? $_REQUEST['action'] : '';
+            if ('e2pdf_upload' !== $action) {
+                return;
+            }
+            global $wp_filter;
+            if (isset($wp_filter['admin_init']) && $wp_filter['admin_init'] instanceof WP_Hook) {
+                foreach ($wp_filter['admin_init']->callbacks as $priority => $callbacks) {
+                    if (!is_array($callbacks)) {
+                        continue;
+                    }
+                    foreach ($callbacks as $callback) {
+                        if (
+                                isset($callback['function']) &&
+                                is_array($callback['function']) &&
+                                isset($callback['function'][0], $callback['function'][1]) &&
+                                $callback['function'][0] instanceof FooGallery_Admin_Extensions &&
+                                'handle_extension_action' === $callback['function'][1]
+                        ) {
+                            remove_action('admin_init', $callback['function'], $priority);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // admin_enqueue_scripts action

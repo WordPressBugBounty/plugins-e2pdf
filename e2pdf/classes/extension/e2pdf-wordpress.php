@@ -322,6 +322,12 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
          */
         add_filter('um_email_send_message_content', [$this, 'filter_um_email_send_message_content']);
 
+        /**
+         * Shortcodes do not render when the Toolset template is used
+         * https://toolset.com/
+         */
+        add_filter('wpv_filter_content_template_output', [$this, 'filter_wpv_filter_content_template_output']);
+
         /* Hooks */
         add_filter('post_row_actions', [$this, 'hook_wordpress_row_actions'], 10, 2);
         add_filter('page_row_actions', [$this, 'hook_wordpress_row_actions'], 10, 2);
@@ -825,6 +831,50 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             $this->helper->deset('wordpress_attachments_um');
             $this->helper->deset('wordpress_attachments_um_del');
         }
+    }
+
+    /**
+     * Enable / Disable pre-rendering of E2Pdf shortcodes in the Toolset template.
+     * https://toolset.com/
+     */
+    public function filter_wpv_filter_content_template_output($content) {
+        add_filter('render_block', [$this, 'filter_render_block_toolset_disable'], 9, 2);
+        add_filter('render_block', [$this, 'filter_render_block_toolset_enable'], 11, 2);
+        return $content;
+    }
+
+    /**
+     * Disable pre-rendering of E2Pdf shortcodes in the Toolset template.
+     * https://toolset.com/
+     */
+    public function filter_render_block_toolset_disable($block_content, $block) {
+        if (
+                !empty($block['blockName']) && strpos($block['blockName'], 'toolset-blocks/') === 0 && false !== strpos($block_content, '[e2pdf-')
+        ) {
+            remove_shortcode('e2pdf-download');
+            remove_shortcode('e2pdf-view');
+            remove_shortcode('e2pdf-save');
+            remove_shortcode('e2pdf-zapier');
+            remove_shortcode('e2pdf-adobesign');
+        }
+        return $block_content;
+    }
+
+    /**
+     * Enable rendering of E2Pdf shortcodes in the Toolset template.
+     * https://toolset.com/
+     */
+    public function filter_render_block_toolset_enable($block_content, $block) {
+        if (
+                !empty($block['blockName']) && strpos($block['blockName'], 'toolset-blocks/') === 0 && false !== strpos($block_content, '[e2pdf-')
+        ) {
+            add_shortcode('e2pdf-download', [new Model_E2pdf_Shortcode(), 'e2pdf_download']);
+            add_shortcode('e2pdf-view', [new Model_E2pdf_Shortcode(), 'e2pdf_view']);
+            add_shortcode('e2pdf-save', [new Model_E2pdf_Shortcode(), 'e2pdf_save']);
+            add_shortcode('e2pdf-zapier', [new Model_E2pdf_Shortcode(), 'e2pdf_zapier']);
+            add_shortcode('e2pdf-adobesign', [new Model_E2pdf_Shortcode(), 'e2pdf_adobesign']);
+        }
+        return $block_content;
     }
 
     // filter content

@@ -1650,72 +1650,19 @@ a.e2pdf-vm-element:hover {
     min-width: 100%;
 }
 
-.e2pdf-z200 .e2pdf-tpl-inner  {
-    -ms-transform: scale(2);
-    -webkit-transform: scale(2);
-    transform: scale(2);
+.e2pdf-zoom .e2pdf-tpl-inner {
+    min-width: var(--e2pdf-scale-width);
+    -ms-transform: scale(var(--e2pdf-scale));
+    -webkit-transform: scale(var(--e2pdf-scale));
+    transform: scale(var(--e2pdf-scale));
     transform-origin: 0 0;
 }
 
-.e2pdf-z200 .e2pdf-page {
-    margin-top: 80px;
-}
-
-.e2pdf-z175 .e2pdf-tpl-inner  {
-    -ms-transform: scale(1.75);
-    -webkit-transform: scale(1.75);
-    transform: scale(1.75);
+.e2pdf-zoom .e2pdf-tpl-inner .e2pdf-context {
+    -ms-transform: scale(calc(1 / var(--e2pdf-scale)));
+    -webkit-transform: scale(calc(1 / var(--e2pdf-scale)));
+    transform: scale(calc(1 / var(--e2pdf-scale)));
     transform-origin: 0 0;
-}
-
-.e2pdf-z175 .e2pdf-page {
-    margin-top: 70px;
-}
-
-.e2pdf-z150 .e2pdf-tpl-inner  {
-    -ms-transform: scale(1.5);
-    -webkit-transform: scale(1.5);
-    transform: scale(1.5);
-    transform-origin: 0 0;
-}
-
-.e2pdf-z150 .e2pdf-page {
-    margin-top: 60px;
-}
-
-.e2pdf-z125 .e2pdf-tpl-inner  {
-    -ms-transform: scale(1.25);
-    -webkit-transform: scale(1.25);
-    transform: scale(1.25);
-    transform-origin: 0 0;
-}
-
-.e2pdf-z125 .e2pdf-page {
-    margin-top: 50px;
-}
-
-.e2pdf-z75 .e2pdf-tpl-inner  {
-    -ms-transform: scale(0.75);
-    -webkit-transform: scale(0.75);
-    transform: scale(0.75);
-    transform-origin: 0 0;
-    width: 133.33%;
-}
-
-.e2pdf-z50 .e2pdf-tpl-inner  {
-    -ms-transform: scale(0.50);
-    -webkit-transform: scale(0.50);
-    transform: scale(0.50);
-    transform-origin: 0 0;
-    width: 200%;
-}
-
-.e2pdf-z25 .e2pdf-tpl-inner  {
-    -ms-transform: scale(0.25);
-    -webkit-transform: scale(0.25);
-    transform: scale(0.25);
-    transform-origin: 0 0;
-    width: 400%;
 }
 
 .e2pdf-dialog:not(.e2pdf-dialog-visual-mapper) input[type='text'],

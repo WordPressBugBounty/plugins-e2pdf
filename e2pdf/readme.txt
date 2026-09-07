@@ -3,9 +3,9 @@ Contributors: rasmarcus, oleksandrz
 Donate link: https://e2pdf.com/
 Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpforms, elementor, woocommerce, contact form 7, jetformbuilder
 Requires at least: 5.9
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 5.4
-Stable tag: 1.32.43
+Stable tag: 1.32.48
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,16 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.48 =
+*Release Date - September 07, 2026*
+
+* Fix: Gallery FooGallery plugin compatibility
+* Fix: Shortcodes do not render when the Toolset template is used
+* Fix: Keep color order in PieGraph
+* Improvement: Additional Graph options
+* Improvement: Zoom
+* Improvement: Editor
 
 = 1.32.43 =
 *Release Date - July 27, 2026*
