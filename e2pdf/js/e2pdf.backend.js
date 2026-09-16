@@ -8064,7 +8064,7 @@ var e2pdf = {
             }
 
             menu.find('ul.e2pdf-context-menu').append(
-                    jQuery('<li>', {'class': 'e2pdf-inner-context-menu e2pdf-paste-menu e2pdf-hide'}).append(
+                    jQuery('<li>', {'class': 'e2pdf-inner-context-menu'}).append(
                     jQuery('<a>', {'href': 'javascript:void(0);'}).append(jQuery('<span>').html(e2pdf.lang.get('Quick Props')), jQuery('<span>', {'class': 'e2pdf-inner-context-arrow'}))
                     ,
                     jQuery('<ul>', {'class': 'e2pdf-sub-context-menu e2pdf-quickprops-menu'}).append(

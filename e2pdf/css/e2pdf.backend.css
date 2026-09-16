@@ -1567,7 +1567,9 @@ a.e2pdf-color-green, .e2pdf-color-green, .e2pdf-license-status .valid {
     background: #fff;
 }
 
-.e2pdf-inactive, .wp-core-ui .e2pdf-inactive.button {
+.e2pdf-inactive,
+.wp-core-ui .e2pdf-inactive.button,
+[class*=branch-7].wp-core-ui .e2pdf-inactive.button .dashicons {
     color: #cccccc;
 }
 
