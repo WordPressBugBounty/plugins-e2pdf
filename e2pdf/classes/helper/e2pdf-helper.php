@@ -45,7 +45,7 @@ class Helper_E2pdf_Helper {
             $this->set('slug', dirname(plugin_basename(E2PDF_ROOT_FILE)));
         }
         $this->set('cache', get_option('e2pdf_cache', '1'));
-        $parse_args = wp_parse_args(home_url(add_query_arg(null, null)));
+        $parse_args = wp_parse_args(home_url(add_query_arg([], false)));
         $this->set('page', reset($parse_args));
         if (get_option('e2pdf_memory_time', '0')) {
             $this->set('memory_debug', memory_get_usage());

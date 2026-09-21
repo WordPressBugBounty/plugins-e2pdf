@@ -41,7 +41,7 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             if ($api_processor == '2') {
                 $api_version = '1.16.19';
             } else {
-                $api_version = '1.32.39';
+                $api_version = '1.32.50';
             }
 
             $data = [
@@ -106,7 +106,9 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             $curl_error = curl_error($ch);
             $curl_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
             $curl_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            if (PHP_VERSION_ID < 80000) {
+                curl_close($ch);
+            }
             // phpcs:enable
 
             if ($curl_errno > 0) {

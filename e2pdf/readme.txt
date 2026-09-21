@@ -4,8 +4,8 @@ Donate link: https://e2pdf.com/
 Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpforms, elementor, woocommerce, contact form 7, jetformbuilder
 Requires at least: 5.9
 Tested up to: 7.1
-Requires PHP: 5.4
-Stable tag: 1.32.49
+Requires PHP: 7.1
+Stable tag: 1.32.51
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,16 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.51 =
+*Release Date - September 17, 2026*
+
+* Fix: PHP 8.5 deprecation notices
+
+= 1.32.50 =
+*Release Date - September 16, 2026*
+
+* Improvement: Fields border settings detection
 
 = 1.32.49 =
 *Release Date - September 16, 2026*
@@ -481,7 +491,7 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Fix: Fluent Forms [e2pdf-view] shortcode fails to load correctly
 * Fix: Elementor Forms Repeater Fields compatibility fix
 * Fix: Incorrect DB collation
-* Fix: PHP 8.x deprecation notice
+* Fix: PHP 8.x deprecation notices
 * Improvement: truncate_html, truncate_ishtml, extract_by_tag, extract_by_id, extract_by_class, remove_by_tag, remove_by_id, remove_by_class html entities
 * Improvement: Parent option
 * Improvement: Timeouts

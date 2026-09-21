@@ -453,10 +453,12 @@ abstract class Graph {
         break;
       case 'below' : $inside = false; $vpos = 'ob';
         break;
+      // BEGIN e2pdf
       case 'center' : $hpos = $inside ? 'c' : 'oc';
         break;
       case 'middle' : $vpos = $inside ? 'm' : 'om';
         break;
+      // END e2pdf
       default:
         if(is_numeric($part)) {
           $offset_x = $part;
@@ -479,6 +481,7 @@ abstract class Graph {
     list($hpos, $vpos, $offset_x, $offset_y) = Graph::translatePosition($pos);
 
     // if the containers have no thickness, position outside
+    //e2pdf
     $translate = ['l' => 'ol', 'r' => 'or', 't' => 'ot', 'b' => 'ob', 'c' => 'oc', 'm' => 'om'];
     if($top == $bottom && isset($translate[$vpos]))
       $vpos = $translate[$vpos];
@@ -490,6 +493,7 @@ abstract class Graph {
     case 't' : $y = $top + $pad; break;
     case 'b' : $y = $bottom - $height - $pad; break;
     case 'ob' : $y = $bottom + $pad; break;
+    // e2pdf
     case 'om': $y = $top + ($bottom - $top - $height) / 2; break;
     case 'm' :
     default :
@@ -503,6 +507,7 @@ abstract class Graph {
     case 'l' : $x = $left + $pad; break;
     case 'r' : $x = $right - $width - $pad; break;
     case 'or' : $x = $right + $pad; break;
+    // e2pdf
     case 'oc' : $x = $left + ($right - $left - $width - $pad) / 2; break;
     case 'c' :
     default :
@@ -1553,7 +1558,7 @@ abstract class Graph {
    * When using the defer_javascript option, this returns the
    * Javascript block
    */
-  public function fetchJavascript($cdata = true, $no_namespace = true)
+  public function fetchJavascript($cdata = true, $no_namespace = true, $nonce = null)
   {
     if(!isset(Graph::$javascript))
       return '';
@@ -1563,6 +1568,8 @@ abstract class Graph {
       return '';
 
     $script_attr = ['type' => 'application/ecmascript'];
+    if($nonce !== null)
+      $script_attr['nonce'] = $nonce;
     $namespace = $this->namespace;
     if($no_namespace)
       $this->namespace = false;

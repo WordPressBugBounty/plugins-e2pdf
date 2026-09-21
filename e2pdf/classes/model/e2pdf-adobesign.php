@@ -196,7 +196,9 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
             $json = curl_exec($ch);
             $curl_errno = curl_errno($ch);
             $curl_error = curl_error($ch);
-            curl_close($ch);
+            if (PHP_VERSION_ID < 80000) {
+                curl_close($ch);
+            }
             // phpcs:enable
 
             if ($curl_errno > 0) {

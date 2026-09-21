@@ -37,7 +37,7 @@ class Helper_E2pdf_View {
 
     public function __construct() {
         $this->view = new stdClass();
-        $this->uri = home_url(add_query_arg(null, null));
+        $this->uri = home_url(add_query_arg([], false));
         $this->get = new Helper_E2pdf_Get($this->uri);
         $this->post = new Helper_E2pdf_Post();
         $this->files = new Helper_E2pdf_Files();
