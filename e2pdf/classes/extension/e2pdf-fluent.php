@@ -437,12 +437,14 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                         }
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
-
                         if (!isset($atts['iframe_download']) && $this->get('iframe_download')) {
                             $shortcode[3] .= ' iframe_download="true"';
                             $atts['iframe_download'] = 'true';
                         }
-
+                        if (!isset($atts['iframe_loader']) && $this->get('iframe_download')) {
+                            $shortcode[3] .= ' iframe_loader="true"';
+                            $atts['iframe_loader'] = 'true';
+                        }
                         // iframe onload attribute bug
                         if ($shortcode[2] === 'e2pdf-view' || ($shortcode[2] === 'e2pdf-download' && (isset($atts['iframe_download']) && $atts['iframe_download'] == 'true'))) {
                             $message = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $message);

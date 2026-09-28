@@ -277,12 +277,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
 
                         $lid = uniqid('', true);
-                        $response = '<a lid="' . esc_attr($lid) . '" rel="nofollow" ' . $file_download . ' id="e2pdf-download" class="' . esc_attr(implode(' ', $classes)) . '" style="' . esc_attr(implode(';', $attributes->get('style'))) . '" target="' . esc_attr($target) . '" href="' . esc_url($url) . '">' . $button_title . '</a>';
+                        $response = '<a data-lid="' . esc_attr($lid) . '" rel="nofollow" ' . $file_download . ' id="e2pdf-download" class="' . esc_attr(implode(' ', $classes)) . '" style="' . esc_attr(implode(';', $attributes->get('style'))) . '" target="' . esc_attr($target) . '" href="' . esc_url($url) . '">' . $button_title . '</a>';
                         if ($iframe_download) {
                             $url = add_query_arg(['v' => $this->helper->get('version')], $url);
 
                             $src = $attributes->get('preload') ? 'preload' : 'src';
-                            $preload_class = $attributes->get('preload') ? 'e2pdf-preload' : '';
+                            $preload_class = $attributes->get('preload') ? 'e2pdf-preload e2pdf-js-preload' : 'e2pdf-js-preload';
 
                             if ($inline || (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported())) {
                                 $response .= '<img class="' . esc_attr($preload_class) . '" onload="e2pdfViewer.autoDownload(\'' . esc_attr($lid) . '\');" style="display:none" ' . $src . '="' . $attributes->get('iframe_loader') . '">';
@@ -361,12 +361,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             }
 
                             $lid = uniqid('', true);
-                            $response = '<a lid="' . esc_attr($lid) . '" rel="nofollow" ' . $file_download . ' id="e2pdf-download" class="' . esc_attr(implode(' ', $classes)) . '" style="' . esc_attr(implode(';', $attributes->get('style'))) . '" target="' . esc_attr($target) . '" href="' . esc_url($url) . '">' . $button_title . '</a>';
+                            $response = '<a data-lid="' . esc_attr($lid) . '" rel="nofollow" ' . $file_download . ' id="e2pdf-download" class="' . esc_attr(implode(' ', $classes)) . '" style="' . esc_attr(implode(';', $attributes->get('style'))) . '" target="' . esc_attr($target) . '" href="' . esc_url($url) . '">' . $button_title . '</a>';
                             if ($iframe_download) {
                                 $url = add_query_arg(['v' => $this->helper->get('version')], $url);
 
                                 $src = $attributes->get('preload') ? 'preload' : 'src';
-                                $preload_class = $attributes->get('preload') ? 'e2pdf-preload' : '';
+                                $preload_class = $attributes->get('preload') ? 'e2pdf-preload e2pdf-js-preload' : 'e2pdf-js-preload';
 
                                 if ($inline || (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported())) {
                                     $response .= '<img class="' . esc_attr($preload_class) . '" onload="e2pdfViewer.autoDownload(\'' . esc_attr($lid) . '\');" style="display:none" ' . $src . '="' . $attributes->get('iframe_loader') . '">';
@@ -531,12 +531,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         }
 
                         $lid = uniqid('', true);
-                        $response = '<a lid="' . esc_attr($lid) . '" rel="nofollow" ' . $file_download . ' id="e2pdf-download" class="' . esc_attr(implode(' ', $classes)) . '" style="' . esc_attr(implode(';', $attributes->get('style'))) . '" target="' . esc_attr($target) . '" href="' . esc_url($url) . '">' . $button_title . '</a>';
+                        $response = '<a data-lid="' . esc_attr($lid) . '" rel="nofollow" ' . $file_download . ' id="e2pdf-download" class="' . esc_attr(implode(' ', $classes)) . '" style="' . esc_attr(implode(';', $attributes->get('style'))) . '" target="' . esc_attr($target) . '" href="' . esc_url($url) . '">' . $button_title . '</a>';
                         if ($iframe_download) {
                             $url = add_query_arg(['v' => $this->helper->get('version')], $url);
 
                             $src = $attributes->get('preload') ? 'preload' : 'src';
-                            $preload_class = $attributes->get('preload') ? 'e2pdf-preload' : '';
+                            $preload_class = $attributes->get('preload') ? 'e2pdf-preload e2pdf-js-preload' : 'e2pdf-js-preload';
 
                             if ($template->get('inline') || (get_option('e2pdf_download_loader', '0') == '1' && $this->helper->load('server')->isLoaderSupported())) {
                                 $response .= '<img class="' . esc_attr($preload_class) . '" onload="e2pdfViewer.autoDownload(\'' . esc_attr($lid) . '\');" style="display:none" ' . $src . '="' . $attributes->get('iframe_loader') . '">';
@@ -1423,6 +1423,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
         $classes = $attributes->get('class');
         $classes[] = 'e2pdf-view';
+        $classes[] = 'e2pdf-js-preload';
 
         if ($attributes->get('preload')) {
             $classes[] = 'e2pdf-preload';

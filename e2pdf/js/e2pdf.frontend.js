@@ -201,7 +201,7 @@ var e2pdfViewer = {
     },
     autoDownload: function (lid) {
         jQuery(document).ready(function () {
-            var link = jQuery('a[lid="' + lid + '"]').first();
+            var link = jQuery('a[data-lid="' + lid + '"]').first();
             if (link.length > 0 && !link.hasClass('e2pdf-auto-download-ready')) {
                 link.addClass('e2pdf-auto-download-ready');
                 link[0].click();
@@ -374,5 +374,52 @@ jQuery(document).ready(function () {
                 }
             }
         }
+    });
+    jQuery('form.frm-fluent-form').on('fluentform_submission_success', function (e, event) {
+        var message = event && event.response && event.response.data && event.response.data.result && event.response.data.result.message;
+        if (typeof message !== 'string' || !message || !message.includes('e2pdf-js-preload')) {
+            return;
+        }
+        var elements = [];
+        message = message.replace(
+                /<(iframe|img)\b[^>]*>[\s\S]*?(?:<\/\1>)?/gi,
+                function (element) {
+                    if (!/\be2pdf-js-preload\b/i.test(element)) {
+                        return element;
+                    }
+                    var index = elements.length;
+                    elements.push(element);
+                    return '<div class="e2pdf-js-load" data-e2pdf-js-load-id="' + index + '"></div>';
+                }
+        );
+        if (!elements.length) {
+            return;
+        }
+        var target = jQuery(this).parent();
+        if (!target.length || !target[0]) {
+            return;
+        }
+        event.response.data.result.message = message;
+        var observer = new MutationObserver(function (mutations, obs) {
+            try {
+                var placeholders = target.find('.e2pdf-js-load');
+                if (!placeholders.length) {
+                    return;
+                }
+                placeholders.each(function () {
+                    var index = parseInt(this.getAttribute('data-e2pdf-js-load-id'), 10);
+                    if (typeof elements[index] === 'string') {
+                        jQuery(this).replaceWith(elements[index]);
+                    }
+                });
+                obs.disconnect();
+            } catch (error) {
+                obs.disconnect();
+            }
+        });
+        observer.observe(target[0], {
+            childList: true,
+            subtree: true
+        });
     });
 });

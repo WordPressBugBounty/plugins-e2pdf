@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.1
-Stable tag: 1.32.51
+Stable tag: 1.32.53
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,17 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 1.32.53 =
+*Release Date - September 27, 2026*
+
+* Fix: [e2pdf-view] shortcode for Fluent Forms ≥ 6.2.12
+* Fix: Auto download for Fluent Forms ≥ 6.2.12
+
+= 1.32.52 =
+*Release Date - September 23, 2026*
+
+* Add: AVIF image format support
 
 = 1.32.51 =
 *Release Date - September 17, 2026*

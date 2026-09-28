@@ -217,6 +217,7 @@ class Helper_E2pdf_Image {
             'image/bmp' => 'bmp',
             'image/tif' => 'tiff',
             'image/tiff' => 'tiff',
+            'image/avif' => 'avif',
         );
     }
 

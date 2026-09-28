@@ -920,11 +920,6 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'undo_limit' => get_option('e2pdf_undo_limit', '20'),
                 ];
                 break;
-            case 'frontend_params':
-                $data = [
-                    'pdfjs' => plugins_url('assets/pdf.js', $this->helper->get('plugin_file_path')),
-                ];
-                break;
             default:
                 break;
         }
