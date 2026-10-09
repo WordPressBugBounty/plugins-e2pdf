@@ -340,6 +340,16 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
 
         // frm-graph
         add_filter('frm_graph_shortcode_custom_html', array($this, 'filter_frm_graph_shortcode_custom_html'), 99, 2);
+
+        // extension hooks
+        add_filter('e2pdf_extension_hooks', function ($hooks) {
+            $hooks[$this->info['key']] = [
+                'hook_formidable_entry_view' => __('WP Admin Entry View', 'e2pdf'),
+                'hook_formidable_entry_edit' => __('WP Admin Entry Edit', 'e2pdf'),
+                'hook_formidable_row_actions' => __('WP Admin Entry Row Actions', 'e2pdf')
+            ];
+            return $hooks;
+        });
     }
 
     public function action_frm_success_action() {
@@ -592,18 +602,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 remove_filter('frm_display_value_custom', array($this, 'filter_frm_display_value_custom'), 0);
             }
 
-            /*  Bug fix for Formidable Forms Signature (2.0.1) */
-            if (class_exists('FrmFieldFactory')) {
-                $signature_field = FrmFieldFactory::get_field_type('signature');
-                if ($signature_field->get_display_value('signature') == '') {
-                    $signature = true;
-                }
-            }
-            if ($signature) {
-                remove_filter('frm_get_signature_display_value', 'FrmSigAppController::display_signature');
-                remove_filter('frmpro_fields_replace_shortcodes', 'FrmSigAppController::custom_display_signature');
-                add_filter('frm_keep_signature_value_array', array($this, 'filter_frm_keep_signature_value_array'), 10, 2);
-            }
             add_filter('frmpro_fields_replace_shortcodes', array($this, 'filter_frmpro_fields_replace_shortcodes'), 20, 4);
 
             $text_signature = !empty($field['type']) && ($field['type'] == 'e2pdf-image' || $field['type'] == 'e2pdf-signature') ? true : false;
@@ -664,11 +662,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 }
             }
             remove_filter('frmpro_fields_replace_shortcodes', array($this, 'filter_frmpro_fields_replace_shortcodes'), 20);
-            if ($signature) {
-                remove_filter('frm_keep_signature_value_array', array($this, 'filter_frm_keep_signature_value_array'));
-                add_filter('frm_get_signature_display_value', 'FrmSigAppController::display_signature', 10, 3);
-                add_filter('frmpro_fields_replace_shortcodes', 'FrmSigAppController::custom_display_signature', 10, 4);
-            }
             $value = $this->replace_meta_shortcodes($value);
             $value = $this->helper->load('field')->render(
                     apply_filters('e2pdf_extension_render_shortcodes_pre_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), $this->get('item2'), $this->get('dataset2')),
@@ -733,10 +726,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             return true;
         }
         return $is_filter_needed;
-    }
-
-    public function filter_frm_keep_signature_value_array($keep_array, $atts) {
-        return true;
     }
 
     /**
@@ -890,27 +879,47 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             }
         }
 
-        if ($field->type === 'checkbox' && is_array($replace_with)) {
-            if (isset($atts['key']) && $atts['key']) {
-                if (isset($replace_with[$atts['key']])) {
-                    $replace_with = $replace_with[$atts['key']];
-                } else {
-                    $replace_with = '';
-                }
-            }
-        }
-
-        if ($field->type === 'radio') {
-            if (isset($atts['key']) && $atts['key'] === 'other') {
-                if (isset($field->options) && is_array($field->options)) {
-                    $field_key = array_search($replace_with, array_column($field->options, 'value'));
-                    if ($field_key !== false) {
+        switch ($field->type) {
+            case 'checkbox':
+                if (is_array($replace_with) && isset($atts['key']) && $atts['key']) {
+                    if (isset($replace_with[$atts['key']])) {
+                        $replace_with = $replace_with[$atts['key']];
+                    } else {
                         $replace_with = '';
                     }
                 }
-            }
+                break;
+            case 'radio':
+                if (isset($atts['key']) && $atts['key'] === 'other') {
+                    if (isset($field->options) && is_array($field->options)) {
+                        $field_key = array_search($replace_with, array_column($field->options, 'value'));
+                        if ($field_key !== false) {
+                            $replace_with = '';
+                        }
+                    }
+                }
+                break;
+            case 'signature':
+                if (is_array($replace_with)) {
+                    if (!empty($replace_with['format']) && $replace_with['format'] == 'drawn' && !empty($replace_with['output'])) {
+                        if (strpos($replace_with['output'], 'data:image') === 0) {
+                            $replace_with = $replace_with['output'];
+                        } elseif (strpos($replace_with['output'], '[{"lx":') === 0 && isset($replace_with['content'])) {
+                            if (class_exists('FrmSigAppController') && is_callable(['FrmSigAppController', 'get_signature_file_directory'])) {
+                                $file_path = FrmSigAppController::get_signature_file_directory() . '/' . $replace_with['content'];
+                                if (file_exists($file_path) && is_readable($file_path)) {
+                                    $replace_with = $file_path;
+                                } else {
+                                    $replace_with = '';
+                                }
+                            }
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
         }
-
         return $replace_with;
     }
 

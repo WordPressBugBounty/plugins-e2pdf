@@ -125,6 +125,14 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
 
         // hooks
         add_filter('jet-form-builder/page-containers/jfb-records-single', array($this, 'hook_jetformbuilder_entry_view'));
+
+        // extension hooks
+        add_filter('e2pdf_extension_hooks', function ($hooks) {
+            $hooks[$this->info['key']] = [
+                'hook_jetformbuilder_entry_view' => __('WP Admin Entry View', 'e2pdf')
+            ];
+            return $hooks;
+        });
     }
 
     public function filter_wp_kses_allowed_html($html, $context) {

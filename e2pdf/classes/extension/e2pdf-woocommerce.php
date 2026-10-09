@@ -369,6 +369,36 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         }
         add_filter('e2pdf_model_options_get_options_options', array($this, 'filter_e2pdf_model_options_get_options_options'));
         //phpcs:enable
+        // extension hooks
+        add_filter('e2pdf_extension_hooks', function ($hooks) {
+            $hooks[$this->info['key'] . '_shop_order'] = [
+                'hook_woocommerce_order_edit' => __('WP Admin Order Details', 'e2pdf'),
+                'hook_woocommerce_order_row_actions' => __('WP Admin Order List Actions', 'e2pdf'),
+                'hook_woocommerce_order_row_column' => __('WP Admin Order List Column', 'e2pdf'),
+                'hook_woocommerce_my_account_my_orders_actions' => __('User Order List', 'e2pdf'),
+                'hook_woocommerce_order_details_before_order_table' => __('User Order Details (Before Order Table)', 'e2pdf'),
+                'hook_woocommerce_order_details_before_order_table_items' => __('User Order Details (Before Order Table Items)', 'e2pdf'),
+                'hook_woocommerce_order_details_after_order_table_items' => __('User Order Details (After Order Table Items)', 'e2pdf'),
+                'hook_woocommerce_order_details_after_order_table' => __('User Order Details (After Order Table)', 'e2pdf'),
+                'hook_woocommerce_after_order_details' => __('User Order Details (After Order Details)', 'e2pdf')
+            ];
+            $hooks[$this->info['key'] . '_shop_subscription'] = [
+                'hook_woocommerce_subscription_edit' => __('WP Admin Subscription Details', 'e2pdf'),
+                'hook_woocommerce_subscription_row_column' => __('WP Admin Order List Column', 'e2pdf'),
+                'hook_woocommerce_subscription_before_actions' => __('User Subscription (Before Actions)', 'e2pdf'),
+                'hook_woocommerce_subscription_after_actions' => __('User Subscription (After Actions)', 'e2pdf'),
+                'hook_wcs_subscription_details_table_before_dates' => __('User Subscription (Before Dates)', 'e2pdf'),
+                'hook_wcs_subscription_details_table_after_dates' => __('User Subscription (After Dates)', 'e2pdf'),
+                'hook_wcs_subscription_details_table_before_payment_method' => __('User Subscription (Before Payment Method)', 'e2pdf'),
+                'hook_wcs_view_subscription_actions' => __('User Subscrition (Actions)', 'e2pdf')
+            ];
+            $hooks[$this->info['key'] . '_cart'] = [
+                'hook_woocommerce_proceed_to_checkout' => __('User Cart', 'e2pdf'),
+                'hook_woocommerce_review_order_before_submit' => __('User Checkout (Before Submit)', 'e2pdf'),
+                'hook_woocommerce_review_order_after_submit' => __('User Checkout (After Submit)', 'e2pdf')
+            ];
+            return $hooks;
+        });
     }
 
     // action after email

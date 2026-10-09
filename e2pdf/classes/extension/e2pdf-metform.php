@@ -153,6 +153,16 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
     public function load_filters() {
         add_filter('post_row_actions', array($this, 'hook_metform_row_actions'), 10, 2);
         add_filter('manage_metform-entry_posts_columns', array($this, 'hook_metform_entry_row_column'), 11);
+
+        // extension hooks
+        add_filter('e2pdf_extension_hooks', function ($hooks) {
+            $hooks[$this->info['key']] = [
+                'hook_metform_entry_view' => __('WP Admin Entry View', 'e2pdf'),
+                'hook_metform_row_actions' => __('WP Admin Entry Row Actions', 'e2pdf'),
+                'hook_metform_entry_row_column' => __('WP Admin Entry List Column', 'e2pdf')
+            ];
+            return $hooks;
+        });
     }
 
     // items

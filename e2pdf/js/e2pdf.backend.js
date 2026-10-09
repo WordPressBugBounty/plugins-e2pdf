@@ -457,91 +457,23 @@ var e2pdf = {
     hooks: {
         // e2pdf.hooks.get
         get: function () {
+            var extension = e2pdf.pdf.settings.get('extension');
             var hooks = {};
-            switch (e2pdf.pdf.settings.get('extension')) {
-                case 'formidable':
-                    hooks = {
-                        'hook_formidable_entry_view': e2pdf.lang.get('WP Admin Entry View'),
-                        'hook_formidable_entry_edit': e2pdf.lang.get('WP Admin Entry Edit'),
-                        'hook_formidable_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions')
-                    };
-                    break;
-                case 'gravity':
-                    hooks = {
-                        'hook_gravity_entry_view': e2pdf.lang.get('WP Admin Entry View'),
-                        'hook_gravity_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions')
-                    };
-                    break;
-                case 'jetformbuilder':
-                    hooks = {
-                        'hook_jetformbuilder_entry_view': e2pdf.lang.get('WP Admin Entry View')
-                    };
-                    break;
+            switch (extension) {
                 case 'woocommerce':
-                    if (e2pdf.pdf.settings.get('item') == 'shop_order') {
-                        hooks = {
-                            'hook_woocommerce_order_edit': e2pdf.lang.get('WP Admin Order Details'),
-                            'hook_woocommerce_order_row_actions': e2pdf.lang.get('WP Admin Order List Actions'),
-                            'hook_woocommerce_order_row_column': e2pdf.lang.get('WP Admin Order List Column'),
-                            'hook_woocommerce_my_account_my_orders_actions': e2pdf.lang.get('User Order List'),
-                            'hook_woocommerce_order_details_before_order_table': e2pdf.lang.get('User Order Details (Before Order Table)'),
-                            'hook_woocommerce_order_details_before_order_table_items': e2pdf.lang.get('User Order Details (Before Order Table Items)'),
-                            'hook_woocommerce_order_details_after_order_table_items': e2pdf.lang.get('User Order Details (After Order Table Items)'),
-                            'hook_woocommerce_order_details_after_order_table': e2pdf.lang.get('User Order Details (After Order Table)'),
-                            'hook_woocommerce_after_order_details': e2pdf.lang.get('User Order Details (After Order Details)'),
-                        };
-                    } else if (e2pdf.pdf.settings.get('item') == 'shop_subscription') {
-                        hooks = {
-                            'hook_woocommerce_subscription_edit': e2pdf.lang.get('WP Admin Subscription Details'),
-                            'hook_woocommerce_subscription_row_column': e2pdf.lang.get('WP Admin Order List Column'),
-                            'hook_woocommerce_subscription_before_actions': e2pdf.lang.get('User Subscription (Before Actions)'),
-                            'hook_woocommerce_subscription_after_actions': e2pdf.lang.get('User Subscription (After Actions)'),
-                            'hook_wcs_subscription_details_table_before_dates': e2pdf.lang.get('User Subscription (Before Dates)'),
-                            'hook_wcs_subscription_details_table_after_dates': e2pdf.lang.get('User Subscription (After Dates)'),
-                            'hook_wcs_subscription_details_table_before_payment_method': e2pdf.lang.get('User Subscription (Before Payment Method)'),
-                            'hook_wcs_view_subscription_actions': e2pdf.lang.get('User Subscrition (Actions)'),
-                        };
-                    } else if (e2pdf.pdf.settings.get('item') == 'cart') {
-                        hooks = {
-                            'hook_woocommerce_proceed_to_checkout': e2pdf.lang.get('User Cart'),
-                            'hook_woocommerce_review_order_before_submit': e2pdf.lang.get('User Checkout (Before Submit)'),
-                            'hook_woocommerce_review_order_after_submit': e2pdf.lang.get('User Checkout (After Submit)'),
-                        };
+                    if (e2pdf.pdf.settings.get('item')) {
+                        hooks = e2pdf_params['extension_hooks'][extension + '_' + e2pdf.pdf.settings.get('item')] || {};
                     }
                     break;
                 case 'wordpress':
                     if (e2pdf.pdf.settings.get('item') == '-3') {
-                        hooks = {
-                            'hook_wordpress_row_actions': e2pdf.lang.get('WP Admin User Row Actions')
-                        };
+                        hooks = e2pdf_params['extension_hooks'][extension + '_' + e2pdf.pdf.settings.get('item')] || {};
                     } else {
-                        hooks = {
-                            'hook_wordpress_page_edit': e2pdf.lang.get('WP Admin Page Edit'),
-                            'hook_wordpress_row_actions': e2pdf.lang.get('WP Admin Page Row Actions')
-                        };
+                        hooks = e2pdf_params['extension_hooks'][extension] || {};
                     }
                     break;
-                case 'wpforms':
-                    hooks = {
-                        'hook_wpforms_entry_view': e2pdf.lang.get('WP Admin Entry View'),
-                        'hook_wpforms_entry_edit': e2pdf.lang.get('WP Admin Entry Edit'),
-                        'hook_wpforms_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions')
-                    };
-                    break;
-                case 'everest':
-                    hooks = {
-                        'hook_everest_entry_view': e2pdf.lang.get('WP Admin Entry View'),
-                        'hook_everest_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions')
-                    };
-                    break;
-                case 'metform':
-                    hooks = {
-                        'hook_metform_entry_view': e2pdf.lang.get('WP Admin Entry View'),
-                        'hook_metform_row_actions': e2pdf.lang.get('WP Admin Entry Row Actions'),
-                        'hook_metform_entry_row_column': e2pdf.lang.get('WP Admin Entry List Column')
-                    };
-                    break;
                 default:
+                    hooks = e2pdf_params['extension_hooks'][extension] || {};
                     break;
             }
             return hooks;

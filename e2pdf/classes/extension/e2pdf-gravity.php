@@ -216,8 +216,17 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         add_filter('gform_merge_tag_filter', array($this, 'filter_gform_merge_tag_filter'), 10, 5);
         add_filter('gform_entries_field_value', array($this, 'filter_gform_entries_field_value'), 10, 4);
 
-        /* Hooks */
+        // hooks
         add_filter('gform_entry_detail_meta_boxes', array($this, 'hook_gravity_entry_view'), 10, 3);
+
+        // extension hooks
+        add_filter('e2pdf_extension_hooks', function ($hooks) {
+            $hooks[$this->info['key']] = [
+                'hook_gravity_entry_view' => __('WP Admin Entry View', 'e2pdf'),
+                'hook_gravity_row_actions' => __('WP Admin Entry Row Actions', 'e2pdf')
+            ];
+            return $hooks;
+        });
     }
 
     // render shortcodes

@@ -102,6 +102,15 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         add_filter('everest_forms_email_template_message', array($this, 'filter_everest_forms_email_message'), 10);
         add_filter('everest_forms_entry_table_actions', array($this, 'hook_everest_row_actions'), 10, 2);
         add_filter('everest_forms_after_success_ajax_message', array($this, 'filter_everest_forms_after_success_ajax_message'), 99, 3);
+
+        // extension hooks
+        add_filter('e2pdf_extension_hooks', function ($hooks) {
+            $hooks[$this->info['key']] = [
+                'hook_everest_entry_view' => __('WP Admin Entry View', 'e2pdf'),
+                'hook_everest_row_actions' => __('WP Admin Entry Row Actions', 'e2pdf')
+            ];
+            return $hooks;
+        });
     }
 
     // items

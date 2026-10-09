@@ -918,6 +918,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'template_sizes' => $controller_e2pdf_templates->get_sizes_list(),
                     'css_styles' => array_keys($this->helper->load('properties')->css_styles()),
                     'undo_limit' => get_option('e2pdf_undo_limit', '20'),
+                    'extension_hooks' => apply_filters('e2pdf_extension_hooks', []),
                 ];
                 break;
             default:

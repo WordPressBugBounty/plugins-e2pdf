@@ -332,6 +332,18 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         add_filter('post_row_actions', [$this, 'hook_wordpress_row_actions'], 10, 2);
         add_filter('page_row_actions', [$this, 'hook_wordpress_row_actions'], 10, 2);
         add_filter('user_row_actions', [$this, 'hook_wordpress_row_actions'], 10, 2);
+
+        // extension hooks
+        add_filter('e2pdf_extension_hooks', function ($hooks) {
+            $hooks[$this->info['key'] . '_-3'] = [
+                'hook_wordpress_row_actions' => __('WP Admin User Row Actions', 'e2pdf')
+            ];
+            $hooks[$this->info['key']] = [
+                'hook_wordpress_page_edit' => __('WP Admin Page Edit', 'e2pdf'),
+                'hook_wordpress_row_actions' => __('WP Admin Page Row Actions', 'e2pdf')
+            ];
+            return $hooks;
+        });
     }
 
     // load actions

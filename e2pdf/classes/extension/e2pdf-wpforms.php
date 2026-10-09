@@ -395,6 +395,16 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
 
         // hooks
         add_filter('wpforms_entry_table_actions', array($this, 'hook_wpforms_row_actions'), 10, 2);
+
+        // extension hooks
+        add_filter('e2pdf_extension_hooks', function ($hooks) {
+            $hooks[$this->info['key']] = [
+                'hook_wpforms_entry_view' => __('WP Admin Entry View', 'e2pdf'),
+                'hook_wpforms_entry_edit' => __('WP Admin Entry Edit', 'e2pdf'),
+                'hook_wpforms_row_actions' => __('WP Admin Entry Row Actions', 'e2pdf')
+            ];
+            return $hooks;
+        });
     }
 
     // frontend confirmation message filter
