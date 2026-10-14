@@ -373,7 +373,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         $checkbox_separated = false;
         $foreach_wrapper_shortcodes = false;
         $foreach_inner_shortcodes = false;
-        $signature = false;
         if ($this->verify()) {
             if (false !== strpos($value, '[')) {
                 $value = $this->helper->load('field')->pre_shortcodes($value, $this, $field);
@@ -608,6 +607,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             if ($text_signature) {
                 add_filter('frm_get_signature_display_value', array($this, 'filter_frm_get_signature_display_value'), 20, 3);
             }
+            add_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20, 2);
             if ($this->get('item') == '-2') {
                 if ($this->get('cached_entry') && $this->get('cached_entry2')) {
                     $value = apply_filters('frm_content', $value, $this->get('cached_form'), $this->get('cached_entry'));
@@ -634,6 +634,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     add_filter('frm_content', 'FrmFormsController::filter_content', 10, 3);
                 }
             }
+            remove_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20);
 
             // Foreach Wrapper Shortcodes Reverse
             if ($foreach_wrapper_shortcodes) {
@@ -900,19 +901,21 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 }
                 break;
             case 'signature':
-                if (is_array($replace_with)) {
-                    if (!empty($replace_with['format']) && $replace_with['format'] == 'drawn' && !empty($replace_with['output'])) {
-                        if (strpos($replace_with['output'], 'data:image') === 0) {
-                            $replace_with = $replace_with['output'];
-                        } elseif (strpos($replace_with['output'], '[{"lx":') === 0 && isset($replace_with['content'])) {
-                            if (class_exists('FrmSigAppController') && is_callable(['FrmSigAppController', 'get_signature_file_directory'])) {
-                                $file_path = FrmSigAppController::get_signature_file_directory() . '/' . $replace_with['content'];
-                                if (file_exists($file_path) && is_readable($file_path)) {
-                                    $replace_with = $file_path;
-                                } else {
-                                    $replace_with = '';
-                                }
-                            }
+                $is_post = false;
+                if (class_exists('FrmSigAppController') && is_callable(['FrmSigAppController', 'get_final_signature_value'])) {
+                    $is_post = isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST';
+                    if ($is_post) {
+                        $_SERVER['REQUEST_METHOD'] = 'GET';
+                    }
+                    $atts['use_html'] = true;
+                    try {
+                        $replace_with = FrmSigAppController::get_final_signature_value(
+                                $replace_with,
+                                $atts
+                        );
+                    } finally {
+                        if ($is_post) {
+                            $_SERVER['REQUEST_METHOD'] = 'POST';
                         }
                     }
                 }
@@ -921,6 +924,24 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 break;
         }
         return $replace_with;
+    }
+
+    public function filter_frm_display_value($value, $field) {
+        if (!is_object($field) || !isset($field->type) || 'signature' !== $field->type) {
+            return $value;
+        }
+
+        if (is_string($value) && strpos($value, 'load_frm_signature') !== false) {
+            $value = preg_replace_callback(
+                    '#https?:[^\s"\'<>]*action=load_frm_signature[^\s"\'<>]*#i',
+                    function ($matches) {
+                        return wp_specialchars_decode($matches[0]);
+                    },
+                    $value
+            );
+        }
+
+        return $value;
     }
 
     /**
