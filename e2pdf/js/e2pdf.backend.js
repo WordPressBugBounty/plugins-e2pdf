@@ -390,7 +390,7 @@ var e2pdf = {
                     Array.from(select.children).forEach(function (option) {
                         var optionDiv = document.createElement('div');
                         optionDiv.setAttribute('value', option.value);
-                        optionDiv.innerHTML = option.textContent;
+                        optionDiv.textContent = option.textContent;
                         select2.appendChild(optionDiv);
                     });
                 }
@@ -1348,9 +1348,9 @@ var e2pdf = {
                                 };
                                 options.push(option);
                                 if (e2pdf.url.get('action') == 'bulk') {
-                                    dataset_field.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').html(option.value).prepend(jQuery('<input>', {'name': key + '[]', 'type': 'checkbox', 'value': option.key}))));
+                                    dataset_field.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').text(option.value).prepend(jQuery('<input>', {'name': key + '[]', 'type': 'checkbox', 'value': option.key}))));
                                 } else {
-                                    dataset_field.append(jQuery('<option>', {'value': option.key}).html(option.value));
+                                    dataset_field.append(jQuery('<option>', {'value': option.key}).text(option.value));
                                 }
                             }
                             dataset_field.data('options', options);
@@ -1484,9 +1484,9 @@ var e2pdf = {
                         };
                         options.push(option);
                         if (e2pdf.url.get('action') == 'bulk') {
-                            dataset_field.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').html(option.value).prepend(jQuery('<input>', {'name': key + '[]', 'type': 'checkbox', 'value': option.key}))));
+                            dataset_field.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').text(option.value).prepend(jQuery('<input>', {'name': key + '[]', 'type': 'checkbox', 'value': option.key}))));
                         } else {
-                            dataset_field.append(jQuery('<option>', {'value': option.key}).html(option.value));
+                            dataset_field.append(jQuery('<option>', {'value': option.key}).text(option.value));
                         }
                     }
                     dataset_field.data('options', options);
@@ -10721,7 +10721,7 @@ jQuery(document).ready(function () {
         jQuery.each(options, function (i) {
             var option = options[i];
             if (i == 0 || option.value.match(regex) !== null) {
-                fieldset.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').html(option.value).prepend(jQuery('<input>', {'name': field + '[]', 'type': 'checkbox', 'value': option.key}))));
+                fieldset.append(jQuery('<div>', {'class': 'e2pdf-ib e2pdf-w100'}).append(jQuery('<label>').text(option.value).prepend(jQuery('<input>', {'name': field + '[]', 'type': 'checkbox', 'value': option.key}))));
             }
         });
         fieldset.find('input[type="checkbox"][value=""]').prop('checked', true).trigger('change');
