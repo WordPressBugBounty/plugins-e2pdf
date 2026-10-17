@@ -374,6 +374,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         $foreach_wrapper_shortcodes = false;
         $foreach_inner_shortcodes = false;
         if ($this->verify()) {
+            add_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20, 2);
             if (false !== strpos($value, '[')) {
                 $value = $this->helper->load('field')->pre_shortcodes($value, $this, $field);
                 if (class_exists('FrmProEntry')) {
@@ -607,7 +608,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             if ($text_signature) {
                 add_filter('frm_get_signature_display_value', array($this, 'filter_frm_get_signature_display_value'), 20, 3);
             }
-            add_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20, 2);
             if ($this->get('item') == '-2') {
                 if ($this->get('cached_entry') && $this->get('cached_entry2')) {
                     $value = apply_filters('frm_content', $value, $this->get('cached_form'), $this->get('cached_entry'));
@@ -634,7 +634,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     add_filter('frm_content', 'FrmFormsController::filter_content', 10, 3);
                 }
             }
-            remove_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20);
 
             // Foreach Wrapper Shortcodes Reverse
             if ($foreach_wrapper_shortcodes) {
@@ -669,6 +668,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     $this,
                     $field
             );
+            remove_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20);
         }
         return apply_filters(
                 'e2pdf_extension_render_shortcodes_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), $this->get('item2'), $this->get('dataset2')
@@ -896,26 +896,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                         $field_key = array_search($replace_with, array_column($field->options, 'value'));
                         if ($field_key !== false) {
                             $replace_with = '';
-                        }
-                    }
-                }
-                break;
-            case 'signature':
-                $is_post = false;
-                if (class_exists('FrmSigAppController') && is_callable(['FrmSigAppController', 'get_final_signature_value'])) {
-                    $is_post = isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST';
-                    if ($is_post) {
-                        $_SERVER['REQUEST_METHOD'] = 'GET';
-                    }
-                    $atts['use_html'] = true;
-                    try {
-                        $replace_with = FrmSigAppController::get_final_signature_value(
-                                $replace_with,
-                                $atts
-                        );
-                    } finally {
-                        if ($is_post) {
-                            $_SERVER['REQUEST_METHOD'] = 'POST';
                         }
                     }
                 }
