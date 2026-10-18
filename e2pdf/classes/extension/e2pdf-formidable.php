@@ -375,6 +375,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         $foreach_inner_shortcodes = false;
         if ($this->verify()) {
             add_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20, 2);
+            add_filter('frm_field_value_requires_ownership', '__return_false', 99);
             if (false !== strpos($value, '[')) {
                 $value = $this->helper->load('field')->pre_shortcodes($value, $this, $field);
                 if (class_exists('FrmProEntry')) {
@@ -668,6 +669,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     $this,
                     $field
             );
+            remove_filter('frm_field_value_requires_ownership', '__return_false', 99);
             remove_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20);
         }
         return apply_filters(
@@ -906,12 +908,38 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         return $replace_with;
     }
 
+    // filter frm display value
     public function filter_frm_display_value($value, $field) {
         if (!is_object($field) || !isset($field->type) || 'signature' !== $field->type) {
             return $value;
         }
-
-        if (is_string($value) && strpos($value, 'load_frm_signature') !== false) {
+        $type = false;
+        if (is_string($value) && strpos($value, '<img') === 0) {
+            $value = preg_replace_callback(
+                    '/<img\b[^>]*\bsrc=["\']([^"\']+)["\']/i',
+                    function ($matches) use (&$type) {
+                        $url = html_entity_decode($matches[1]);
+                        if (!$url) {
+                            return $matches[0];
+                        }
+                        $body = $this->helper->load('image')->get_by_url($url);
+                        if (!$body) {
+                            return $matches[0];
+                        }
+                        $ext = $this->helper->load('image')->get_extension($body, true);
+                        if (!$ext) {
+                            return $matches[0];
+                        }
+                        $type = array_search($ext, $this->helper->load('image')->get_allowed_extensions());
+                        if (!$type) {
+                            return $matches[0];
+                        }
+                        return str_replace($matches[1], 'data:' . $type . ';base64,' . base64_encode($body), $matches[0]);
+                    },
+                    $value
+            );
+        }
+        if (!$type && is_string($value) && strpos($value, 'load_frm_signature') !== false) {
             $value = preg_replace_callback(
                     '#https?:[^\s"\'<>]*action=load_frm_signature[^\s"\'<>]*#i',
                     function ($matches) {
@@ -920,7 +948,6 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     $value
             );
         }
-
         return $value;
     }
 

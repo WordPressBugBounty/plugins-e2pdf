@@ -175,13 +175,19 @@ class Helper_E2pdf_Image {
     }
 
     public function get_base64_image($url) {
-        if ($ext = $this->get_extension($url)) {
-            $type = array_search($ext, $this->get_allowed_extensions());
-            if ($type !== false && $body = $this->get_by_url($url)) {
-                return 'data:' . $type . ';base64,' . base64_encode($body);
-            }
+        $ext = $this->get_extension($url);
+        if (!$ext) {
+            return $url;
         }
-        return $url;
+        $type = array_search($ext, $this->get_allowed_extensions());
+        if ($type === false) {
+            return $url;
+        }
+        $body = $this->get_by_url($url);
+        if (!$body) {
+            return $url;
+        }
+        return 'data:' . $type . ';base64,' . base64_encode($body);
     }
 
     /**
@@ -221,9 +227,16 @@ class Helper_E2pdf_Image {
         );
     }
 
-    public function get_extension($value = false) {
-
-        $value = trim($value);
+    public function get_extension($value = false, $is_raw = false) {
+        if (!is_string($value) || $value === '') {
+            return false;
+        }
+        if (!$is_raw && strpos($value, "\0") !== false) {
+            $is_raw = true;
+        }
+        if (!$is_raw) {
+            $value = trim($value);
+        }
         if (!$value) {
             return false;
         }
@@ -232,29 +245,35 @@ class Helper_E2pdf_Image {
         $extension = false;
         $mime = false;
 
-        if (@file_exists($value)) {
+        if (!$is_raw && @file_exists($value)) {
             $file_extension = strtolower(pathinfo($value, PATHINFO_EXTENSION));
             if (in_array($file_extension, $extensions)) {
                 return $file_extension;
             } elseif (function_exists('finfo_open') && function_exists('finfo_file')) {
                 $f = finfo_open();
-                $mime = @finfo_file($f, $value, FILEINFO_MIME_TYPE);
+                if ($f) {
+                    $mime = @finfo_file($f, $value, FILEINFO_MIME_TYPE);
+                }
             }
         } else {
-            $file_extension = strtolower(pathinfo($value, PATHINFO_EXTENSION));
-            if (in_array($file_extension, $extensions)) {
-                return $file_extension;
-            } elseif (function_exists('finfo_open') && function_exists('finfo_buffer')) {
+            if (!$is_raw) {
+                $file_extension = strtolower(pathinfo($value, PATHINFO_EXTENSION));
+                if (in_array($file_extension, $extensions)) {
+                    return $file_extension;
+                }
+            }
+            if (function_exists('finfo_open') && function_exists('finfo_buffer')) {
                 $f = finfo_open();
-                $mime = finfo_buffer($f, $value, FILEINFO_MIME_TYPE);
+                if ($f) {
+                    $mime = finfo_buffer($f, $value, FILEINFO_MIME_TYPE);
+                }
             } elseif (function_exists('image_type_to_mime_type') && function_exists('getimagesizefromstring')) {
-                $size = getimagesizefromstring($value);
+                $size = @getimagesizefromstring($value);
                 if (isset($size['mime'])) {
                     $mime = $size['mime'];
                 }
             }
         }
-
         if ($mime && isset($extensions[$mime])) {
             $extension = $extensions[$mime];
         }
