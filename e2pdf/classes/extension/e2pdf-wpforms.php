@@ -296,7 +296,9 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         $files = $this->helper->get('wpforms_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('wpforms_attachments');
         }
@@ -320,7 +322,9 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         $files = $this->helper->get('wpforms_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('wpforms_attachments');
         }

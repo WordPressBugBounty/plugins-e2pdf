@@ -125,7 +125,7 @@ class Model_E2pdf_Font extends Model_E2pdf_Model {
     }
 
     public function delete_font($font) {
-        $font_path = $this->helper->get('fonts_dir') . $font;
+        $font_path = $this->helper->get('fonts_dir') . basename((string) $font);
 
         if (file_exists($font_path)) {
             unlink($font_path);

@@ -105,21 +105,38 @@ class Helper_E2pdf_Helper {
     }
 
     // delete dir
-    public function delete_dir($dir) {
-        if (!is_dir($dir)) {
+    public function delete_dir($dir, $force = false) {
+        $upload_dir = apply_filters('e2pdf_delete_base_dir', $this->get('upload_dir'), $dir);
+        $upload_dir = $upload_dir && is_string($upload_dir) ? wp_normalize_path(realpath($upload_dir)) : '';
+        $dir = $dir && is_string($dir) && !is_link(rtrim($dir, '/\\')) ? wp_normalize_path(realpath($dir)) : '';
+        if (!is_dir($upload_dir) || !is_dir($dir) || ($dir === $upload_dir && !$force) || strpos($dir . '/', $upload_dir . '/') !== 0) {
             return;
         }
-        $dir = trailingslashit($dir);
-        $files = glob($dir . '*', GLOB_MARK);
-        foreach ($files as $file) {
+        if (strpos(wp_normalize_path(realpath(ABSPATH)) . '/', $upload_dir . '/') === 0) {
+            return;
+        }
+        $folders = array_map('wp_normalize_path', array_map('realpath', [ABSPATH, WP_CONTENT_DIR, WP_PLUGIN_DIR]));
+        if (in_array($upload_dir, $folders, true)) {
+            return;
+        }
+        $files = function_exists('scandir') ? scandir($dir) : false;
+        if (!is_array($files) && function_exists('glob')) {
+            $pattern = addcslashes($dir . '/', '*?[]');
+            $files = array_map('basename', array_merge(glob($pattern . '*') ?: [], glob($pattern . '.*') ?: []));
+        }
+        if (!is_array($files)) {
+            return;
+        }
+        foreach ($files as $name) {
+            $file = $dir . '/' . $name;
+            if ($name === '.' || $name === '..' || is_link($file)) {
+                continue;
+            }
             if (is_dir($file)) {
                 $this->delete_dir($file);
             } else {
                 unlink($file);
             }
-        }
-        if (file_exists($dir . '.htaccess')) {
-            unlink($dir . '.htaccess');
         }
         rmdir($dir);
     }

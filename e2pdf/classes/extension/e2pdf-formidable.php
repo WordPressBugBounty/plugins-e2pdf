@@ -1795,7 +1795,9 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         $files = $this->helper->get('formidable_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('formidable_attachments');
         }

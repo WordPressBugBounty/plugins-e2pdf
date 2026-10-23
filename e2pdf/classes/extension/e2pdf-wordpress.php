@@ -798,7 +798,9 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         $files = $this->helper->get('wordpress_attachments_mepr');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('wordpress_attachments_mepr');
         }
@@ -815,7 +817,9 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         $files = $this->helper->get('wordpress_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('wordpress_attachments');
         }
@@ -838,7 +842,9 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         $files = $this->helper->get('wordpress_attachments_um_del');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('wordpress_attachments_um');
             $this->helper->deset('wordpress_attachments_um_del');

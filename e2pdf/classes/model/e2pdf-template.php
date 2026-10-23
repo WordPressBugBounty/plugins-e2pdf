@@ -340,7 +340,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                 $revision = new Model_E2pdf_Revision();
                 $revision->revision($this->get('ID'));
                 if (isset($template['pdf']) && $template['pdf'] && ($template['pdf'] == $revision->get('pdf') || $this->get('revision_id'))) {
-                    $pdf_name = md5(time());
+                    $pdf_name = md5(uniqid((string) wp_rand(), true));
                     $pdf_dir = $this->helper->get('pdf_dir') . $pdf_name . '/';
                     $pdf_images_dir = $pdf_dir . 'images/';
 

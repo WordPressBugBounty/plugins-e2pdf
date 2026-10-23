@@ -856,7 +856,10 @@ class Controller_E2pdf extends Helper_E2pdf_View {
         if ($model_e2pdf_bulk->load_by_active_bulk()) {
             if (!get_transient('e2pdf_bulk_export')) {
                 set_transient('e2pdf_bulk_export', true, max(10, (int) get_option('e2pdf_bulk_export_interval', '10')));
-                if ($model_e2pdf_bulk->get('ID') && $model_e2pdf_bulk->get_active_status() !== 'busy' && $model_e2pdf_bulk->get_active_status() !== 'stop') {
+                if ($model_e2pdf_bulk->get('ID') && !$model_e2pdf_bulk->get('uid')) {
+                    $model_e2pdf_bulk->set('status', 'stop');
+                    $model_e2pdf_bulk->save();
+                } elseif ($model_e2pdf_bulk->get('ID') && $model_e2pdf_bulk->get_active_status() !== 'busy' && $model_e2pdf_bulk->get_active_status() !== 'stop') {
                     $model_e2pdf_bulk->set('status', 'busy');
                     $model_e2pdf_bulk->save();
                     $template_id = $model_e2pdf_bulk->get('template_id');

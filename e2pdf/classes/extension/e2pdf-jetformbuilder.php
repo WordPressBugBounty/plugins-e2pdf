@@ -209,7 +209,9 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
         $files = $this->helper->get('jetformbuilder_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('jetformbuilder_attachments');
         }

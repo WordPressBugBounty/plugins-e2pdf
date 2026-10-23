@@ -799,7 +799,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
                     if ($xml->pdf && $xml->pdf->source) {
 
-                        $pdf_name = md5(time());
+                        $pdf_name = md5(uniqid((string) wp_rand(), true));
                         $pdf_dir = $this->helper->get('pdf_dir') . $pdf_name . '/';
                         $pdf_images_dir = $pdf_dir . 'images/';
 
@@ -1253,7 +1253,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             }
             foreach ($data as $key => $value) {
                 if ($key == 'pdf' && $value) {
-                    if (file_exists($this->helper->get('pdf_dir') . $value . '/' . $value . '.pdf')) {
+                    if (preg_match('/^[a-f0-9]{32}$/', $value) && file_exists($this->helper->get('pdf_dir') . $value . '/' . $value . '.pdf')) {
                         $template->set($key, $value);
                     }
                 } else {
@@ -1458,7 +1458,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             }
         }
 
-        $pdf_name = md5(time());
+        $pdf_name = md5(uniqid((string) wp_rand(), true));
         $pdf_dir = $this->helper->get('pdf_dir') . $pdf_name . '/';
         $pdf_images_dir = $pdf_dir . 'images/';
         $this->helper->create_dir($pdf_dir);
@@ -1709,7 +1709,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             $extension->set('item', $template->get('item'));
         }
 
-        $pdf_name = md5(time());
+        $pdf_name = md5(uniqid((string) wp_rand(), true));
         $pdf_dir = $this->helper->get('pdf_dir') . $pdf_name . '/';
         $pdf_images_dir = $pdf_dir . 'images/';
         $this->helper->create_dir($pdf_dir);
@@ -2038,7 +2038,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             $template->set('uid', '');
             $template->set('activated', '0');
             if ($template->get('pdf')) {
-                $pdf_name = md5(time());
+                $pdf_name = md5(uniqid((string) wp_rand(), true));
                 $pdf_dir = $this->helper->get('pdf_dir') . $pdf_name . '/';
                 $pdf_images_dir = $pdf_dir . 'images/';
 

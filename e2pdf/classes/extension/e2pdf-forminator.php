@@ -3311,7 +3311,9 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
             }
             foreach ($files as $key => $file) {
                 if (!in_array($file, $saved, false)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    if (is_file($file)) {
+                        $this->helper->delete_dir(dirname($file) . '/');
+                    }
                 }
             }
             $this->helper->deset('forminator_attachments');

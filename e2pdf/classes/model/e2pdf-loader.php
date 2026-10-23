@@ -1001,7 +1001,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         global $wpdb;
         if (is_multisite() && $network) {
             foreach ($wpdb->get_col('SELECT blog_id FROM `' . $wpdb->blogs . '`') as $blog_id) {
-                $this->activate_site($blog_id);
+                $this->deactivate_site($blog_id);
             }
         } else {
             $this->deactivate_site();
@@ -1259,7 +1259,7 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         $wpdb->query($wpdb->prepare('DELETE FROM `' . $db_prefix . 'options` WHERE option_name LIKE %s OR option_name LIKE %s', '_transient_e2pdf_%', '_transient_timeout_e2pdf_%'));
 
-        $helper->delete_dir($helper->get('upload_dir'));
+        $helper->delete_dir($helper->get('upload_dir'), true);
 
         $caps = $helper->get_caps();
         $roles = wp_roles()->get_names();

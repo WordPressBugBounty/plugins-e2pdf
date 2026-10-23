@@ -993,7 +993,9 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         $files = $this->helper->get('elementor_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('elementor_attachments');
         }

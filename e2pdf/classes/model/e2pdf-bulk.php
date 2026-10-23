@@ -101,7 +101,7 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
         } else {
             switch ($key) {
                 case 'uid':
-                    $value = md5(md5(time()) . md5($this->key));
+                    $value = md5(uniqid((string) wp_rand(), true) . md5($this->key));
                     break;
                 case 'status':
                     $value = 'pending';
@@ -215,14 +215,15 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
                 wp_cache_delete($this->get('uid'), 'e2pdf_bulks_uids');
             }
 
-            $pdf_dir = $this->helper->get('bulk_dir') . $this->get('uid') . '/';
-            if (file_exists($pdf_dir)) {
-                $this->helper->delete_dir($pdf_dir);
-            }
-
-            $zip_path = $this->helper->get('bulk_dir') . $this->get('uid') . '.zip';
-            if (file_exists($zip_path)) {
-                unlink($zip_path);
+            if ($this->get('uid')) {
+                $pdf_dir = $this->helper->get('bulk_dir') . $this->get('uid') . '/';
+                if (file_exists($pdf_dir)) {
+                    $this->helper->delete_dir($pdf_dir);
+                }
+                $zip_path = $this->helper->get('bulk_dir') . $this->get('uid') . '.zip';
+                if (file_exists($zip_path)) {
+                    unlink($zip_path);
+                }
             }
         }
     }

@@ -1133,7 +1133,9 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
         $files = $this->helper->get('metform_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
-                $this->helper->delete_dir(dirname($file) . '/');
+                if (is_file($file)) {
+                    $this->helper->delete_dir(dirname($file) . '/');
+                }
             }
             $this->helper->deset('metform_attachments');
         }

@@ -45,7 +45,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 return $response;
             }
 
-            $pdf = apply_filters('e2pdf_model_e2pdf_shortcode_attachment_path', $pdf, $atts);
+            do_action('e2pdf_model_e2pdf_shortcode_attachment_path', $pdf, $atts);
             if (trim($attributes->get('name', ''))) {
                 $name = $attributes->get('name');
                 $ext = pathinfo($pdf, PATHINFO_EXTENSION);
@@ -123,7 +123,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $entry->set('pdf_num', $entry->get('pdf_num') + 1);
                         $entry->save();
                     }
-                    $filepath = apply_filters('e2pdf_model_e2pdf_shortcode_attachment_path', $filepath, $atts);
+                    do_action('e2pdf_model_e2pdf_shortcode_attachment_path', $filepath, $atts);
                     return $filepath;
                 }
             }
