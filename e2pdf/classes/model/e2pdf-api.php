@@ -41,7 +41,7 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             if ($api_processor == '2') {
                 $api_version = '1.16.19';
             } else {
-                $api_version = '1.32.52';
+                $api_version = '1.32.62';
             }
 
             $data = [

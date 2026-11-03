@@ -93,6 +93,11 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     } else {
                         $entry = FrmEntry::getOne($this->get('dataset'));
                         if ($entry && isset($entry->form_id) && $entry->form_id == $this->get('cached_form')->id) {
+                            if (defined('FrmSpamEntriesHelper::SPAM_ENTRY_STATUS')) {
+                                if (isset($entry->is_draft) && (int) $entry->is_draft === (int) constant('FrmSpamEntriesHelper::SPAM_ENTRY_STATUS')) {
+                                    $entry->is_draft = 0;
+                                }
+                            }
                             if (!empty($entry->parent_item_id)) {
                                 $parent_entry = FrmEntry::getOne($entry->parent_item_id);
                                 if ($parent_entry && isset($parent_entry->form_id)) {
@@ -108,6 +113,11 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 if ($this->get('cached_form2') && $this->get('dataset2') && class_exists('FrmEntry')) {
                     $entry = FrmEntry::getOne($this->get('dataset2'));
                     if ($entry && isset($entry->form_id) && $entry->form_id == $this->get('cached_form2')->id) {
+                        if (defined('FrmSpamEntriesHelper::SPAM_ENTRY_STATUS')) {
+                            if (isset($entry->is_draft) && (int) $entry->is_draft === (int) constant('FrmSpamEntriesHelper::SPAM_ENTRY_STATUS')) {
+                                $entry->is_draft = 0;
+                            }
+                        }
                         if (!empty($entry->parent_item_id)) {
                             $parent_entry = FrmEntry::getOne($entry->parent_item_id);
                             if ($parent_entry && isset($parent_entry->form_id)) {
