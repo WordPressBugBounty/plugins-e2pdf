@@ -274,7 +274,7 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                         );
                     }
                     if (!$template->get('name')) {
-                        $template->set(__('(no title)', 'e2pdf'));
+                        $template->set('name', __('(no title)', 'e2pdf'));
                     }
 
                     $disposition = 'attachment';

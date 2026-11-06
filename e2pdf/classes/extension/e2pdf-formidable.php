@@ -918,6 +918,66 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         return $replace_with;
     }
 
+    // get local signature by url
+    public function get_local_signature_by_url($url) {
+        if (!class_exists('FrmSigAppController') || !method_exists('FrmSigAppController', 'get_signature_file_directory')) {
+            return '';
+        }
+
+        $dir = realpath(FrmSigAppController::get_signature_file_directory());
+        if (!$dir) {
+            return '';
+        }
+
+        $file_name = '';
+        if (false !== strpos($url, 'load_frm_signature')) {
+            if (!class_exists('FrmSigFileProtectionController') || !function_exists('openssl_decrypt')) {
+                return '';
+            }
+            $query = array();
+            parse_str((string) wp_parse_url($url, PHP_URL_QUERY), $query);
+            if (empty($query['frm_signature']) || !is_string($query['frm_signature'])) {
+                return '';
+            }
+            $file_name = openssl_decrypt($query['frm_signature'], 'AES-128-ECB', FrmSigFileProtectionController::get_secret_key());
+        } else {
+            $file_name = rawurldecode(basename((string) wp_parse_url($url, PHP_URL_PATH)));
+        }
+
+        if (!$file_name || !is_string($file_name) || basename($file_name) !== $file_name || 'png' !== strtolower(pathinfo($file_name, PATHINFO_EXTENSION))) {
+            return '';
+        }
+
+        $path = $dir . '/' . $file_name;
+        if (!is_file($path) || dirname(realpath($path)) !== $dir) {
+            return '';
+        }
+
+        if (is_readable($path)) {
+            return (string) @file_get_contents($path);
+        }
+
+        if (!class_exists('FrmProFileField') || !is_callable('FrmProFileField::chmod') || !is_callable('FrmProFileField::get_chmod') || !is_callable('FrmProFileField::get_readonly_permission')) {
+            return '';
+        }
+
+        $perms = FrmProFileField::get_chmod(array('file' => $path));
+        if (-1 === $perms) {
+            return '';
+        }
+
+        FrmProFileField::chmod($path, FrmProFileField::get_readonly_permission());
+        clearstatcache(true, $path);
+        $body = is_readable($path) ? (string) @file_get_contents($path) : '';
+
+        if (FrmProFileField::get_chmod(array('file' => $path)) !== $perms) {
+            FrmProFileField::chmod($path, $perms);
+        }
+        clearstatcache(true, $path);
+
+        return $body;
+    }
+
     // filter frm display value
     public function filter_frm_display_value($value, $field) {
         if (!is_object($field) || !isset($field->type) || 'signature' !== $field->type) {
@@ -933,6 +993,9 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                             return $matches[0];
                         }
                         $body = $this->helper->load('image')->get_by_url($url);
+                        if (!$body) {
+                            $body = $this->get_local_signature_by_url($url);
+                        }
                         if (!$body) {
                             return $matches[0];
                         }

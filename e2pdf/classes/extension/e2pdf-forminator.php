@@ -3265,6 +3265,7 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
     public function load_actions() {
         add_action('forminator_custom_form_submit_before_set_fields', array($this, 'action_forminator_custom_form_submit_before_set_fields'), 30, 3);
         add_action('forminator_custom_form_mail_admin_sent', array($this, 'action_forminator_custom_form_mail_admin_sent'), 30, 5);
+        add_action('forminator_form_before_save_entry', array($this, 'action_forminator_custom_form_before_save_entry'), 30);
     }
 
     // load filters
@@ -3294,6 +3295,20 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                             Forminator_Front_Action::$info['field_data_array'][$key]['value'] = $this->filter_content($field['field_array']['custom_value']);
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // before save entry action
+    public function action_forminator_custom_form_before_save_entry($form_id) {
+        if (class_exists('Forminator_CForm_Front_Action') && !empty(Forminator_CForm_Front_Action::$prepared_data['paymentid']) && class_exists('Forminator_Stripe') && method_exists('Forminator_Stripe', 'get_pending_checkout_session_data')) {
+            $session_data = Forminator_Stripe::get_pending_checkout_session_data(Forminator_CForm_Front_Action::$prepared_data['paymentid']);
+            if (is_array($session_data) && !empty($session_data['entry_id']) && isset($session_data['form_id']) && $session_data['form_id'] == $form_id) {
+                $form = Forminator_API::get_form($form_id);
+                if ($form && !is_wp_error($form) && !$form->is_prevent_store()) {
+                    $this->set('form_item', $form_id);
+                    $this->set('dataset', $session_data['entry_id']);
                 }
             }
         }
