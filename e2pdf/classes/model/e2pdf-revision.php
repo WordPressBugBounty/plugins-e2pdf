@@ -128,6 +128,7 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
             'password' => $this->get('password'),
             'owner_password' => $this->get('owner_password'),
             'permissions' => serialize($this->get('permissions')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'access_check' => $this->get('access_check'),
             'hooks' => $this->get('hooks'),
             'meta_title' => $this->get('meta_title'),
             'meta_subject' => $this->get('meta_subject'),
@@ -214,6 +215,7 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
                 case 'revision_id':
                 case 'rtl':
                 case 'tab_order':
+                case 'access_check':
                     $value = '0';
                     break;
                 case 'flatten':
@@ -271,8 +273,7 @@ class Model_E2pdf_Revision extends Model_E2pdf_Model {
         if ($this->get('template_id') && $this->get('revision_id')) {
 
             if ($this->get('pdf')) {
-                $pdf_dir = $this->helper->get('pdf_dir') . $this->get('pdf') . '/';
-                $this->helper->delete_dir($pdf_dir);
+                $this->helper->delete_pdf_dir($this->get('pdf'));
             }
 
             $where = array(

@@ -227,8 +227,32 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         return $item;
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = [
+            'values' => [
+                '[e2pdf-wp key="KEY"]: post data, of the current post by default (id="POST_ID" for another post). key: post field (post_title, post_content, post_date, post_excerpt, post_name, post_type, id, ...), get_permalink, get_the_post_thumbnail_url; a meta key with meta="true"; a taxonomy with terms="true" names="true" (term names). path="0.name" for a value inside an array, implode=", " to join arrays, attachment_url="true" / attachment_image_url="true" size="full" for attachment IDs. Examples: [e2pdf-wp key="post_title"], [e2pdf-wp key="_price" meta="true"], [e2pdf-wp key="category" terms="true" names="true" implode=", "].',
+                'ACF: [acf field="field_name"] ("Allow Access to Value in Editor UI" must be on), options page post_id="option", repeater row [acf field="repeater_1_sub_field"], loop [e2pdf-acf-repeater field="repeater"]...[/e2pdf-acf-repeater].',
+            ],
+            'places' => [
+                [
+                    'place' => 'Post / page content, blocks and page builder text modules of this post type',
+                    'location' => 'Edit the post / page (or the template used for this post type) and add the shortcode where the PDF link should appear; the current post is used as dataset.',
+                    'shortcodes' => ['[e2pdf-download]', '[e2pdf-view]'],
+                ],
+                [
+                    'place' => 'Other places (widgets, emails, other posts)',
+                    'location' => 'Add dataset with the post ID (or user ID for user templates), e.g. dataset="123".',
+                    'shortcodes' => ['[e2pdf-download dataset="ID"]'],
+                ],
+            ],
+        ];
+        return $instructions;
+    }
+
     // load filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', [$this, 'filter_e2pdf_extension_mcp_instructions']);
         add_filter('the_content', [$this, 'filter_the_content'], 10, 2);
         add_filter('widget_text', [$this, 'filter_content_custom']);
         add_filter('widget_block_content', [$this, 'filter_content_custom']);
@@ -378,6 +402,8 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
          * User Registration & Membership – Custom Registration Form, Login Form, and User Profile
          * https://wordpress.org/plugins/user-registration/
          */
+        add_action('user_registration_after_register_user_action', [$this, 'action_user_registration_user'], 9, 3);
+        add_action('user_registration_save_profile_details', [$this, 'action_user_registration_user'], 7, 1);
         add_action('user_registration_email_send_before', [$this, 'action_user_registration_email_send_before']);
         add_action('user_registration_email_send_after', [$this, 'action_user_registration_email_send_after']);
 
@@ -799,11 +825,22 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('wordpress_attachments_mepr');
         }
+    }
+
+    // user of the registration emails
+    public function action_user_registration_user($data, $form_id = 0, $user_id = 0) {
+        $this->set('user_registration_user_id', $user_id ? $user_id : $data);
     }
 
     // registration email send before action
@@ -818,7 +855,13 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('wordpress_attachments');
@@ -843,12 +886,18 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
-            $this->helper->deset('wordpress_attachments_um');
-            $this->helper->deset('wordpress_attachments_um_del');
         }
+        $this->helper->deset('wordpress_attachments_um');
+        $this->helper->deset('wordpress_attachments_um_del');
     }
 
     /**
@@ -915,6 +964,7 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             foreach ($shortcodes[0] as $key => $shortcode_value) {
                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                 $atts = shortcode_parse_atts($shortcode[3]);
+                $hash_data = [];
                 if (isset($atts['wp_reset_postdata'])) {
                     if ($atts['wp_reset_postdata'] == 'true') {
                         $wp_reset_postdata = true;
@@ -933,31 +983,29 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                         if ($template->get('extension') === 'woocommerce' || $template->get('extension') === 'jetformbuilder') {
                             continue;
                         } elseif ($template->get('extension') === 'wordpress') { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
-                            if (!isset($atts['dataset'])) {
-                                if ($template->get('item') == '-3') {
-                                    $dataset = get_current_user_id();
-                                    $atts['dataset'] = $dataset;
-                                    $shortcode[3] .= ' dataset="' . $dataset . '"';
-                                } else {
-                                    if ($this->get('queried_object') && !$post_id) {
-                                        $queried_object = get_queried_object();
-                                        $post_id = $queried_object && isset($queried_object->ID) ? $queried_object->ID : false;
-                                    }
-                                    if ($post_id || isset($post->ID)) {
-                                        $dataset = $post_id ? $post_id : $post->ID;
-                                        $atts['dataset'] = $dataset;
-                                        $shortcode[3] .= ' dataset="' . $dataset . '"';
+                            if ($template->get('item') == '-3') {
+                                $dataset = get_current_user_id();
+                                if (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset)) {
+                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                    $hash_data[] = 'dataset';
+                                }
+                            } else {
+                                if ($this->get('queried_object') && !$post_id) {
+                                    $queried_object = get_queried_object();
+                                    $post_id = $queried_object && isset($queried_object->ID) ? $queried_object->ID : false;
+                                }
+                                if ($post_id || isset($post->ID)) {
+                                    $dataset = $post_id ? $post_id : $post->ID;
+                                    if ($template->get('item') == get_post_type($dataset) && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $dataset)) {
+                                        $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                        $hash_data[] = 'dataset';
                                     }
                                 }
                             }
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wordpress_content', $atts)]);
                     $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                 }
             }
@@ -1043,6 +1091,13 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
     public function filter_mepr_email_send_attachments($attachments, $mail, $body, $values) {
         $message = $body ? $body : $mail->body();
         if ($message && false !== strpos($message, '[')) {
+            if (is_array($values)) {
+                array_walk_recursive($values, function (&$item) {
+                    if (is_string($item)) {
+                        $item = str_replace('[e2pdf-', '&#91;e2pdf-', $item);
+                    }
+                });
+            }
             $message = $mail->replace_variables($message, $values);
             $shortcode_tags = [
                 'e2pdf-attachment',
@@ -1056,29 +1111,34 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
                     $file = false;
+                    $hash_data = [];
+                    if (isset($atts['id'])) {
+                        $template = new Model_E2pdf_Template();
+                        $template->load($atts['id']);
+                        $entry_id = false;
+                        if ($template->get('extension') === 'wordpress' && $template->get('item') == '-3' && !empty($values['user_id'])) { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
+                            $entry_id = $values['user_id'];
+                        }
+                        if ($entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                            $hash_data[] = 'dataset';
+                        }
+                    }
                     if (isset($atts['id']) && isset($atts['dataset'])) {
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['filter'])) {
-                            $shortcode[3] .= ' filter="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
                         if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'memberpress_mail', $atts)]);
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {
-                                $tmp = false;
-                                if (substr($file, 0, 4) === 'tmp:') {
-                                    $file = substr($file, 4);
-                                    $tmp = true;
-                                }
-                                if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                $tmp = substr($file, 0, 4) === 'tmp:';
+                                $file = $tmp ? substr($file, 4) : $file;
+                                if (is_file($file)) {
                                     if ($tmp) {
                                         $this->helper->add('wordpress_attachments_mepr', $file);
                                     }
-                                } else {
-                                    $this->helper->add('wordpress_attachments_mepr', $file);
+                                    $attachments[] = $file;
                                 }
-                                $attachments[] = $file;
                             }
                         }
                     }
@@ -1139,29 +1199,28 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                             wp_reset_postdata();
                             $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                             $atts = shortcode_parse_atts($shortcode[3]);
+                            $hash_data = [];
+                            $template = new Model_E2pdf_Template();
+                            if (isset($atts['id'])) {
+                                $template->load($atts['id']);
+                            }
                             if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                             } elseif (isset($atts['id'])) {
                                 $user_id = !empty($txn->user_id) ? $txn->user_id : get_current_user_id();
-                                $template = new Model_E2pdf_Template();
-                                $template->load($atts['id']);
                                 if ($template->get('extension') === 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
-                                    if (!isset($atts['dataset'])) {
-                                        $atts['dataset'] = $user_id;
-                                        $shortcode[3] .= ' dataset="' . $user_id . '"';
+                                    if (!isset($atts['dataset']) || ($user_id && (string) $atts['dataset'] === (string) $user_id)) {
+                                        $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $user_id]);
+                                        $hash_data[] = 'dataset';
                                     }
                                 } else {
                                     if (!isset($atts['user_id'])) {
-                                        $atts['user_id'] = $user_id;
-                                        $shortcode[3] .= ' user_id="' . $user_id . '"';
+                                        $this->helper->load('shortcode')->set($shortcode, $atts, ['user_id' => $user_id]);
+                                        $hash_data[] = 'user_id';
                                     }
                                 }
                             }
-                            if (!isset($atts['apply'])) {
-                                $shortcode[3] .= ' apply="true"';
-                            }
-                            if (!isset($atts['filter'])) {
-                                $shortcode[3] .= ' filter="true"';
-                            }
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'memberpress_success_message', $atts)]);
                             $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                         }
                     }
@@ -1204,44 +1263,37 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             foreach ($shortcodes[0] as $key => $shortcode_value) {
                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                 $atts = shortcode_parse_atts($shortcode[3]);
-                if (!isset($atts['apply'])) {
-                    $shortcode[3] .= ' apply="true"';
-                }
-                if (!isset($atts['filter'])) {
-                    $shortcode[3] .= ' filter="true"';
-                }
+                $hash_data = [];
+                $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                $template = new Model_E2pdf_Template();
                 if (isset($atts['id'])) {
-                    $template = new Model_E2pdf_Template();
                     $template->load($atts['id']);
-                    if ($template->get('extension') === 'wordpress') { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
-                        if (!isset($atts['dataset'])) {
-                            if ($template->get('item') == '-3' && function_exists('um_user')) {
-                                $dataset = um_user('ID');
-                                $atts['dataset'] = $dataset;
-                                $shortcode[3] .= ' dataset="' . $dataset . '"';
-                            }
-                        }
-                    }
+                }
+                $entry_id = false;
+                if ($template->get('extension') === 'wordpress' && $template->get('item') == '-3' && function_exists('um_user')) { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
+                    $entry_id = um_user('ID');
+                }
+                if ($entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                    $hash_data[] = 'dataset';
                 }
                 if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'ultimatemember_mail', $atts)]);
                     $file = do_shortcode_tag($shortcode);
                     if ($file) {
-                        $tmp = false;
-                        if (substr($file, 0, 4) === 'tmp:') {
-                            $file = substr($file, 4);
-                            $tmp = true;
-                        }
-                        if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                        $tmp = substr($file, 0, 4) === 'tmp:';
+                        $file = $tmp ? substr($file, 4) : $file;
+                        if (is_file($file)) {
                             if ($tmp) {
                                 $this->helper->add('wordpress_attachments_um_del', $file);
                             }
-                        } else {
-                            $this->helper->add('wordpress_attachments_um_del', $file);
+                            $this->helper->add('wordpress_attachments_um', $file);
                         }
-                        $this->helper->add('wordpress_attachments_um', $file);
                     }
                     $content = str_replace($shortcode_value, '', $content);
                 } else {
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'ultimatemember_mail', $atts)]);
                     $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                 }
             }
@@ -1287,32 +1339,38 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     foreach ($shortcodes[0] as $key => $shortcode_value) {
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                        $hash_data = [];
+                        $template = new Model_E2pdf_Template();
+                        if (isset($atts['id'])) {
+                            $template->load($atts['id']);
                         }
-                        if (!isset($atts['filter'])) {
-                            $shortcode[3] .= ' filter="true"';
+                        $entry_id = false;
+                        if ($template->get('extension') === 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
+                            $entry_id = $this->get('user_registration_user_id');
+                        }
+                        if ($entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                            $hash_data[] = 'dataset';
                         }
                         $file = false;
                         if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'userregistration_mail', $atts)]);
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {
-                                $tmp = false;
-                                if (substr($file, 0, 4) === 'tmp:') {
-                                    $file = substr($file, 4);
-                                    $tmp = true;
-                                }
-                                if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                $tmp = substr($file, 0, 4) === 'tmp:';
+                                $file = $tmp ? substr($file, 4) : $file;
+                                if (is_file($file)) {
                                     if ($tmp) {
                                         $this->helper->add('wordpress_attachments', $file);
                                     }
-                                } else {
-                                    $this->helper->add('wordpress_attachments', $file);
+                                    $args['attachments'][] = $file;
                                 }
-                                $args['attachments'][] = $file;
                             }
                             $args['message'] = str_replace($shortcode_value, '', $args['message']);
                         } else {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'userregistration_mail', $atts)]);
                             $args['message'] = str_replace($shortcode_value, do_shortcode_tag($shortcode), $args['message']);
                         }
                     }
@@ -1347,6 +1405,9 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     global $post;
                     if (isset($post->ID)) {
                         $atts['dataset'] = (string) $post->ID;
+                        if ($template->get('item') == get_post_type($post->ID)) {
+                            $atts['hash'] = $this->helper->load('shortcode')->hash(['dataset'], '', $atts);
+                        }
                         if (!isset($atts['apply'])) {
                             $atts['apply'] = 'true';
                         }
@@ -1383,21 +1444,23 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
                     wp_reset_postdata();
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
-                        if (!isset($atts['dataset']) && isset($atts['id']) && (isset($post->ID))) {
+                        if (isset($atts['id']) && isset($post->ID) && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $post->ID)) {
                             $dataset = $post->ID;
-                            $atts['dataset'] = $dataset;
-                            $shortcode[3] .= ' dataset="' . $dataset . '"';
+                            $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                            $template = new Model_E2pdf_Template();
+                            $template->load($atts['id']);
+                            if ($template->get('extension') === 'wordpress' && $template->get('item') == get_post_type($dataset)) { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
+                                $hash_data[] = 'dataset';
+                            }
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true']);
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wordpress_content', $atts)]);
 
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['filter' => 'true']);
                     $new_shortcode = '[' . $shortcode[2] . $shortcode[3] . ']';
                     $content = str_replace($shortcode_value, $new_shortcode, $content);
                 }
@@ -1412,6 +1475,22 @@ class Extension_E2pdf_Wordpress extends Model_E2pdf_Model {
             return true;
         }
         return false;
+    }
+
+    // record attributes the user has no access to: the loaded post is allowed if readable, the loaded user if it's the current user or editable
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $cached_post = $this->get('cached_post');
+            if ($this->get('item') == '-3') {
+                $access = $cached_post && ((int) $cached_post->ID === $user_id || user_can($user_id, 'edit_user', $cached_post->ID));
+            } else {
+                $access = $cached_post && ((is_post_publicly_viewable($cached_post) && !post_password_required($cached_post)) || user_can($user_id, 'edit_post', $cached_post->ID));
+            }
+            if ($access) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
     }
 
     // visual mapper

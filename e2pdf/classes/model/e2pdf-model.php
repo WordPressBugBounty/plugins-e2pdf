@@ -18,5 +18,4 @@ class Model_E2pdf_Model {
     public function __construct() {
         $this->helper = Helper_E2pdf_Helper::instance();
     }
-
 }

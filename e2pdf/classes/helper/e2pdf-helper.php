@@ -104,45 +104,165 @@ class Helper_E2pdf_Helper {
         return admin_url($url);
     }
 
-    // delete dir
+    // delete dir: not available since 2.00.00
     public function delete_dir($dir, $force = false) {
-        $upload_dir = apply_filters('e2pdf_delete_base_dir', $this->get('upload_dir'), $dir);
-        $upload_dir = $upload_dir && is_string($upload_dir) ? wp_normalize_path(realpath($upload_dir)) : '';
-        $dir = $dir && is_string($dir) && !is_link(rtrim($dir, '/\\')) ? wp_normalize_path(realpath($dir)) : '';
-        if (!is_dir($upload_dir) || !is_dir($dir) || ($dir === $upload_dir && !$force) || strpos($dir . '/', $upload_dir . '/') !== 0) {
+        _doing_it_wrong(__METHOD__, esc_html__('This function is not available since E2Pdf 2.00.00.', 'e2pdf'), '2.00.00');
+        return false;
+    }
+
+    // delete e2pdf upload dir on uninstall: known folders only, without recursion
+    public function delete_upload_dir() {
+        if (!is_dir($this->get('upload_dir')) || is_link(rtrim($this->get('upload_dir'), '/\\'))) {
             return;
         }
-        if (strpos(wp_normalize_path(realpath(ABSPATH)) . '/', $upload_dir . '/') === 0) {
+        foreach ($this->list_dir($this->get('pdf_dir'), 'dir') as $name) {
+            $this->delete_pdf_dir($name);
+        }
+        foreach ($this->list_dir($this->get('bulk_dir'), 'dir') as $name) {
+            $this->delete_bulk_dir($name);
+        }
+        foreach ($this->list_dir($this->get('tmp_dir'), 'dir') as $name) {
+            $this->delete_tmp_dir($name);
+        }
+        foreach ($this->list_dir($this->get('wpcf7_dir'), 'dir') as $name) {
+            $this->delete_wpcf7_dir($name);
+        }
+        foreach ($this->list_dir($this->get('tpl_dir'), 'dir') as $name) {
+            $this->delete_tpl_dir($name);
+        }
+        foreach (['cache_dir', 'tmp_dir', 'pdf_dir', 'fonts_dir', 'tpl_dir', 'viewer_dir', 'bulk_dir', 'wpcf7_dir', 'upload_dir'] as $key) {
+            $this->delete_files($this->get($key));
+            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+            @rmdir($this->get($key));
+        }
+    }
+
+    // delete template pdf dir: pdf/{md5}/{md5}.pdf, index.php, images/*.png, images/index.php
+    public function delete_pdf_dir($pdf) {
+        if (!preg_match('/^[a-f0-9]{32}$/', (string) $pdf)) {
             return;
         }
-        $folders = array_map('wp_normalize_path', array_map('realpath', [ABSPATH, WP_CONTENT_DIR, WP_PLUGIN_DIR]));
-        if (in_array($upload_dir, $folders, true)) {
+        $pdf_dir = $this->get('pdf_dir') . $pdf . '/';
+        if (!is_dir($pdf_dir) || is_link(rtrim($pdf_dir, '/')) || is_link($pdf_dir . 'images')) {
             return;
         }
-        $files = function_exists('scandir') ? scandir($dir) : false;
-        if (!is_array($files) && function_exists('glob')) {
-            $pattern = addcslashes($dir . '/', '*?[]');
-            $files = array_map('basename', array_merge(glob($pattern . '*') ?: [], glob($pattern . '.*') ?: []));
-        }
-        if (!is_array($files)) {
-            return;
-        }
-        foreach ($files as $name) {
-            $file = $dir . '/' . $name;
-            if ($name === '.' || $name === '..' || is_link($file)) {
-                continue;
-            }
-            if (is_dir($file)) {
-                $this->delete_dir($file);
-            } else {
+        $this->delete_files($pdf_dir . 'images', ['png']);
+        foreach ([$pdf_dir . 'images/index.php', $pdf_dir . $pdf . '.pdf', $pdf_dir . 'index.php'] as $file) {
+            if (is_file($file)) {
                 unlink($file);
             }
         }
-        rmdir($dir);
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        @rmdir($pdf_dir . 'images');
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        @rmdir($pdf_dir);
+    }
+
+    // delete bulk dir: bulks/{md5}/*.pdf, *.jpg, index.php, .htaccess
+    public function delete_bulk_dir($uid) {
+        if (!preg_match('/^[a-f0-9]{32}$/', (string) $uid)) {
+            return;
+        }
+        $bulk_dir = $this->get('bulk_dir') . $uid . '/';
+        if (!is_dir($bulk_dir) || is_link(rtrim($bulk_dir, '/'))) {
+            return;
+        }
+        $this->delete_files($bulk_dir, ['pdf', 'jpg']);
+        foreach ([$bulk_dir . 'index.php', $bulk_dir . '.htaccess'] as $file) {
+            if (is_file($file)) {
+                unlink($file);
+            }
+        }
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        @rmdir($bulk_dir);
+    }
+
+    // delete tmp dir: tmp/e2pdf{md5}/ with files only
+    public function delete_tmp_dir($name) {
+        if (!preg_match('/^e2pdf[a-f0-9]{32}$/', (string) $name)) {
+            return;
+        }
+        $tmp_dir = $this->get('tmp_dir') . $name . '/';
+        if (!is_dir($tmp_dir) || is_link(rtrim($tmp_dir, '/'))) {
+            return;
+        }
+        $this->delete_files($tmp_dir);
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        @rmdir($tmp_dir);
+    }
+
+    // delete wpcf7 dir: wpcf7/{ID}/index.php, {upload}/files
+    public function delete_wpcf7_dir($id) {
+        $id = (int) $id;
+        if ($id <= 0) {
+            return;
+        }
+        $wpcf7_dir = $this->get('wpcf7_dir') . $id . '/';
+        if (!is_dir($wpcf7_dir) || is_link(rtrim($wpcf7_dir, '/'))) {
+            return;
+        }
+        $this->delete_files($wpcf7_dir);
+        foreach ($this->list_dir($wpcf7_dir, 'dir') as $name) {
+            $this->delete_files($wpcf7_dir . $name);
+            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+            @rmdir($wpcf7_dir . $name);
+        }
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        @rmdir($wpcf7_dir);
+    }
+
+    // delete template dir: tpl/{ID}/index.php, save/*.pdf, *.jpg, index.php, .htaccess
+    public function delete_tpl_dir($id) {
+        $id = (int) $id;
+        if ($id <= 0) {
+            return;
+        }
+        $tpl_dir = $this->get('tpl_dir') . $id . '/';
+        if (!is_dir($tpl_dir) || is_link(rtrim($tpl_dir, '/'))) {
+            return;
+        }
+        $this->delete_files($tpl_dir . 'save');
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        @rmdir($tpl_dir . 'save');
+        $this->delete_files($tpl_dir);
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        @rmdir($tpl_dir);
+    }
+
+    // delete files (not folders, not symlinks) directly inside a folder (not symlink), optionally only with these extensions
+    private function delete_files($dir, $extensions = []) {
+        $dir = trailingslashit($dir);
+        foreach ($this->list_dir($dir) as $file) {
+            if (empty($extensions) || in_array(strtolower(pathinfo($file, PATHINFO_EXTENSION)), $extensions, true)) {
+                unlink($dir . $file);
+            }
+        }
+    }
+
+    // names of files or folders (not symlinks) directly inside a folder (not symlink)
+    private function list_dir($dir, $type = 'file') {
+        $dir = trailingslashit($dir);
+        if (!is_dir($dir) || is_link(rtrim($dir, '/'))) {
+            return [];
+        }
+        $names = function_exists('scandir') ? scandir($dir) : false;
+        if (!is_array($names) && function_exists('glob')) {
+            $names = array_map('basename', array_merge(glob($dir . '*') ?: [], glob($dir . '.*') ?: []));
+        }
+        $list = [];
+        foreach (is_array($names) ? $names : [] as $name) {
+            if ($name === '.' || $name === '..' || is_link($dir . $name)) {
+                continue;
+            }
+            if (($type === 'dir' && is_dir($dir . $name)) || ($type === 'file' && is_file($dir . $name))) {
+                $list[] = $name;
+            }
+        }
+        return $list;
     }
 
     // create dir
-    public function create_dir($dir = false, $recursive = false, $create_index = true, $create_htaccess = false) {
+    public function create_dir($dir = false, $recursive = false, $create_index = true, $create_htaccess = false, $htaccess_content = 'DENY FROM ALL') {
         if ($dir && !file_exists($dir)) {
             if (mkdir($dir, self::CHMOD_DIR, $recursive)) {
                 if ($create_index) {
@@ -154,7 +274,7 @@ class Helper_E2pdf_Helper {
                 if ($create_htaccess) {
                     $htaccess = $dir . '.htaccess';
                     if (!file_exists($htaccess)) {
-                        $this->create_file($htaccess, 'DENY FROM ALL');
+                        $this->create_file($htaccess, $htaccess_content);
                     }
                 }
             }
@@ -449,7 +569,41 @@ class Helper_E2pdf_Helper {
     }
 
     // shortcodes
-    public function shortcodes() {
+    public function shortcodes($type = '') {
+        switch ($type) {
+            case 'main':
+                return [
+                    'e2pdf-download',
+                    'e2pdf-view',
+                    'e2pdf-save',
+                    'e2pdf-zapier',
+                    'e2pdf-adobesign',
+                    'e2pdf-attachment',
+                ];
+            case 'message':
+                return [
+                    'e2pdf-download',
+                    'e2pdf-view',
+                    'e2pdf-save',
+                    'e2pdf-zapier',
+                    'e2pdf-adobesign',
+                ];
+            case 'mail':
+                return [
+                    'e2pdf-download',
+                    'e2pdf-save',
+                    'e2pdf-zapier',
+                    'e2pdf-adobesign',
+                    'e2pdf-attachment',
+                ];
+            case 'attachment':
+                return [
+                    'e2pdf-save',
+                    'e2pdf-attachment',
+                ];
+            default:
+                break;
+        }
         return [
             'e2pdf-download',
             'e2pdf-view',

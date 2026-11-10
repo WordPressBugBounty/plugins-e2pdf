@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.1
-Stable tag: 1.32.65
+Stable tag: 2.00.00
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -142,6 +142,23 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 2.00.00 =
+*Release Date - November 10, 2026*
+
+* Add: Access Check [Read More](https://e2pdf.com/docs/shortcodes/access-check)
+* Add: Permissions settings
+* Add: AI MCP Server
+* Improvement: Template editor
+* Improvement: Mail attachments
+* Improvement: WooCommerce compatibility
+* Improvement: Cache and temp files management
+* Improvement: E2Pdf shortcodes limited by PDF context
+* Improvement: Security
+* Fix: Broken access control (reported by Peter Tang)
+* Fix: Broken access control (reported by wellknown.info)
+* Fix: Notifications
+* Remove: Old Template editor support
 
 = 1.32.65 =
 *Release Date - November 06, 2026*
@@ -631,6 +648,10 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Initial Release
 
 == Upgrade Notice ==
+
+= 2.00.00 =
+
+Major update with security fixes, bug fixes and a new Access Check for E2Pdf shortcodes. E2Pdf shortcodes are limited by PDF context by default. After updating, we recommend reviewing the Access Check settings, PDF download links, success messages and email attachments.
 
 = 1.00.00 =
 

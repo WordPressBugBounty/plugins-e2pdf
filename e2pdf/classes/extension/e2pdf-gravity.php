@@ -206,8 +206,32 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         add_action('gform_entries_first_column_actions', array($this, 'hook_gravity_row_actions'), 10, 4);
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (Gravity Forms merge tags): {Label:4} or {:4} with modifiers {Label:4:value}, sub inputs {Name:1.3}. Multiple files / images: [e2pdf-format-output explode=", " output="{0}"]{Upload:4}[/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Entry values: {entry_id} and the other Gravity Forms merge tags. Conditions: [gravityforms action="conditional" merge_tag="{Number:1}" condition="greater_than" value="3"]...[/gravityforms]. Nested Forms (Gravity Wiz): {Nested Form:1:filter[2],index[0]}.',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Settings: Confirmations (Text)',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Settings: Notifications > message',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
     // load filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
         add_filter('gform_confirmation', array($this, 'filter_gform_confirmation'), 30, 4);
         add_filter('gform_notification', array($this, 'filter_gform_notification'), 30, 3);
         add_filter('gform_twilio_message', array($this, 'filter_gform_twilio_message'), 30, 4);
@@ -215,6 +239,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         add_filter('gform_entry_field_value', array($this, 'filter_gform_entry_field_value'), 10, 4);
         add_filter('gform_merge_tag_filter', array($this, 'filter_gform_merge_tag_filter'), 10, 5);
         add_filter('gform_entries_field_value', array($this, 'filter_gform_entries_field_value'), 10, 4);
+        add_filter('gravityview/fields/custom/content_after', array($this, 'filter_gravityview_fields_custom_content_after'), 30, 2);
 
         // hooks
         add_filter('gform_entry_detail_meta_boxes', array($this, 'hook_gravity_entry_view'), 10, 3);
@@ -1491,6 +1516,17 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         return false;
     }
 
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry');
+            if ((!empty($entry['created_by']) && (int) $entry['created_by'] === $user_id) || user_can($user_id, 'gravityforms_view_entries') || user_can($user_id, 'gform_full_access')) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
+    }
+
     // auto form
     public function auto_form($template, $data = array()) {
 
@@ -2136,7 +2172,42 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
 
     // gform confirmation filter
     public function filter_gform_confirmation($content, $form, $entry, $ajax) {
-        return $this->filter_content($content, isset($entry['id']) ? $entry['id'] : 0, false, 'message');
+        return $this->filter_content($content, isset($entry['id']) ? $entry['id'] : 0, false, 'message', $form['id']);
+    }
+
+    // gravityview custom content filter
+    public function filter_gravityview_fields_custom_content_after($content, $gravityview = null) {
+        if (!is_string($content) || false === strpos($content, '[e2pdf-')) {
+            return $content;
+        }
+        if (!is_object($gravityview) || empty($gravityview->entry) || !is_object($gravityview->entry)) {
+            return $content;
+        }
+
+        $gf_form = null;
+        if (!empty($gravityview->field->form_id) && class_exists('\GV\GF_Form') && method_exists('\GV\GF_Form', 'by_id')) {
+            $gf_form = \GV\GF_Form::by_id($gravityview->field->form_id);
+        } elseif (!empty($gravityview->view->form)) {
+            $gf_form = $gravityview->view->form;
+        }
+        if (!is_object($gf_form) || empty($gf_form->form['id'])) {
+            return $content;
+        }
+        $form_id = $gf_form->form['id'];
+
+        $gv_entry = $gravityview->entry;
+        if (method_exists($gv_entry, 'is_multi') && $gv_entry->is_multi()) {
+            $gv_entry = isset($gv_entry[$form_id]) ? $gv_entry[$form_id] : null;
+        }
+        if (!is_object($gv_entry) || !method_exists($gv_entry, 'as_entry')) {
+            return $content;
+        }
+        $entry = $gv_entry->as_entry();
+        if (!is_array($entry) || empty($entry['id'])) {
+            return $content;
+        }
+
+        return $this->filter_content($content, $entry['id'], false, '', $form_id);
     }
 
     // twilio message filter
@@ -2157,27 +2228,26 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
             foreach ($shortcodes[0] as $key => $shortcode_value) {
                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                 $atts = shortcode_parse_atts($shortcode[3]);
-                if (!isset($atts['dataset']) && isset($atts['id'])) {
-                    $template = new Model_E2pdf_Template();
-                    $template->load($atts['id']);
-                    if ($template->get('extension') === 'gravity') {
-                        $entry_id = $entry && isset($entry['id']) ? $entry['id'] : false;
-                        if ($entry_id) {
-                            $atts['dataset'] = $entry_id;
-                            $shortcode[3] .= ' dataset="' . $entry_id . '"';
+                $hash_data = [];
+                if (isset($atts['id'])) {
+                    $entry_id = $entry && isset($entry['id']) ? $entry['id'] : false;
+                    if ($entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                        $template = new Model_E2pdf_Template();
+                        $template->load($atts['id']);
+                        if ($template->get('extension') === 'gravity' && $template->get('item') == $form['id']) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                            $hash_data[] = 'dataset';
                         }
                     }
                 }
-                if (!isset($atts['apply'])) {
-                    $shortcode[3] .= ' apply="true"';
-                }
-                if (!isset($atts['filter'])) {
-                    $shortcode[3] .= ' filter="true"';
-                }
+                $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
                 if ($shortcode[2] === 'e2pdf-download' || ($shortcode[2] === 'e2pdf-view' && isset($atts['output']) && $atts['output'] == 'url')) {
                     if (class_exists('GFCommon')) {
+                        add_filter('gform_merge_tag_filter', array($this, 'filter_gform_merge_tag_filter_attributes'), 30, 5);
                         $shortcode[3] = GFCommon::replace_variables($shortcode[3], $form, $entry, false, false, false, 'text');
+                        remove_filter('gform_merge_tag_filter', array($this, 'filter_gform_merge_tag_filter_attributes'), 30);
                     }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'gravity_twilio', $atts)]);
                     $notification['body'] = str_replace($shortcode_value, do_shortcode_tag($shortcode), $notification['body']);
                 }
             }
@@ -2190,7 +2260,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         if (isset($form['fields'])) {
             foreach ($form['fields'] as $key => $field) {
                 if (isset($field->defaultValue) && (false !== strpos($field->defaultValue, '[e2pdf-download') || false !== strpos($field->defaultValue, '[e2pdf-save'))) {
-                    $value = $this->filter_content($field->defaultValue, isset($entry['id']) ? $entry['id'] : 0, true);
+                    $value = $this->filter_content($field->defaultValue, isset($entry['id']) ? $entry['id'] : 0, true, '', $form['id']);
                     $entry[$field['id']] = $value;
                     GFAPI::update_entry_field($entry['id'], $field['id'], $value);
                 }
@@ -2257,25 +2327,23 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
             foreach ($shortcodes[0] as $key => $shortcode_value) {
                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                 $atts = shortcode_parse_atts($shortcode[3]);
-                if (!isset($atts['dataset']) && isset($atts['id'])) {
-                    $template = new Model_E2pdf_Template();
-                    $template->load($atts['id']);
-                    if ($template->get('extension') === 'gravity') {
-                        $entry_id = $entry && isset($entry['id']) ? $entry['id'] : false;
-                        if ($entry_id) {
-                            $atts['dataset'] = $entry_id;
-                            $shortcode[3] .= ' dataset="' . $entry_id . '"';
+                $hash_data = [];
+                if (isset($atts['id'])) {
+                    $entry_id = $entry && isset($entry['id']) ? $entry['id'] : false;
+                    if ($entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                        $template = new Model_E2pdf_Template();
+                        $template->load($atts['id']);
+                        if ($template->get('extension') === 'gravity' && $template->get('item') == $form['id']) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                            $hash_data[] = 'dataset';
                         }
                     }
                 }
-                if (!isset($atts['apply'])) {
-                    $shortcode[3] .= ' apply="true"';
-                }
-                if (!isset($atts['filter'])) {
-                    $shortcode[3] .= ' filter="true"';
-                }
+                $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'gravity_mail', $atts)]);
                 $file = false;
                 if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                     if (class_exists('GFCommon')) {
                         add_filter('gform_merge_tag_filter', array($this, 'filter_gform_merge_tag_filter_attributes'), 30, 5);
                         $shortcode[3] = GFCommon::replace_variables($shortcode[3], $form, $entry, false, false, false, 'text');
@@ -2283,20 +2351,15 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     }
                     $file = do_shortcode_tag($shortcode);
                     if ($file) {
-                        $tmp = false;
-                        if (substr($file, 0, 4) === 'tmp:') {
-                            $file = substr($file, 4);
-                            $tmp = true;
-                        }
-                        if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                        $tmp = substr($file, 0, 4) === 'tmp:';
+                        $file = $tmp ? substr($file, 4) : $file;
+                        if (is_file($file)) {
                             if ($tmp) {
                                 $this->helper->add('gravity_attachments', $file);
                             }
-                        } else {
-                            $this->helper->add('gravity_attachments', $file);
+                            $notification['attachments'] = (is_array(rgget('attachments', $notification))) ? rgget('attachments', $notification) : array();
+                            $notification['attachments'][] = $file;
                         }
-                        $notification['attachments'] = (is_array(rgget('attachments', $notification))) ? rgget('attachments', $notification) : array();
-                        $notification['attachments'][] = $file;
                     }
                     $notification['message'] = str_replace($shortcode_value, '', $notification['message']);
                 } else {
@@ -2308,7 +2371,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
     }
 
     // filter content
-    public function filter_content($content = '', $entry_id = 0, $do_shortcode = false, $type = '') {
+    public function filter_content($content = '', $entry_id = 0, $do_shortcode = false, $type = '', $form_id = 0) {
         if (is_array($content) || false === strpos($content, '[')) {
             return $content;
         }
@@ -2326,27 +2389,22 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
             foreach ($shortcodes[0] as $key => $shortcode_value) {
                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                 $atts = shortcode_parse_atts($shortcode[3]);
+                $hash_data = [];
                 if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                 } else {
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    if (isset($atts['id']) && $entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'gravity') {
-                            if ($entry_id) {
-                                $atts['dataset'] = $entry_id;
-                                $shortcode[3] .= ' dataset="' . $entry_id . '"';
-                            }
+                        if ($template->get('extension') === 'gravity' && $template->get('item') == $form_id) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                            $hash_data[] = 'dataset';
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                    if ($type == 'message') {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['iframe_download' => 'true']);
                     }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
-                    if (!isset($atts['iframe_download']) && $type == 'message') {
-                        $shortcode[3] .= ' iframe_download="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, ($type === 'message' ? 'gravity_success_message' : 'gravity_field'), $atts)]);
                     if ($do_shortcode) {
                         $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                     } else {
@@ -2520,7 +2578,13 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('gravity_attachments');
@@ -2535,7 +2599,7 @@ class Extension_E2pdf_Gravity extends Model_E2pdf_Model {
                     $entry = GFFormsModel::get_entry($entry_id);
                     if ($entry && !is_wp_error($entry) && is_array($entry)) {
                         if (!rgar($entry, $field['id'])) {
-                            $value = $this->filter_content($field->defaultValue, $entry_id, true);
+                            $value = $this->filter_content($field->defaultValue, $entry_id, true, '', $form['id']);
                             $entry[$field['id']] = $value;
                             GFAPI::update_entry_field($entry['id'], $field['id'], $value);
                         }

@@ -261,7 +261,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                         $field_type = !empty($field['attributes']['type']) ? $field['attributes']['type'] : '';
                         $field_value = !empty($field['attributes']['value']) ? $field['attributes']['value'] : '';
                         if ($field_type == 'hidden' && false !== strpos($field_value, '[')) {
-                            $value = $this->filter_submission_message_parse($field_value, $insertId);
+                            $value = $this->filter_submission_message_parse($field_value, $insertId, array(), $form);
                             if ($value != $field_value) {
                                 $field_name = !empty($field['attributes']['name']) ? $field['attributes']['name'] : '';
                                 if ($field_name) {
@@ -292,20 +292,56 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
 
     // integration notify notifications action
     public function action_integration_notify_notifications() {
-        $files = $this->helper->get('fluent_attachments');
+        $files = $this->helper->get('tmp_fluent_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
-            $this->helper->deset('fluent_attachments');
         }
+        $this->helper->deset('tmp_fluent_attachments');
+        $this->helper->deset('fluent_attachments');
+    }
+
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (Fluent Forms smart codes): {inputs.field_name}, sub fields {inputs.names.first_name}, {inputs.address_1.city}; option labels: {inputs.field_name.label}. Multiple files / images: [e2pdf-format-output explode=", " output="{0}"]{inputs.file-upload}[/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Repeater: single value {inputs.repeater_field.0.0} (row.column, 0 = first); loop: [e2pdf-for][e2pdf-for-data]{inputs.repeater_field}[/e2pdf-for-data][e2pdf-for-do]{inputs.repeater_field.[e2pdf-for-key].0}[/e2pdf-for-do][/e2pdf-for]. Payment: {payment.payment_total}, {payment.payment_status}, {payment.payment_method}, {payment.order_items}, {payment.summary}, {payment.receipt}.',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Settings: Confirmation Settings > message',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Settings: Email Notifications > email body',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+                array(
+                    'place' => 'Redirect URL after submit',
+                    'location' => 'Settings: Confirmation Settings > Custom URL',
+                    'shortcodes' => array('[e2pdf-download output="url"]'),
+                ),
+            ),
+        );
+        return $instructions;
     }
 
     // load filters
     public function load_filters() {
-        add_filter('fluentform/submission_message_parse', array($this, 'filter_submission_message_parse'), 9, 2);
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
+        add_filter('fluentform/submission_message_parse', array($this, 'filter_submission_message_parse'), 9, 4);
         add_filter('fluentform/filter_email_attachments', array($this, 'filter_email_attachments'), 10, 4);
         add_filter('fluentform/integration_data_trello', array($this, 'filter_integration_data_trello'), 10, 3);
         add_filter('fluentform/insert_response_data', array($this, 'filter_fluentform_insert_response_data'), 99, 3);
@@ -346,16 +382,17 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
-                        $atts['dataset'] = $dataset;
-                        $shortcode[3] .= ' dataset="' . $dataset . '"';
+                    $hash_data = [];
+                    if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
+                        $template = new Model_E2pdf_Template();
+                        $template->load($atts['id']);
+                        if ($template->get('extension') === 'fluent' && $template->get('item') == $form->id) {
+                            $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                            $hash_data[] = 'dataset';
+                        }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'fluent_redirect', $atts)]);
                     $redirectUrl = do_shortcode_tag($shortcode);
                 }
             }
@@ -363,33 +400,20 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
         return $redirectUrl;
     }
 
-    // insert response data filter
+    // insert response data filter: submitted values can't add e2pdf shortcodes to emails and confirmation messages
     public function filter_fluentform_insert_response_data($formData, $formId, $inputConfigs) {
-        if (!empty($formData) && is_array($formData)) {
-            $jsonData = json_encode($formData, JSON_UNESCAPED_UNICODE); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
-            $shortcode_tags = array(
-                'e2pdf-download',
-                'e2pdf-save',
-                'e2pdf-attachment',
-                'e2pdf-view',
-                'e2pdf-adobesign',
-                'e2pdf-zapier',
-            );
-            preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $jsonData, $matches);
-            $tagnames = array_intersect($shortcode_tags, $matches[1]);
-            if (!empty($tagnames)) {
-                preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $jsonData, $shortcodes);
-                foreach ($shortcodes[0] as $key => $shortcode_value) {
-                    $jsonData = str_replace($shortcode_value, '', $jsonData);
+        if (is_array($formData)) {
+            array_walk_recursive($formData, function (&$item) {
+                if (is_string($item)) {
+                    $item = str_replace('[e2pdf-', '&#91;e2pdf-', $item);
                 }
-                $formData = json_decode($jsonData, true);
-            }
+            });
         }
         return $formData;
     }
 
     // submission message parse filter
-    public function filter_submission_message_parse($message, $dataset) {
+    public function filter_submission_message_parse($message, $dataset, $form_data = array(), $form = null) {
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-download',
@@ -406,34 +430,28 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    $hash_data = [];
+                    if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'fluent') {
-                            $atts['dataset'] = $dataset;
-                            $shortcode[3] .= ' dataset="' . $dataset . '"';
+                        if ($template->get('extension') === 'fluent' && isset($form->id) && $template->get('item') == $form->id) {
+                            $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                            $hash_data[] = 'dataset';
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
 
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'fluent_success_message', $atts)]);
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
-                            $tmp = false;
-                            if (substr($file, 0, 4) === 'tmp:') {
-                                $file = substr($file, 4);
-                                $tmp = true;
-                            }
-                            if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            $tmp = substr($file, 0, 4) === 'tmp:';
+                            $file = $tmp ? substr($file, 4) : $file;
+                            if (is_file($file)) {
                                 if ($tmp) {
-                                    $this->helper->add('fluent_attachments', $file);
+                                    $this->helper->add('tmp_fluent_attachments', $file);
                                 }
-                            } else {
                                 $this->helper->add('fluent_attachments', $file);
                             }
                         }
@@ -449,8 +467,10 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                         }
                         // iframe onload attribute bug
                         if ($shortcode[2] === 'e2pdf-view' || ($shortcode[2] === 'e2pdf-download' && (isset($atts['iframe_download']) && $atts['iframe_download'] == 'true'))) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'fluent_success_message', $atts)]);
                             $message = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $message);
                         } else {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'fluent_success_message', $atts)]);
                             $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                         }
                     }
@@ -483,24 +503,21 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    $hash_data = [];
+                    if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'fluent') {
-                            $atts['dataset'] = $dataset;
-                            $shortcode[3] .= ' dataset="' . $dataset . '"';
+                        if ($template->get('extension') === 'fluent' && isset($entry->form_id) && $template->get('item') == $entry->form_id) {
+                            $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                            $hash_data[] = 'dataset';
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
 
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'fluent_trello', $atts)]);
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                     }
                 }
@@ -1468,6 +1485,19 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
             return true;
         }
         return false;
+    }
+
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries permission of the form
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry');
+            if (!empty($entry->user_id) && (int) $entry->user_id === $user_id) {
+                unset($atts['dataset']);
+            } elseif ($user_id && $user_id === get_current_user_id() && isset($entry->form_id) && method_exists('\FluentForm\App\Modules\Acl\Acl', 'hasPermission') && \FluentForm\App\Modules\Acl\Acl::hasPermission('fluentform_entries_viewer', $entry->form_id)) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
     }
 
     // visual mapper

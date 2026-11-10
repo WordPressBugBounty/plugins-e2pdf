@@ -615,6 +615,17 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
         return false;
     }
 
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $meta = $this->get('cached_meta');
+            if ((!empty($meta['_user_id']['value']) && (int) $meta['_user_id']['value'] === $user_id) || user_can($user_id, forminator_get_permission('forminator-entries'))) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
+    }
+
     // auto form
     public function auto_form($template, $data = array()) {
 
@@ -3268,8 +3279,32 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
         add_action('forminator_form_before_save_entry', array($this, 'action_forminator_custom_form_before_save_entry'), 30);
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (Forminator tags): {text-1}, {email-1}, {select-1}, sub fields {name-1-first-name}, {address-1-city}, {time-1-hours}, {postdata-1-post-title}. Multiple files / images: [e2pdf-format-output explode="," output="{0}"]{upload-1}[/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Entry values: {submission_id}. Group (repeater): single entry {text-1:1}; loop {foreach:group-1}{text-1} {/foreach:group-1}.',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Behaviour: inline message',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Email Notifications: admin email message',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
     // load filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
         add_filter('forminator_custom_form_mail_admin_message', array($this, 'filter_forminator_mail_message'), 30, 5);
         add_filter('forminator_custom_form_submit_response', array($this, 'filter_forminator_custom_form_submit_response'), 30);
         add_filter('forminator_custom_form_ajax_submit_response', array($this, 'filter_forminator_custom_form_submit_response'), 30);
@@ -3281,6 +3316,28 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
 
     // before set fields action
     public function action_forminator_custom_form_submit_before_set_fields($entry, $form_id, $field_data_array) {
+        $this->set('form_item', $form_id);
+        // submitted values can't add e2pdf shortcodes to emails and response messages
+        if (is_array(Forminator_CForm_Front_Action::$prepared_data)) {
+            array_walk_recursive(Forminator_CForm_Front_Action::$prepared_data, function (&$item) {
+                if (is_string($item)) {
+                    $item = str_replace('[e2pdf-', '&#91;e2pdf-', $item);
+                }
+            });
+        }
+        if (is_array(Forminator_Front_Action::$info['field_data_array'])) {
+            foreach (Forminator_Front_Action::$info['field_data_array'] as $key => $field) {
+                if (isset($field['value']) && is_array($field['value'])) {
+                    array_walk_recursive(Forminator_Front_Action::$info['field_data_array'][$key]['value'], function (&$item) {
+                        if (is_string($item)) {
+                            $item = str_replace('[e2pdf-', '&#91;e2pdf-', $item);
+                        }
+                    });
+                } elseif (isset($field['value']) && is_string($field['value'])) {
+                    Forminator_Front_Action::$info['field_data_array'][$key]['value'] = str_replace('[e2pdf-', '&#91;e2pdf-', $field['value']);
+                }
+            }
+        }
         if (class_exists('Forminator_API')) {
             $form = Forminator_API::get_form($form_id);
             if (!is_wp_error($form)) {
@@ -3327,7 +3384,13 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
             foreach ($files as $key => $file) {
                 if (!in_array($file, $saved, false)) {
                     if (is_file($file)) {
-                        $this->helper->delete_dir(dirname($file) . '/');
+                        $dir = dirname($file) . '/';
+                        unlink($file);
+                        if (is_file($dir . 'index.php')) {
+                            unlink($dir . 'index.php');
+                        }
+                        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                        @rmdir($dir);
                     }
                 }
             }
@@ -3354,51 +3417,47 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     $file = false;
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    if (isset($atts['id'])) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'forminator') {
+                        if ($template->get('extension') === 'forminator' && $template->get('item') == $custom_form->id) {
                             if ($this->get('dataset')) {
                                 $entry_id = $this->get('dataset');
                             } else {
                                 $entry_id = isset($entry->entry_id) ? $entry->entry_id : false;
                             }
-                            if ($entry_id) {
+                            if ($entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
                                 if (($shortcode[2] === 'e2pdf-download' || $shortcode[2] === 'e2pdf-view' || $shortcode[2] === 'e2pdf-zapier') && $entry_id == 'is_prevent_store') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                 } else {
                                     if ($entry_id == 'is_prevent_store') {
                                         add_filter('e2pdf_model_shortcode_extension_options', array($this, 'filter_e2pdf_model_shortcode_extension_options'), 30);
                                     }
-                                    $atts['dataset'] = $entry_id;
-                                    $shortcode[3] .= ' dataset="' . $entry_id . '"';
+                                    $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                                    $hash_data[] = 'dataset';
                                 }
                             }
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'forminator_mail', $atts)]);
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
-                            $tmp = false;
-                            if (substr($file, 0, 4) === 'tmp:') {
-                                $file = substr($file, 4);
-                                $tmp = true;
-                            }
-                            if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            $tmp = substr($file, 0, 4) === 'tmp:';
+                            $file = $tmp ? substr($file, 4) : $file;
+                            if (is_file($file)) {
                                 if (!$tmp) {
                                     $this->helper->add('forminator_saved_attachments', $file);
                                 }
+                                $this->helper->add('forminator_attachments', $file);
                             }
-                            $this->helper->add('forminator_attachments', $file);
                         }
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'forminator_mail', $atts)]);
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                     }
                     remove_filter('e2pdf_model_shortcode_extension_options', array($this, 'filter_e2pdf_model_shortcode_extension_options'), 30);
@@ -3444,35 +3503,32 @@ class Extension_E2pdf_Forminator extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id'])) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'forminator') {
+                            if ($template->get('extension') === 'forminator' && $template->get('item') == $this->get('form_item')) {
                                 $entry_id = $this->get('dataset');
-                                if ($entry_id) {
+                                if ($entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
                                     if (($shortcode[2] === 'e2pdf-download' || $shortcode[2] === 'e2pdf-view' || $shortcode[2] === 'e2pdf-zapier') && $entry_id == 'is_prevent_store') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                     } else {
                                         if ($entry_id == 'is_prevent_store') {
                                             add_filter('e2pdf_model_shortcode_extension_options', array($this, 'filter_e2pdf_model_shortcode_extension_options'), 30);
                                         }
-                                        $atts['dataset'] = $entry_id;
-                                        $shortcode[3] .= ' dataset="' . $entry_id . '"';
+                                        $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                                        $hash_data[] = 'dataset';
                                     }
                                 }
                             }
                         }
 
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                        if ($type == 'message') {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['iframe_download' => 'true']);
                         }
-                        if (!isset($atts['filter'])) {
-                            $shortcode[3] .= ' filter="true"';
-                        }
-                        if (!isset($atts['iframe_download']) && $type == 'message') {
-                            $shortcode[3] .= ' iframe_download="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, ($type === 'message' ? 'forminator_success_message' : 'forminator_field'), $atts)]);
                         $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                         remove_filter('e2pdf_model_shortcode_extension_options', array($this, 'filter_e2pdf_model_shortcode_extension_options'), 30);
                     }

@@ -243,19 +243,19 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                         foreach ($shortcodes[0] as $key => $shortcode_value) {
                             $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                             $atts = shortcode_parse_atts($shortcode[3]);
+                            $hash_data = [];
                             if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                             } else {
-                                if (!isset($atts['dataset']) && isset($atts['id'])) {
+                                if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                                     $template = new Model_E2pdf_Template();
                                     $template->load($atts['id']);
-                                    if ($template->get('extension') === 'wpforms') {
-                                        $atts['dataset'] = $dataset;
-                                        $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                    if ($template->get('extension') === 'wpforms' && $template->get('item') == $form_data['id']) {
+                                        $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                        $hash_data[] = 'dataset';
                                     }
                                 }
-                                if (!isset($atts['apply'])) {
-                                    $shortcode[3] .= ' apply="true"';
-                                }
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true']);
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wpforms_field', $atts)]);
                                 $default_value = str_replace($shortcode_value, do_shortcode_tag($shortcode), $default_value);
                             }
                         }
@@ -297,7 +297,13 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('wpforms_attachments');
@@ -323,7 +329,13 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('wpforms_attachments');
@@ -332,7 +344,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
 
     // filter wp mail
     public function filter_wp_mail($args = array()) {
-        $message = preg_replace('/(\{\{)((e2pdf-save|e2pdf-attachment)[^\}]*?)(\}\})/', '[$2]', $args['message']);
+        $message = $this->helper->load('shortcode')->unwrap($args['message'], $this->helper->shortcodes('attachment'));
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-save',
@@ -355,21 +367,17 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                     $atts = shortcode_parse_atts($shortcode[3]);
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         $transient = isset($atts['dataset']) && substr($atts['dataset'], 0, 4) === 'tmp_' ? 'e2pdf_' . $atts['dataset'] : false;
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
-                            $tmp = false;
-                            if (substr($file, 0, 4) === 'tmp:') {
-                                $file = substr($file, 4);
-                                $tmp = true;
-                            }
-                            if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            $tmp = substr($file, 0, 4) === 'tmp:';
+                            $file = $tmp ? substr($file, 4) : $file;
+                            if (is_file($file)) {
                                 if ($tmp) {
                                     $this->helper->add('wpforms_attachments', $file);
                                 }
-                            } else {
-                                $this->helper->add('wpforms_attachments', $file);
+                                $args['attachments'][] = $file;
                             }
-                            $args['attachments'][] = $file;
                         }
                         $message = str_replace($shortcode_value, '', $message);
                         if ($transient) {
@@ -390,8 +398,37 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
         return $wp_mail;
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (WPForms smart tags): {field_id="1"}, {field_html_id="1"}, {field_value_id="1"}. Multiple files / images: [e2pdf-format-output explode="\\n" output="{0}"]{field_id="1"}[/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Repeater: single value {field_id="1_1"} (row 1 = first); loop: [e2pdf-for][e2pdf-for-data]{field_id="1"}[/e2pdf-for-data][e2pdf-for-do]{field_id="2_[e2pdf-for-counter]"}[/e2pdf-for-do][/e2pdf-for].',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Settings: Confirmations > Confirmation Message (download / view need WPForms PRO)',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Settings: Notifications > Email Message',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+                array(
+                    'place' => 'Redirect URL after submit',
+                    'location' => 'Settings: Confirmations > Go to URL (Redirect)',
+                    'shortcodes' => array('[e2pdf-download output="url"]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
     // load filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
         add_filter('wpforms_frontend_confirmation_message', array($this, 'filter_wpforms_frontend_confirmation_message'), 10, 4);
         add_filter('wpforms_emails_send_email_data', array($this, 'filter_wpforms_emails_send_email_data'), 11, 2);
         add_filter('wpforms_process_smart_tags', array(new Model_E2pdf_Filter(), 'pre_filter'), 0);
@@ -428,22 +465,19 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'wpforms') {
-                                $atts['dataset'] = $dataset;
-                                $shortcode[3] .= ' dataset="' . $dataset . '"';
+                            if ($template->get('extension') === 'wpforms' && $template->get('item') == $form_data['id']) {
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['iframe_download'])) {
-                            $shortcode[3] .= ' iframe_download="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'iframe_download' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wpforms_success_message', $atts)]);
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                     }
                 }
@@ -474,47 +508,42 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                         $transient = false;
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        $hash_data = [];
+                        $entry_id = isset($data->entry_id) && $data->entry_id ? $data->entry_id : false;
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($entry_id && (string) $atts['dataset'] === (string) $entry_id))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'wpforms') {
-                                if (isset($data->entry_id) && $data->entry_id) {
-                                    $atts['dataset'] = $data->entry_id;
-                                    $shortcode[3] .= ' dataset="' . $data->entry_id . '"';
-                                } elseif ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                            if ($template->get('extension') === 'wpforms' && isset($data->form_data['id']) && $template->get('item') == $data->form_data['id']) {
+                                if ($entry_id) {
+                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $entry_id]);
+                                    $hash_data[] = 'dataset';
+                                } elseif ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                     $dataset = 'tmp_' . $this->helper->load('encryption')->random_md5();
                                     $transient = 'e2pdf_' . $dataset;
                                     set_transient($transient, $data->fields, 1800);
-                                    $atts['dataset'] = $dataset;
-                                    $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                    $hash_data[] = 'dataset';
                                 }
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['filter'])) {
-                            $shortcode[3] .= ' filter="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
                         if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                             if ($async) {
-                                $mail['message'] = str_replace($shortcode_value, '{{' . $shortcode[2] . $shortcode[3] . '}}', $mail['message']);
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wpforms_mail', $atts)]);
+                                $mail['message'] = str_replace($shortcode_value, $this->helper->load('shortcode')->wrap($shortcode), $mail['message']);
                             } else {
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wpforms_mail', $atts)]);
                                 $file = do_shortcode_tag($shortcode);
                                 if ($file) {
-                                    $tmp = false;
-                                    if (substr($file, 0, 4) === 'tmp:') {
-                                        $file = substr($file, 4);
-                                        $tmp = true;
-                                    }
-                                    if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                    $tmp = substr($file, 0, 4) === 'tmp:';
+                                    $file = $tmp ? substr($file, 4) : $file;
+                                    if (is_file($file)) {
                                         if ($tmp) {
                                             $this->helper->add('wpforms_attachments', $file);
                                         }
-                                    } else {
-                                        $this->helper->add('wpforms_attachments', $file);
+                                        $mail['attachments'][] = $file;
                                     }
-                                    $mail['attachments'][] = $file;
                                 }
                                 $mail['message'] = str_replace($shortcode_value, '', $mail['message']);
                                 if ($transient) {
@@ -522,6 +551,7 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
                                 }
                             }
                         } else {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wpforms_mail', $atts)]);
                             $mail['message'] = str_replace($shortcode_value, do_shortcode_tag($shortcode), $mail['message']);
                             if ($transient) {
                                 delete_transient($transient);
@@ -1332,6 +1362,17 @@ class Extension_E2pdf_Wpforms extends Model_E2pdf_Model {
             return true;
         }
         return false;
+    }
+
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry');
+            if ((!empty($entry->user_id) && (int) $entry->user_id === $user_id) || user_can($user_id, wpforms_get_capability_manage_options()) || user_can($user_id, 'view_entry_single', $this->get('dataset'))) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
     }
 
     // visual mapper

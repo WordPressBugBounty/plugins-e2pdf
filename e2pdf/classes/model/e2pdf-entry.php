@@ -107,6 +107,9 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
             'entry' => serialize($this->get('entry')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
             'pdf_num' => $this->get('pdf_num'),
         );
+        if (!$this->get('ID') && version_compare(get_option('e2pdf_db_version', '0'), '2.00.00', '>=')) {
+            $entry['created_at'] = current_time('mysql', 1);
+        }
         return $entry;
     }
 
@@ -128,7 +131,11 @@ class Model_E2pdf_Entry extends Model_E2pdf_Model {
             $success = $wpdb->insert($this->get_table(), $entry);
             if ($success === false) {
                 $this->helper->load('db')->db_init($wpdb->prefix);
-                $wpdb->insert($this->get_table(), $entry);
+                $success = $wpdb->insert($this->get_table(), $entry);
+                if ($success === false) {
+                    unset($entry['created_at']);
+                    $wpdb->insert($this->get_table(), $entry);
+                }
             }
             $this->set('ID', $wpdb->insert_id);
             $this->set('uid', $this->get('uid'));

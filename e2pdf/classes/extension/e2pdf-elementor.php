@@ -140,6 +140,30 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
         add_filter('elementor_pro/forms/wp_mail_message', array($this, 'filter_elementor_pro_forms_wp_mail_message'));
         add_filter('elementor_pro/forms/record/actions_before', array($this, 'filter_elementor_pro_forms_record_actions_before'));
         add_filter('wpnotif_filter_elementor_message', array($this, 'filter_wpnotif_filter_elementor_message'), 10, 2);
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
+    }
+
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (Elementor shortcodes): [field id="field_id"]. Multiple files / images: [e2pdf-format-output explode=" , " output="{0}"][field id="field_id"][/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Entry values: [id], [created_at], [updated_at], [created_at_gmt], [updated_at_gmt], [status], [user_id], [user_name], [user_ip], [user_agent], [referer], [referer_title].',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Form widget: Additional Options > Custom Messages > Success Message',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Form widget: Email / Email 2 message',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
     }
 
     // items
@@ -451,6 +475,17 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
             }
         }
         return false;
+    }
+
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $meta = $this->get('cached_meta');
+            if ((!empty($meta['data']['user_id']) && (int) $meta['data']['user_id'] === $user_id) || user_can($user_id, 'manage_options')) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
     }
 
     // visual mapper
@@ -990,30 +1025,47 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
     // forms mail sent action
     public function action_elementor_pro_forms_mail_sent($settings, $record) {
         remove_filter('wp_mail', array($this, 'filter_wp_mail'), 30);
-        $files = $this->helper->get('elementor_attachments');
+        $files = $this->helper->get('tmp_elementor_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
-            $this->helper->deset('elementor_attachments');
         }
+        $this->helper->deset('tmp_elementor_attachments');
+        $this->helper->deset('elementor_attachments');
     }
 
     // filter form record actions before
     public function filter_elementor_pro_forms_record_actions_before($record) {
+        $this->set('form_item', $record->get_form_settings('form_post_id') . '_' . $record->get_form_settings('id'));
+        $fields = $record->get('fields');
+        if (is_array($fields)) {
+            array_walk_recursive($fields, function (&$item) {
+                if (is_string($item)) {
+                    $item = str_replace(['[e2pdf-', '{{e2pdf-'], ['&#91;e2pdf-', '&#123;&#123;e2pdf-'], $item);
+                }
+            });
+            $record->set('fields', $fields);
+        }
         $form_settings = $record->get('form_settings');
         if (!empty($form_settings['email_content'])) {
-            $form_settings['email_content'] = preg_replace('/(\[)((e2pdf-download|e2pdf-save|e2pdf-attachment|e2pdf-adobesign|e2pdf-zapier)[^\]]*?)(\])/', '{{$2}}', $form_settings['email_content']);
+            $form_settings['email_content'] = $this->helper->load('shortcode')->wrap($form_settings['email_content'], $this->helper->shortcodes('mail'));
         }
         if (!empty($form_settings['email_content_2'])) {
-            $form_settings['email_content_2'] = preg_replace('/(\[)((e2pdf-download|e2pdf-save|e2pdf-attachment|e2pdf-adobesign|e2pdf-zapier)[^\]]*?)(\])/', '{{$2}}', $form_settings['email_content_2']);
+            $form_settings['email_content_2'] = $this->helper->load('shortcode')->wrap($form_settings['email_content_2'], $this->helper->shortcodes('mail'));
         }
         if (!empty($form_settings['dce_form_email_repeater'])) {
             foreach ($form_settings['dce_form_email_repeater'] as $key => $email_content) {
                 if (!empty($email_content['dce_form_email_content'])) {
-                    $form_settings['dce_form_email_repeater'][$key]['dce_form_email_content'] = preg_replace('/(\[)((e2pdf-download|e2pdf-save|e2pdf-attachment|e2pdf-adobesign|e2pdf-zapier)[^\]]*?)(\])/', '{{$2}}', $email_content['dce_form_email_content']);
+                    $form_settings['dce_form_email_repeater'][$key]['dce_form_email_content'] = $this->helper->load('shortcode')->wrap($email_content['dce_form_email_content'], $this->helper->shortcodes('mail'));
                 }
             }
         }
@@ -1029,7 +1081,7 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
 
     // filter elementor pro wp mail message
     public function filter_elementor_pro_forms_wp_mail_message($message) {
-        $message = preg_replace('/(\{\{)((e2pdf-download|e2pdf-save|e2pdf-attachment|e2pdf-adobesign|e2pdf-zapier)[^\}]*?)(\}\})/', '[$2]', $message);
+        $message = $this->helper->load('shortcode')->unwrap($message, $this->helper->shortcodes('mail'), false);
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-download',
@@ -1045,47 +1097,42 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($this->get('dataset') && (string) $atts['dataset'] === (string) $this->get('dataset')))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'elementor') {
-                                $atts['dataset'] = $this->get('dataset');
-                                $shortcode[3] .= ' dataset="' . $this->get('dataset') . '"';
+                            if ($template->get('extension') === 'elementor' && $template->get('item') == $this->get('form_item')) {
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $this->get('dataset')]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'elementor_mail', $atts)]);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
-                            $tmp = false;
-                            if (substr($file, 0, 4) === 'tmp:') {
-                                $file = substr($file, 4);
-                                $tmp = true;
-                            }
-                            if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            $tmp = substr($file, 0, 4) === 'tmp:';
+                            $file = $tmp ? substr($file, 4) : $file;
+                            if (is_file($file)) {
                                 if ($tmp) {
-                                    $this->helper->add('elementor_attachments', $file);
+                                    $this->helper->add('tmp_elementor_attachments', $file);
                                 }
-                            } else {
                                 $this->helper->add('elementor_attachments', $file);
                             }
                         }
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($this->get('dataset') && (string) $atts['dataset'] === (string) $this->get('dataset')))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-
-                            if ($template->get('extension') === 'elementor') {
-                                $atts['dataset'] = $this->get('dataset');
-                                $shortcode[3] .= ' dataset="' . $this->get('dataset') . '"';
+                            if ($template->get('extension') === 'elementor' && $template->get('item') == $this->get('form_item')) {
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $this->get('dataset')]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'elementor_mail', $atts)]);
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                     }
                 }
@@ -1112,23 +1159,19 @@ class Extension_E2pdf_Elementor extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($this->get('dataset') && (string) $atts['dataset'] === (string) $this->get('dataset')))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-
-                            if ($template->get('extension') === 'elementor') {
-                                $atts['dataset'] = $this->get('dataset');
-                                $shortcode[3] .= ' dataset="' . $this->get('dataset') . '"';
+                            if ($template->get('extension') === 'elementor' && $template->get('item') == $this->get('form_item')) {
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $this->get('dataset')]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['iframe_download'])) {
-                            $shortcode[3] .= ' iframe_download="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'iframe_download' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'elementor_success_message', $atts)]);
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                     }
                 }

@@ -347,13 +347,38 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
     }
 
     // load actions
-    public function load_actions() { // phpcs:ignore Squiz.WhiteSpace.SuperfluousWhitespace.EndLine
+    public function load_actions() {
+    }
+
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (Ninja Forms merge tags): {field:field_key}; option labels: {field:field_key:label}. Multiple files / images: [e2pdf-format-output explode=", " output="{0}"]{field:file_upload_key}[/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Repeatable fieldset: single value {field:repeater_key:0_1} (row_field, 0 = first row); loop: [e2pdf-for][e2pdf-for-data]{field:repeater_key:raw}[/e2pdf-for-data][e2pdf-for-do]{field:repeater_key:[e2pdf-for-key]_1}[/e2pdf-for-do][/e2pdf-for].',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Emails & Actions: Success Message (download / view need the "Record Submission" action on)',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Emails & Actions: Email action > message',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
     }
 
     // load filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
         add_filter('ninja_forms_run_action_settings', [$this, 'filter_ninja_forms_run_action_settings'], 10, 4);
         add_filter('ninja_forms_post_run_action_type_save', [$this, 'filter_ninja_forms_post_run_action_type_save']);
+        add_filter('ninja_forms_post_run_action_type_successmessage', [$this, 'filter_ninja_forms_post_run_action_type_successmessage']);
         add_filter('ninja_forms_post_run_action_type_email', [$this, 'filter_ninja_forms_post_run_action_type_email']);
         add_filter('ninja_forms_action_email_attachments', [$this, 'filter_ninja_forms_action_email_attachments'], 10, 3);
         add_filter('ninja_forms_action_email_message', [$this, 'filter_ninja_forms_action_email_message'], 10, 3);
@@ -365,9 +390,21 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
     public function filter_ninja_forms_run_action_settings($settings, $form_id, $action_id, $form_data) {
         $type = isset($settings['type']) ? $settings['type'] : false;
         if ($type == 'successmessage' && isset($settings['success_msg'])) {
-            $settings['success_msg'] = $this->filter_content($settings['success_msg'], $this->get('dataset'), false, 'message');
+            if (!empty($settings['active']) && is_string($settings['success_msg']) && false !== strpos($settings['success_msg'], '[e2pdf-')) {
+                // ninja forms filters the success message with wp_kses_post()
+                add_filter('wp_kses_allowed_html', [$this->helper->load('shortcode'), 'filter_wp_kses_allowed_html'], 10, 2);
+                add_filter('safe_style_css', [$this->helper->load('shortcode'), 'filter_safe_style_css']);
+            }
+            $settings['success_msg'] = $this->filter_content($settings['success_msg'], $this->get('dataset'), false, 'message', $form_id);
         }
         return $settings;
+    }
+
+    // post run action type success message filter
+    public function filter_ninja_forms_post_run_action_type_successmessage($data) {
+        remove_filter('wp_kses_allowed_html', [$this->helper->load('shortcode'), 'filter_wp_kses_allowed_html'], 10);
+        remove_filter('safe_style_css', [$this->helper->load('shortcode'), 'filter_safe_style_css']);
+        return $data;
     }
 
     // post run action type save filter
@@ -385,7 +422,13 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('ninja_attachments');
@@ -408,43 +451,36 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     $file = false;
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    if (isset($atts['id'])) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'ninja') {
+                        if ($template->get('extension') === 'ninja' && isset($data['form_id']) && $template->get('item') == $data['form_id']) {
                             $dataset_id = isset($data['actions']['save']['sub_id']) ? $data['actions']['save']['sub_id'] : false;
                             if (!$dataset_id) {
                                 $dataset_id = isset($action_settings['sub_id']) ? $action_settings['sub_id'] : false;
                             }
-                            if ($dataset_id) {
-                                $atts['dataset'] = $dataset_id;
-                                $shortcode[3] .= ' dataset="' . $dataset_id . '"';
+                            if ($dataset_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $dataset_id)) {
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $dataset_id]);
+                                $hash_data[] = 'dataset';
                             }
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'ninja_mail', $atts)]);
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
-                            $tmp = false;
-                            if (substr($file, 0, 4) === 'tmp:') {
-                                $file = substr($file, 4);
-                                $tmp = true;
-                            }
-                            if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            $tmp = substr($file, 0, 4) === 'tmp:';
+                            $file = $tmp ? substr($file, 4) : $file;
+                            if (is_file($file)) {
                                 if ($tmp) {
                                     $this->helper->add('ninja_attachments', $file);
                                 }
-                            } else {
-                                $this->helper->add('ninja_attachments', $file);
+                                $attachments[] = $file;
                             }
-                            $attachments[] = $file;
                         }
                     }
                 }
@@ -454,12 +490,12 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
     }
 
     // email message filter
-    public function filter_ninja_forms_action_email_message($message, $data, $action_settings) {
+    public function filter_ninja_forms_action_email_message($message, $data = [], $action_settings = []) {
         $dataset_id = isset($data['actions']['save']['sub_id']) ? $data['actions']['save']['sub_id'] : false;
         if (!$dataset_id) {
             $dataset_id = isset($action_settings['sub_id']) ? $action_settings['sub_id'] : false;
         }
-        $message = $this->filter_content($message, $dataset_id, true);
+        $message = $this->filter_content($message, $dataset_id, true, '', isset($data['form_id']) ? $data['form_id'] : 0);
         return $message;
     }
 
@@ -487,7 +523,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
     }
 
     // filter content
-    public function filter_content($message, $dataset_id, $filter, $type = '') {
+    public function filter_content($message, $dataset_id, $filter, $type = '', $form_id = 0) {
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-download',
@@ -504,17 +540,16 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    $hash_data = [];
+                    if (isset($atts['id']) && $dataset_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $dataset_id)) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'ninja') {
-                            $atts['dataset'] = $dataset_id;
-                            $shortcode[3] .= ' dataset="' . $dataset_id . '"';
+                        if ($template->get('extension') === 'ninja' && $template->get('item') == $form_id) {
+                            $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset_id]);
+                            $hash_data[] = 'dataset';
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true']);
                     if (!isset($atts['filter']) && $filter) {
                         $shortcode[3] .= ' filter="true"';
                     }
@@ -524,6 +559,7 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, ($type === 'message' ? 'ninja_success_message' : 'ninja_mail'), $atts)]);
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                     }
                 }
@@ -1028,6 +1064,18 @@ class Extension_E2pdf_Ninja extends Model_E2pdf_Model {
             return true;
         }
         return false;
+    }
+
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry');
+            $author = $entry ? get_post_field('post_author', $entry->get_id()) : '';
+            if (user_can($user_id, apply_filters('ninja_forms_admin_submissions_capabilities', 'manage_options')) || ($entry && (int) $entry->get_id() === (int) $atts['dataset'] && (!empty($author) && (int) $author === $user_id))) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
     }
 
     // visual mapper

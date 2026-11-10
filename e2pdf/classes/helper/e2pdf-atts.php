@@ -73,6 +73,7 @@ class Helper_E2pdf_Atts {
                 case 'create_htaccess':
                 case 'filter':
                 case 'single_page_mode':
+                case 'is_tmp':
                     if (isset($this->atts[$key])) {
                         return in_array(strtolower((string) $this->atts[$key]), ['true', '1'], true) ? '1' : '0';
                     }
@@ -126,7 +127,7 @@ class Helper_E2pdf_Atts {
                 case 'iframe_loader':
                     if (isset($this->atts[$key])) {
                         $iframe_loader = in_array(strtolower((string) $this->atts[$key]), ['true', '1'], true) ? '1' : '0';
-                        return $iframe_loader ? plugins_url('img/loader.gif', $this->helper->get('plugin_file_path')) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+                        return $iframe_loader ? plugins_url('img/loader.gif', $this->helper->get('plugin_file_path')) : includes_url('images/blank.gif');
                     }
                 case 'apply':
                     return isset($this->atts[$key]) ? true : false;

@@ -15,12 +15,30 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
 
     // url: admin.php?page=e2pdf-integrations
     public function index_action() {
+        if ($this->post->get('_wpnonce')) {
+            if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_integrations')) {
+                Model_E2pdf_Options::update_options('zapier_group', $this->post->get());
+                $this->redirect(
+                        $this->helper->get_url(
+                                [
+                                    'page' => 'e2pdf-integrations',
+                                    'notification' => $this->add_notification('update', __('Settings saved.', 'e2pdf')),
+                                ]
+                        )
+                );
+            } else {
+                wp_die($this->message('wp_verify_nonce_error'));
+            }
+        }
         $this->view('options', Model_E2pdf_Options::get_options(false, ['zapier_group']));
         $this->view('groups', $this->get_groups());
     }
 
     // url: admin.php?page=e2pdf-integrations&action=adobesign
     public function adobesign_action() {
+        if (!current_user_can('manage_options')) {
+            wp_die($this->message('wp_verify_nonce_error'));
+        }
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_integrations')) {
                 if (
@@ -81,6 +99,9 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
 
     // url: admin.php?page=e2pdf-integrations&action=gdrive
     public function gdrive_action() {
+        if (!current_user_can('manage_options')) {
+            wp_die($this->message('wp_verify_nonce_error'));
+        }
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_integrations')) {
                 if (
@@ -118,12 +139,35 @@ class Controller_E2pdf_Integrations extends Helper_E2pdf_View {
         $this->view('groups', $this->get_groups());
     }
 
+    // url: admin.php?page=e2pdf-integrations&action=mcp
+    public function mcp_action() {
+        if ($this->post->get('_wpnonce')) {
+            if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_integrations')) {
+                Model_E2pdf_Options::update_options('mcp_group', $this->post->get());
+                $this->redirect(
+                        $this->helper->get_url(
+                                [
+                                    'page' => 'e2pdf-integrations',
+                                    'action' => 'mcp',
+                                    'notification' => $this->add_notification('update', __('Settings saved.', 'e2pdf')),
+                                ]
+                        )
+                );
+            } else {
+                wp_die($this->message('wp_verify_nonce_error'));
+            }
+        }
+        $this->view('options', Model_E2pdf_Options::get_options(false, ['mcp_group']));
+        $this->view('groups', $this->get_groups());
+    }
+
     // get integration option groups
     public function get_groups() {
         $groups = Model_E2pdf_Options::get_options(
                 false,
                 [
                     'zapier_group',
+                    'mcp_group',
                     'adobesign_group',
                     'gdrive_group',
                 ],

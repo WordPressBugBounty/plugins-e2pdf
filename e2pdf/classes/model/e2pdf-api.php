@@ -59,8 +59,16 @@ class Model_E2pdf_Api extends Model_E2pdf_Model {
             // phpcs:disable WordPress.WP.AlternativeFunctions
             $ch = apply_filters('e2pdf_api_connection', curl_init($request_url));
             curl_setopt($ch, CURLOPT_USERAGENT, $this->helper->get_site_url());
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            if (get_option('e2pdf_ssl_verify', '0')) {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                if (file_exists(ABSPATH . WPINC . '/certificates/ca-bundle.crt')) {
+                    curl_setopt($ch, CURLOPT_CAINFO, ABSPATH . WPINC . '/certificates/ca-bundle.crt');
+                }
+            } else {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            }
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             if (!ini_get('safe_mode') && !ini_get('open_basedir')) {
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);

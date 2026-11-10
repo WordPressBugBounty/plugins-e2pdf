@@ -42,9 +42,7 @@ if (!defined('ABSPATH')) {
                             ));
                             ?>
                         </ul>
-                        <?php if ($this->get->get('action')) { ?>
-                            <?php submit_button(); ?>
-                        <?php } ?>
+                        <?php submit_button(); ?>
                     </form>
                     </div>
                     </div>

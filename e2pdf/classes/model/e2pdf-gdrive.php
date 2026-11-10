@@ -260,7 +260,7 @@ class Model_E2pdf_Gdrive extends Model_E2pdf_Model {
     }
 
     public function download($file_id) {
-        if ($file_id) {
+        if ($file_id && preg_match('/^[A-Za-z0-9_-]+$/', (string) $file_id)) {
             $response = wp_remote_get(
                     'https://www.googleapis.com/drive/v3/files/' . $file_id . '?fields=name',
                     [
@@ -318,7 +318,7 @@ class Model_E2pdf_Gdrive extends Model_E2pdf_Model {
     }
 
     public function exists($file_id) {
-        if ($file_id) {
+        if ($file_id && preg_match('/^[A-Za-z0-9_-]+$/', (string) $file_id)) {
             $response = wp_remote_get(
                     'https://www.googleapis.com/drive/v3/files/' . $file_id . '?fields=id,name,trashed',
                     [

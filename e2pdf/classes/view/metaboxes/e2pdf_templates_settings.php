@@ -695,6 +695,25 @@ if (!defined('ABSPATH')) {
                     ));
                     ?>
                 </div>
+                <p class="post-attributes-label-wrapper">
+                    <label>
+                        <?php _e('Shortcodes', 'e2pdf'); ?>:
+                    </label>
+                </p>
+                <div>
+                    <?php
+                    $this->render('field', 'checkbox', array(
+                        'field' => array(
+                            'name' => 'access_check',
+                            'class' => 'e2pdf-settings-template-change',
+                            'placeholder' => __('Access Check', 'e2pdf'),
+                            'disabled' => !current_user_can('manage_options'),
+                        ),
+                        'value' => $this->view->template->get('access_check'),
+                        'checkbox_value' => '1',
+                    ));
+                    ?>
+                </div>
 
             </div>
         </div>

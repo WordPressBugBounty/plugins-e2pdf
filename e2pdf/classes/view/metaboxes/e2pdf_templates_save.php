@@ -8,24 +8,14 @@ if (!defined('ABSPATH')) {
         <div id="misc-shortcodes-actions">
             <div class="misc-pub-section">
                 <div class="e2pdf-rel e2pdf-closed">
-                    <a href="javascript:void(0);" class="e2pdf-link e2pdf-hidden-dropdown button e2pdf-w100 e2pdf-center <?php if ($this->get->get('action') !== 'edit') { ?>disabled<?php } ?>" <?php if ($this->get->get('action') !== 'edit') { ?>disabled="disabled"<?php } ?>><?php _e('Shortcodes', 'e2pdf') ?> <span class="toggle-indicator" aria-hidden="true"></span></a>
+                    <a href="javascript:void(0);" class="e2pdf-link e2pdf-hidden-dropdown button e2pdf-w100 <?php if ($this->get->get('action') !== 'edit') { ?>disabled<?php } ?>" <?php if ($this->get->get('action') !== 'edit') { ?>disabled="disabled"<?php } ?>><?php _e('Shortcodes', 'e2pdf') ?> <span class="toggle-indicator" aria-hidden="true"></span></a>
                     <div class="e2pdf-hidden-dropdown-content">
                         <?php if ($this->get->get('action') === 'edit') { ?>
-                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-attachment id="<?php echo (int) $this->view->template->get('ID'); ?>"]'>
-                            </div>
-                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-download id="<?php echo (int) $this->view->template->get('ID'); ?>"]'>
-                            </div>
-                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-save id="<?php echo (int) $this->view->template->get('ID'); ?>"]'>
-                            </div>
-                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-view id="<?php echo (int) $this->view->template->get('ID'); ?>"]'>
-                            </div>
-                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-zapier id="<?php echo (int) $this->view->template->get('ID'); ?>"]'>
-                            </div>
+                            <?php foreach (['download', 'attachment', 'save', 'view', 'zapier'] as $shortcode) { ?>
+                                <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
+                                    <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-<?php echo esc_attr($shortcode); ?> id="<?php echo (int) $this->view->template->get('ID'); ?>"]'>
+                                </div>
+                            <?php } ?>
                         <?php } ?>
                     </div>
                 </div>

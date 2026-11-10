@@ -216,10 +216,7 @@ class Model_E2pdf_Bulk extends Model_E2pdf_Model {
             }
 
             if ($this->get('uid')) {
-                $pdf_dir = $this->helper->get('bulk_dir') . $this->get('uid') . '/';
-                if (file_exists($pdf_dir)) {
-                    $this->helper->delete_dir($pdf_dir);
-                }
+                $this->helper->delete_bulk_dir($this->get('uid'));
                 $zip_path = $this->helper->get('bulk_dir') . $this->get('uid') . '.zip';
                 if (file_exists($zip_path)) {
                     unlink($zip_path);

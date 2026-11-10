@@ -374,6 +374,17 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
         return false;
     }
 
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry')->get_entry();
+            if ((!empty($entry->user_id) && (int) $entry->user_id === $user_id) || user_can($user_id, Caldera_Forms::get_manage_cap('entry-view', $this->get('cached_form')))) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
+    }
+
     /**
      * Create Form based on uploaded PDF
      * @param object $template - Template Object to work with
@@ -1133,10 +1144,34 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
         return $element;
     }
 
+    // submit start action: submitted values can't add e2pdf shortcodes to emails and confirmation messages
+    public function action_caldera_forms_submit_start() {
+        if (class_exists('Caldera_Forms_Fields')) {
+            foreach (array_keys(Caldera_Forms_Fields::get_all()) as $field_type) {
+                add_filter('caldera_forms_process_field_' . $field_type, array($this, 'filter_caldera_forms_process_field'), 99);
+            }
+        }
+    }
+
+    // process field filter
+    public function filter_caldera_forms_process_field($value) {
+        if (is_array($value)) {
+            array_walk_recursive($value, function (&$item) {
+                if (is_string($item)) {
+                    $item = str_replace('[e2pdf-', '&#91;e2pdf-', $item);
+                }
+            });
+        } elseif (is_string($value)) {
+            $value = str_replace('[e2pdf-', '&#91;e2pdf-', $value);
+        }
+        return $value;
+    }
+
     /**
      * Load actions for this extension
      */
     public function load_actions() {
+        add_action('caldera_forms_submit_start', array($this, 'action_caldera_forms_submit_start'), 0);
         add_action('caldera_forms_mailer_complete', array($this, 'action_caldera_forms_mailer_complete'), 99, 0);
         add_action('caldera_forms_mailer_failed', array($this, 'action_caldera_forms_mailer_complete'), 99, 0);
         add_action('caldera_forms_submit_complete', array($this, 'action_caldera_forms_mailer_complete'), 99, 0);
@@ -1150,7 +1185,13 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('caldera_attachments');
@@ -1427,24 +1468,19 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && $dataset_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $dataset_id)) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'caldera') {
-                                if ($dataset_id) {
-                                    $atts['dataset'] = $dataset_id;
-                                    $shortcode[3] .= ' dataset="' . $dataset_id . '"';
-                                }
+                            if ($template->get('extension') === 'caldera' && !empty($form['ID']) && $template->get('item') == $form['ID']) {
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $dataset_id]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['iframe_download'])) {
-                            $shortcode[3] .= ' iframe_download="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'iframe_download' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'caldera_success_message', $atts)]);
                         if ($shortcode[2] === 'e2pdf-view' || $shortcode[2] === 'e2pdf-download') {
                             $new_shortcode = $shortcode[2] . $shortcode[3];
                             $message = str_replace($shortcode_value, '[' . $new_shortcode . ']', $message);
@@ -1469,6 +1505,30 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
         add_filter('caldera_forms_render_notices', array($this, 'filter_caldera_forms_render_notices'), 99, 2);
         add_filter('caldera_forms_ajax_return', array($this, 'filter_caldera_forms_ajax_return'), 30, 2);
         add_filter('caldera_forms_render_form', array($this, 'filter_caldera_forms_render_form'), 30, 2);
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
+    }
+
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (Caldera Forms magic tags): %field_slug%. Entry values: {entry_id}.',
+                'Files (the File Upload field needs "Add to Media Library"): %field_slug%. Multiple files / images: [e2pdf-format-output explode=", " output="{0}"]%field_slug%[/e2pdf-format-output] (1st), output="{1}" (2nd).',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Form settings: success message',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Email / auto-responder message',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
     }
 
     public function filter_caldera_forms_render_notices($notices, $form) {
@@ -1517,43 +1577,36 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
                     foreach ($shortcodes[0] as $key => $shortcode_value) {
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        $hash_data = [];
+                        if (isset($atts['id'])) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'caldera') {
+                            if ($template->get('extension') === 'caldera' && !empty($form['ID']) && $template->get('item') == $form['ID']) {
                                 $dataset_id = $entryid;
                                 if (!$dataset_id) {
                                     $dataset_id = isset($data['_entry_id']) ? $data['_entry_id'] : false;
                                 }
-                                if ($dataset_id) {
-                                    $atts['dataset'] = $dataset_id;
-                                    $shortcode[3] .= ' dataset="' . $dataset_id . '"';
+                                if ($dataset_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $dataset_id)) {
+                                    $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $dataset_id]);
+                                    $hash_data[] = 'dataset';
                                 }
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['filter'])) {
-                            $shortcode[3] .= ' filter="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'caldera_mail', $atts)]);
                         $file = false;
                         if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {
-                                $tmp = false;
-                                if (substr($file, 0, 4) === 'tmp:') {
-                                    $file = substr($file, 4);
-                                    $tmp = true;
-                                }
-                                if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                $tmp = substr($file, 0, 4) === 'tmp:';
+                                $file = $tmp ? substr($file, 4) : $file;
+                                if (is_file($file)) {
                                     if ($tmp) {
                                         $this->helper->add('caldera_attachments', $file);
                                     }
-                                } else {
-                                    $this->helper->add('caldera_attachments', $file);
+                                    $mail['attachments'][] = $file;
                                 }
-                                $mail['attachments'][] = $file;
                             }
                             $mail['message'] = str_replace($shortcode_value, '', $mail['message']);
                         } else {

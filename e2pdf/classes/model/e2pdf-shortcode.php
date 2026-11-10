@@ -18,28 +18,45 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
         $response = '';
 
+        if (apply_filters('e2pdf_pdf_fill', false)) {
+            return $response;
+        }
+
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_attachment_atts', $atts);
         $attributes = (new Helper_E2pdf_Atts())->load($atts);
 
         if ($attributes->get('pdf') || $attributes->get('attachment_id') || $attributes->get('file_id')) {
-            $pdf = $attributes->get('pdf');
-            $downloadable = false;
-            if ($attributes->get('file_id')) {
-                $pdf = (new Model_E2pdf_Gdrive())->exists($attributes->get('file_id'));
-                if ($pdf) {
-                    $downloadable = $attributes->get('apply') && $pdf;
-                }
-            } else {
-                if ($attributes->get('attachment_id')) {
-                    $pdf = get_attached_file($attributes->get('attachment_id'));
-                } else {
-                    $pdf = $this->helper->load('convert')->to_file_dir($pdf);
-                }
-                if (strpos($pdf, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $pdf)) {
-                    $pdf = ABSPATH . $pdf;
-                }
-                $downloadable = $attributes->get('apply') && !$this->helper->load('filter')->is_stream($pdf) && file_exists($pdf) && $this->helper->load('filter')->is_downloadable($pdf);
+            if (!$this->access('e2pdf_attachment', $attributes)) {
+                return $response;
             }
+            // google drive file: downloaded to the tmp folder and removed after sending
+            if ($attributes->get('file_id')) {
+                $stream = $attributes->get('apply') ? (new Model_E2pdf_Gdrive())->download($attributes->get('file_id')) : false;
+                if (!is_array($stream) || empty($stream['name']) || !isset($stream['file']) || !$this->helper->load('filter')->is_downloadable($stream['name'])) {
+                    return $response;
+                }
+                $name = trim($attributes->get('name', '')) ? $attributes->get('name') : pathinfo($stream['name'], PATHINFO_FILENAME);
+                $tmp_dir = $this->helper->get('tmp_dir') . 'e2pdf' . md5($attributes->get('file_id') . $name) . '/';
+                $this->helper->create_dir($tmp_dir);
+                $filepath = $tmp_dir . $this->helper->load('convert')->to_file_name($name . '.' . strtolower(pathinfo($stream['name'], PATHINFO_EXTENSION)));
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
+                file_put_contents($filepath, $stream['file'], LOCK_EX);
+                if (!is_file($filepath)) {
+                    return $response;
+                }
+                do_action('e2pdf_model_e2pdf_shortcode_attachment_path', $filepath, $atts);
+                return 'tmp:' . $filepath;
+            }
+            $pdf = $attributes->get('pdf');
+            if ($attributes->get('attachment_id')) {
+                $pdf = get_attached_file($attributes->get('attachment_id'));
+            } else {
+                $pdf = $this->helper->load('convert')->to_file_dir($pdf);
+            }
+            if (strpos($pdf, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $pdf)) {
+                $pdf = ABSPATH . $pdf;
+            }
+            $downloadable = $attributes->get('apply') && !$this->helper->load('filter')->is_stream($pdf) && file_exists($pdf) && $this->helper->load('filter')->is_downloadable($pdf);
 
             if (!$downloadable) {
                 return $response;
@@ -90,7 +107,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $template->extension()->set($option_key, $option_value);
         }
 
-        if ($template->extension()->verify() && $this->process_shortcode('e2pdf_attachment', $template, $attributes)) {
+        if ($template->extension()->verify() && $this->access('e2pdf_attachment', $attributes, $template) && $this->process_shortcode('e2pdf_attachment', $template, $attributes)) {
 
             $template->patch('inline', $attributes->get('inline'), $entry, $attributes->get('filter'));
             $template->patch('flatten', $attributes->get('flatten'), $entry, $attributes->get('filter'));
@@ -124,7 +141,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $entry->save();
                     }
                     do_action('e2pdf_model_e2pdf_shortcode_attachment_path', $filepath, $atts);
-                    return $filepath;
+                    return $attributes->get('is_tmp') ? 'tmp:' . $filepath : $filepath;
                 }
             }
         }
@@ -161,6 +178,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         }
 
         if ($attributes->get('pdf') || $attributes->get('attachment_id') || $attributes->get('file_id')) {
+            if (!$this->access('e2pdf_download', $attributes)) {
+                return $response;
+            }
             $pdf = $attributes->get('pdf');
             $downloadable = false;
             if ($attributes->get('file_id')) {
@@ -385,6 +405,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if (isset($_GET['e2pdf-hash']) && !$attributes->get('dataset')) {
             $hash_id = sanitize_text_field(wp_unslash($_GET['e2pdf-hash']));
             $attributes->set('dataset', get_transient('e2pdf_hash_' . $hash_id));
+            $hash_template = new Model_E2pdf_Template();
+            $hash_template->load($attributes->get('id'), false);
+            if ($hash_template->get('extension') === 'jetformbuilder') {
+                $hash = $this->helper->load('shortcode')->get_hash_data((array) $attributes->get());
+                $attributes->set('hash', $this->helper->load('shortcode')->hash(array_merge($hash ? $hash['keys'] : [], ['dataset']), $hash ? $hash['context'] : '', (array) $attributes->get()));
+            }
             if ($attributes->get('dataset') && apply_filters('e2pdf_hash_clear', true, 'shortcode', $atts) && has_action('shutdown', [$this, 'action_e2pdf_hash_clear']) === false) {
                 add_action('shutdown', [$this, 'action_e2pdf_hash_clear']);
             }
@@ -423,7 +449,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $template->extension()->set($option_key, $option_value);
         }
 
-        if ($template->extension()->verify() && $this->process_shortcode('e2pdf_download', $template, $attributes)) {
+        if ($template->extension()->verify() && $this->access('e2pdf_download', $attributes, $template) && $this->process_shortcode('e2pdf_download', $template, $attributes)) {
 
             $button_title = apply_filters('e2pdf_model_shortcode_e2pdf_download_button_title', $attributes->button_title($template), $atts);
             if ($attributes->get('output') === 'button_title') {
@@ -555,9 +581,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     // e2pdf-save
     public function e2pdf_save($atts = []) {
 
-        unset($atts['pdf']);
-
         $response = '';
+
+        if (apply_filters('e2pdf_pdf_fill', false)) {
+            return $response;
+        }
+
+        unset($atts['pdf']);
 
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_save_atts', $atts);
         $attributes = (new Helper_E2pdf_Atts())->load($atts);
@@ -590,7 +620,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $template->extension()->set($option_key, $option_value);
         }
 
-        if ($template->extension()->verify() && $this->process_shortcode('e2pdf_save', $template, $attributes)) {
+        if ($template->extension()->verify() && $this->access('e2pdf_save', $attributes, $template) && $this->process_shortcode('e2pdf_save', $template, $attributes)) {
 
             $template->patch('inline', $attributes->get('inline'), $update ? $entry : null, $attributes->get('filter'));
             $template->patch('flatten', $attributes->get('flatten'), $update ? $entry : null, $attributes->get('filter'));
@@ -610,6 +640,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             }
 
             if (!$attributes->get('media') && !$attributes->get('gdrive')) {
+                $htaccess_content = 'DENY FROM ALL';
+                if ($attributes->get('local')) {
+                    $htaccess_content = 'DENY FROM ALL' . PHP_EOL;
+                    $htaccess_content .= '<Files ~ "\.(jpg|pdf)$">' . PHP_EOL;
+                    $htaccess_content .= 'ALLOW FROM ALL' . PHP_EOL;
+                    $htaccess_content .= '</Files>' . PHP_EOL;
+                }
                 $dir = $attributes->get('dir');
                 if ($dir) {
                     $dir = $attributes->get('filter') ? $template->extension()->convert_shortcodes($dir, true) : $template->extension()->render($dir);
@@ -618,25 +655,16 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $dir = ABSPATH . $dir;
                     }
                     if ($attributes->get('create_dir')) {
-                        $this->helper->create_dir($dir, true, $attributes->get('create_index', '1'), $attributes->get('create_htaccess', '1'));
+                        $this->helper->create_dir($dir, true, $attributes->get('create_index', '1'), $attributes->get('create_htaccess', '1'), $htaccess_content);
                     }
                 } else {
                     $tpl_dir = $this->helper->get('tpl_dir') . $template->get('ID') . '/';
                     $dir = $tpl_dir . 'save/';
                     $this->helper->create_dir($tpl_dir, false, true);
-                    $this->helper->create_dir($dir, false, $attributes->get('create_index', '1'), $attributes->get('create_htaccess', '1'));
+                    $this->helper->create_dir($dir, false, $attributes->get('create_index', '1'), $attributes->get('create_htaccess', '1'), $htaccess_content);
                 }
-                $htaccess = $dir . '.htaccess';
-                if ($attributes->get('create_htaccess', '1') && !file_exists($htaccess)) {
-                    if ($attributes->get('local')) {
-                        $htaccess_content = 'DENY FROM ALL' . PHP_EOL;
-                        $htaccess_content .= '<Files ~ "\.(jpg|pdf)$">' . PHP_EOL;
-                        $htaccess_content .= 'ALLOW FROM ALL' . PHP_EOL;
-                        $htaccess_content .= '</Files>' . PHP_EOL;
-                        $this->helper->create_file($htaccess, $htaccess_content);
-                    } else {
-                        $this->helper->create_file($htaccess, 'DENY FROM ALL');
-                    }
+                if ($attributes->get('create_htaccess', '1')) {
+                    $this->helper->create_file($dir . '.htaccess', $htaccess_content);
                 }
             }
 
@@ -743,6 +771,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
                 if (!$this->helper->load('filter')->is_stream($filepath) && file_exists($filepath) && $entry->get_data('attachment_id')) {
                     $atts['attachment_id'] = $entry->get_data('attachment_id');
+                    $hash = $this->helper->load('shortcode')->get_hash_data($atts);
+                    $atts['hash'] = $this->helper->load('shortcode')->hash(['dataset', 'dataset2', 'user_id', 'wc_order_id', 'wc_product_item_id', 'attachment_id', 'file_id', 'pdf', 'dir', 'dpdf', 'webhook', 'site_url', 'viewer'], $hash ? $hash['context'] : '', $atts);
                     if ($attributes->get('download')) {
                         $atts['button_title'] = $attributes->button_title($template);
                         $response = $this->e2pdf_download($atts);
@@ -890,6 +920,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                 }
                 if ($entry->get_data('file_id')) {
                     $atts['file_id'] = $entry->get_data('file_id');
+                    $hash = $this->helper->load('shortcode')->get_hash_data($atts);
+                    $atts['hash'] = $this->helper->load('shortcode')->hash(['dataset', 'dataset2', 'user_id', 'wc_order_id', 'wc_product_item_id', 'attachment_id', 'file_id', 'pdf', 'dir', 'dpdf', 'webhook', 'site_url', 'viewer'], $hash ? $hash['context'] : '', $atts);
                     if ($attributes->get('download')) {
                         $atts['button_title'] = $attributes->button_title($template);
                         $response = $this->e2pdf_download($atts);
@@ -1013,6 +1045,8 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         if (!$this->helper->load('filter')->is_stream($filepath) && file_exists($filepath)) {
                             $filepath = apply_filters('e2pdf_model_e2pdf_shortcode_save_path', $filepath, $atts);
                             $atts['pdf'] = $filepath;
+                            $hash = $this->helper->load('shortcode')->get_hash_data($atts);
+                            $atts['hash'] = $this->helper->load('shortcode')->hash(['dataset', 'dataset2', 'user_id', 'wc_order_id', 'wc_product_item_id', 'attachment_id', 'file_id', 'pdf', 'dir', 'dpdf', 'webhook', 'site_url', 'viewer'], $hash ? $hash['context'] : '', $atts);
                             if ($attributes->get('download')) {
                                 $atts['button_title'] = $attributes->button_title($template);
                                 $response = $this->e2pdf_download($atts);
@@ -1098,6 +1132,10 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
 
         $response = '';
 
+        if (apply_filters('e2pdf_pdf_fill', false)) {
+            return $response;
+        }
+
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_zapier_atts', $atts);
         $attributes = (new Helper_E2pdf_Atts())->load($atts);
 
@@ -1106,6 +1144,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         }
 
         if ($attributes->get('pdf') || $attributes->get('attachment_id') || $attributes->get('file_id')) {
+            if (!$this->access('e2pdf_zapier', $attributes)) {
+                return $response;
+            }
             $pdf = $attributes->get('pdf');
             $downloadable = false;
             if ($attributes->get('file_id')) {
@@ -1276,7 +1317,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $template->extension()->set($option_key, $option_value);
         }
 
-        if ($template->extension()->verify() && $this->process_shortcode('e2pdf_zapier', $template, $attributes)) {
+        if ($template->extension()->verify() && $this->access('e2pdf_zapier', $attributes, $template) && $this->process_shortcode('e2pdf_zapier', $template, $attributes)) {
 
             $template->patch('inline', $attributes->get('inline'), $entry, $attributes->get('filter'));
             $template->patch('flatten', $attributes->get('flatten'), $entry, $attributes->get('filter'));
@@ -1466,6 +1507,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         }
 
         if ($attributes->get('pdf') || $attributes->get('attachment_id') || $attributes->get('file_id')) {
+            if (!$this->access('e2pdf_view', $attributes)) {
+                return $response;
+            }
             $pdf = $attributes->get('pdf');
             if ($pdf && filter_var($pdf, FILTER_VALIDATE_URL)) {
                 // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.urlencode_urlencode
@@ -1646,7 +1690,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 if ($attributes->get('preload', 'true')) {
                                     $attrs[] = 'onload="e2pdfViewer.imageLoad(this)"';
                                     $attrs[] = 'preload="' . $url . '"';
-                                    $attrs[] = 'src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mM8VA8AAgkBQ6KtxDkAAAAASUVORK5CYII="';
+                                    $attrs[] = 'src="' . esc_url(includes_url('images/blank.gif')) . '"';
                                 } else {
                                     $attrs[] = 'src="' . $url . '"';
                                 }
@@ -1770,7 +1814,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                     if ($attributes->get('preload', 'true')) {
                                         $attrs[] = 'onload="e2pdfViewer.imageLoad(this)"';
                                         $attrs[] = 'preload="' . $url . '"';
-                                        $attrs[] = 'src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mM8VA8AAgkBQ6KtxDkAAAAASUVORK5CYII="';
+                                        $attrs[] = 'src="' . esc_url(includes_url('images/blank.gif')) . '"';
                                     } else {
                                         $attrs[] = 'src="' . $url . '"';
                                     }
@@ -1788,6 +1832,12 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if (isset($_GET['e2pdf-hash']) && !$attributes->get('dataset')) {
             $hash_id = sanitize_text_field(wp_unslash($_GET['e2pdf-hash']));
             $attributes->set('dataset', get_transient('e2pdf_hash_' . $hash_id));
+            $hash_template = new Model_E2pdf_Template();
+            $hash_template->load($attributes->get('id'), false);
+            if ($hash_template->get('extension') === 'jetformbuilder') {
+                $hash = $this->helper->load('shortcode')->get_hash_data((array) $attributes->get());
+                $attributes->set('hash', $this->helper->load('shortcode')->hash(array_merge($hash ? $hash['keys'] : [], ['dataset']), $hash ? $hash['context'] : '', (array) $attributes->get()));
+            }
             if ($attributes->get('dataset') && apply_filters('e2pdf_hash_clear', true, 'shortcode', $atts) && has_action('shutdown', [$this, 'action_e2pdf_hash_clear']) === false) {
                 add_action('shutdown', [$this, 'action_e2pdf_hash_clear']);
             }
@@ -1823,7 +1873,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $template->extension()->set($option_key, $option_value);
         }
 
-        if ($template->extension()->verify() && $this->process_shortcode('e2pdf_view', $template, $attributes)) {
+        if ($template->extension()->verify() && $this->access('e2pdf_view', $attributes, $template) && $this->process_shortcode('e2pdf_view', $template, $attributes)) {
 
             $template->patch('inline', $attributes->get('inline'), $entry, $attributes->get('filter'));
             $template->patch('flatten', $attributes->get('flatten'), $entry, $attributes->get('filter'));
@@ -1890,7 +1940,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             if ($attributes->get('preload', 'true')) {
                                 $attrs[] = 'onload="e2pdfViewer.imageLoad(this)"';
                                 $attrs[] = 'preload="' . $url . '"';
-                                $attrs[] = 'src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mM8VA8AAgkBQ6KtxDkAAAAASUVORK5CYII="';
+                                $attrs[] = 'src="' . esc_url(includes_url('images/blank.gif')) . '"';
                             } else {
                                 $attrs[] = 'src="' . $url . '"';
                             }
@@ -1979,10 +2029,14 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     // e2pdf-adobesign
     public function e2pdf_adobesign($atts = []) {
 
+        $response = '';
+
+        if (apply_filters('e2pdf_pdf_fill', false)) {
+            return $response;
+        }
+
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_adobesign_atts', $atts);
         $attributes = (new Helper_E2pdf_Atts())->load($atts);
-
-        $response = '';
 
         if (!$attributes->get('apply') || !$attributes->get('id') || (!$attributes->get('dataset') && !$attributes->get('dataset2'))) {
             return $response;
@@ -2013,7 +2067,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
             $template->extension()->set($option_key, $option_value);
         }
 
-        if ($template->extension()->verify() && $this->process_shortcode('e2pdf_adobesign', $template, $attributes)) {
+        if ($template->extension()->verify() && $this->access('e2pdf_adobesign', $attributes, $template) && $this->process_shortcode('e2pdf_adobesign', $template, $attributes)) {
 
             $template->patch('inline', $attributes->get('inline'), $entry, $attributes->get('filter'));
             $template->patch('flatten', $attributes->get('flatten'), $entry, $attributes->get('filter'));
@@ -2115,7 +2169,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                     $response = apply_filters('e2pdf_model_shortcode_e2pdf_adobesign_response', $response, $atts, $template, $entry, $template->extension(), $filepath, $documents, $agreement_id);
                 }
 
-                $this->helper->delete_dir($tmp_dir);
+                $this->helper->delete_tmp_dir('e2pdf' . md5($entry->get('uid')));
                 return $response;
             }
         }
@@ -3111,12 +3165,20 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         $key = isset($atts['key']) ? $atts['key'] : false;
 
         if ($id && $key) {
+            if (!apply_filters('e2pdf_shortcode_enable_e2pdf_content', false) && !apply_filters('e2pdf_pdf_render', false)) {
+                return '';
+            }
             $wp_post = get_post($id);
             if ($wp_post) {
+                if (apply_filters('e2pdf_post_content_' . $wp_post->ID . '_' . sanitize_key($key), false)) {
+                    return '';
+                }
                 if (isset($wp_post->post_content) && $wp_post->post_content) {
                     $content = $this->helper->load('convert')->is_content_key($key, $wp_post->post_content);
                     remove_filter('the_content', 'wpautop');
+                    add_filter('e2pdf_post_content_' . $wp_post->ID . '_' . sanitize_key($key), [$this->helper, '__return_true'], 999);
                     $content = apply_filters('the_content', $content, $id);
+                    remove_filter('e2pdf_post_content_' . $wp_post->ID . '_' . sanitize_key($key), [$this->helper, '__return_true'], 999);
                     add_filter('the_content', 'wpautop');
                     $content = str_replace('</p>', "</p>\r\n", $content);
                     $response = $content;
@@ -3238,6 +3300,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $post_meta = get_the_post_thumbnail($wp_post->ID, $size);
                     } elseif ($key == 'post_content' && isset($wp_post->post_content)) {
                         $content = $wp_post->post_content;
+                        if (apply_filters('e2pdf_post_content_' . $wp_post->ID, false)) {
+                            $content = '';
+                        }
                         if (false !== strpos($content, '[')) {
                             $shortcode_tags = [
                                 'e2pdf-exclude',
@@ -3284,7 +3349,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             WPBMap::addAllMappedShortcodes();
                         }
 
+                        add_filter('e2pdf_post_content_' . $wp_post->ID, [$this->helper, '__return_true'], 999);
                         $content = apply_filters('the_content', $content, $id);
+                        remove_filter('e2pdf_post_content_' . $wp_post->ID, [$this->helper, '__return_true'], 999);
                         $content = str_replace('</p>', "</p>\r\n", $content);
                         $post_meta = $content;
 
@@ -4146,6 +4213,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $post_meta = get_the_post_thumbnail($wp_post->ID, $size);
                     } elseif ($key == 'post_content' && isset($wp_post->post_content)) {
                         $content = $wp_post->post_content;
+                        if (apply_filters('e2pdf_post_content_' . $wp_post->ID, false)) {
+                            $content = '';
+                        }
                         if (false !== strpos($content, '[')) {
                             $shortcode_tags = [
                                 'e2pdf-exclude',
@@ -4190,7 +4260,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             WPBMap::addAllMappedShortcodes();
                         }
 
+                        add_filter('e2pdf_post_content_' . $wp_post->ID, [$this->helper, '__return_true'], 999);
                         $content = apply_filters('the_content', $content, $id);
+                        remove_filter('e2pdf_post_content_' . $wp_post->ID, [$this->helper, '__return_true'], 999);
                         $content = str_replace('</p>', "</p>\r\n", $content);
                         $post_meta = $content;
 
@@ -4976,6 +5048,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $post_meta = get_the_post_thumbnail($wp_post->ID, $size);
                     } elseif ($key == 'post_content' && isset($wp_post->post_content)) {
                         $content = $wp_post->post_content;
+                        if (apply_filters('e2pdf_post_content_' . $wp_post->ID, false)) {
+                            $content = '';
+                        }
                         if (false !== strpos($content, '[')) {
                             $shortcode_tags = array(
                                 'e2pdf-exclude',
@@ -5019,7 +5094,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             WPBMap::addAllMappedShortcodes();
                         }
 
+                        add_filter('e2pdf_post_content_' . $wp_post->ID, [$this->helper, '__return_true'], 999);
                         $content = apply_filters('the_content', $content, $id);
+                        remove_filter('e2pdf_post_content_' . $wp_post->ID, [$this->helper, '__return_true'], 999);
                         $content = str_replace('</p>', "</p>\r\n", $content);
                         $post_meta = $content;
 
@@ -5719,6 +5796,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                         $post_meta = get_the_post_thumbnail($wp_post->ID, $size);
                     } elseif ($key == 'post_content' && isset($wp_post->post_content)) {
                         $content = $wp_post->post_content;
+                        if (apply_filters('e2pdf_post_content_' . $wp_post->ID, false)) {
+                            $content = '';
+                        }
                         if (false !== strpos($content, '[')) {
                             $shortcode_tags = [
                                 'e2pdf-exclude',
@@ -5763,7 +5843,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             WPBMap::addAllMappedShortcodes();
                         }
 
+                        add_filter('e2pdf_post_content_' . $wp_post->ID, [$this->helper, '__return_true'], 999);
                         $content = apply_filters('the_content', $content, $id);
+                        remove_filter('e2pdf_post_content_' . $wp_post->ID, [$this->helper, '__return_true'], 999);
                         $content = str_replace('</p>', "</p>\r\n", $content);
                         $post_meta = $content;
 
@@ -6688,6 +6770,244 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         return true;
     }
 
+    // access to the record or file used by a shortcode
+    public function access($shortcode, $attributes, $template = null) {
+        $access_check = get_option('e2pdf_access_check', '0');
+        if ($template) {
+            $access_check = $template->get('access_check');
+        }
+
+        $atts = (array) $attributes->get();
+        $hash = $this->helper->load('shortcode')->get_hash_data($atts);
+        $context = $hash ? $hash['context'] : '';
+        $access_user_id = get_current_user_id();
+
+        $post = get_post();
+        if (!$post && did_action('elementor/init')) {
+            $document = \Elementor\Plugin::$instance->documents->get_current();
+            if ($document) {
+                $post = $document->get_main_post();
+            }
+        }
+        if ($post && !is_post_publicly_viewable($post) && !user_can($post->post_author, 'publish_posts')) {
+            $access_user_id = (int) $post->post_author;
+            $access_check = true;
+        }
+        if (!$access_check) {
+            return apply_filters('e2pdf_shortcode_access', true, $shortcode, $attributes, $template, $context);
+        }
+
+        // attributes to check
+        $check = array_intersect_key(
+                $atts,
+                array_flip(
+                        [
+                            'dataset',
+                            'dataset2',
+                            'user_id',
+                            'wc_order_id',
+                            'wc_product_item_id',
+                            'pdf',
+                            'attachment_id',
+                            'file_id',
+                            'dir',
+                            'webhook',
+                            'site_url',
+                            'viewer',
+                            'dpdf',
+                            'noactions',
+                            'recipients',
+                        ]
+                )
+        );
+
+        // attributes inserted by e2pdf are trusted
+        if ($hash) {
+            foreach ($hash['keys'] as $key) {
+                unset($check[$key]);
+            }
+        }
+
+        // checked by the extension
+        if ($template) {
+            $check = $template->extension()->access($check, $access_user_id);
+        }
+
+        // user: same user
+        if (isset($check['user_id'])) {
+            if ((int) $check['user_id'] === $access_user_id || user_can($access_user_id, 'edit_user', (int) $check['user_id'])) {
+                unset($check['user_id']);
+            }
+        }
+
+        // google drive file: admins
+        if (isset($check['file_id'])) {
+            if (user_can($access_user_id, 'manage_options') || user_can($access_user_id, 'e2pdf')) {
+                unset($check['file_id']);
+            }
+        }
+
+        // media file: admins, unattached, attached to a public post (not password protected) or editable by the user
+        if (isset($check['attachment_id'])) {
+            $parent = wp_get_post_parent_id($check['attachment_id']);
+            if (user_can($access_user_id, 'manage_options') || user_can($access_user_id, 'e2pdf')) {
+                unset($check['attachment_id']);
+            } elseif (get_post_type($check['attachment_id']) === 'attachment' && (!$parent || (is_post_publicly_viewable($parent) && !post_password_required($parent)) || user_can($access_user_id, 'edit_post', $parent))) {
+                unset($check['attachment_id']);
+            }
+        }
+
+        // noactions, recipients: dataset is trusted or allowed
+        if (!isset($check['dataset']) && !isset($check['dataset2'])) {
+            unset($check['noactions'], $check['recipients']);
+        }
+
+        // pdf background: file inside readable folders
+        if (isset($check['dpdf'])) {
+            $dpdf = $check['dpdf'];
+            if ($template) {
+                $dpdf = $attributes->get('filter') ? $template->extension()->convert_shortcodes($dpdf, true) : $template->extension()->render($dpdf);
+            }
+            $dpdf = trim($dpdf);
+            $site_url = site_url('/');
+            $https = str_replace('http://', 'https://', $site_url);
+            $http = str_replace('https://', 'http://', $site_url);
+            if (0 === strpos($dpdf, $https)) {
+                $dpdf = ABSPATH . rawurldecode(substr($dpdf, strlen($https)));
+            } elseif (0 === strpos($dpdf, $http)) {
+                $dpdf = ABSPATH . rawurldecode(substr($dpdf, strlen($http)));
+            }
+            if (filter_var($dpdf, FILTER_VALIDATE_URL)) {
+                $urls = array_filter(array_map('trim', explode("\n", (string) get_option('e2pdf_allowed_urls', ''))));
+                foreach ($urls as $url) {
+                    if (strpos($dpdf, trailingslashit($url)) === 0) {
+                        unset($check['dpdf']);
+                    }
+                }
+            } else {
+                $dpdf = $this->helper->load('convert')->to_file_dir($dpdf);
+                if (strpos($dpdf, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $dpdf)) {
+                    $dpdf = ABSPATH . $dpdf;
+                }
+                $dpdf = wp_normalize_path((string) realpath($dpdf));
+                $folders = array_filter(array_map('trim', explode("\n", (string) get_option('e2pdf_read_dirs', ''))));
+                foreach ($folders as $folder) {
+                    if (strpos($folder, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $folder)) {
+                        $folder = ABSPATH . $folder;
+                    }
+                    $folder = wp_normalize_path((string) realpath($folder));
+                    if ($dpdf && $folder && strpos($dpdf, trailingslashit($folder)) === 0) {
+                        unset($check['dpdf']);
+                    }
+                }
+            }
+        }
+
+        // pdf: url loaded by the viewer in the browser (this site or whitelisted)
+        if (isset($check['pdf']) && $shortcode === 'e2pdf_view' && filter_var($check['pdf'], FILTER_VALIDATE_URL)) {
+            $pdf_url = trailingslashit($check['pdf']);
+            $urls = array_filter(array_map('trim', explode("\n", (string) get_option('e2pdf_allowed_urls', ''))));
+            $urls[] = home_url();
+            $urls[] = site_url();
+            foreach ($urls as $url) {
+                if (strpos($pdf_url, trailingslashit($url)) === 0) {
+                    unset($check['pdf']);
+                }
+            }
+        }
+
+        // pdf: file inside readable folders
+        if (isset($check['pdf'])) {
+            $pdf = trim($this->helper->load('convert')->to_file_dir($check['pdf']));
+            if (strpos($pdf, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $pdf)) {
+                $pdf = ABSPATH . $pdf;
+            }
+            $pdf = wp_normalize_path((string) realpath($pdf));
+            $folders = array_filter(array_map('trim', explode("\n", (string) get_option('e2pdf_read_dirs', ''))));
+            foreach ($folders as $folder) {
+                if (strpos($folder, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $folder)) {
+                    $folder = ABSPATH . $folder;
+                }
+                $folder = wp_normalize_path((string) realpath($folder));
+                if ($pdf && $folder && strpos($pdf, trailingslashit($folder)) === 0) {
+                    unset($check['pdf']);
+                }
+            }
+        }
+
+        // site url: this site or whitelisted (starts with the url)
+        if (isset($check['site_url'])) {
+            $site_url = trailingslashit($check['site_url']);
+            $urls = array_filter(array_map('trim', explode("\n", (string) get_option('e2pdf_allowed_urls', ''))));
+            $urls[] = home_url();
+            $urls[] = site_url();
+            foreach ($urls as $url) {
+                if (strpos($site_url, trailingslashit($url)) === 0) {
+                    unset($check['site_url']);
+                }
+            }
+        }
+
+        // viewer: this site or whitelisted (starts with the url)
+        if (isset($check['viewer'])) {
+            $viewer = trailingslashit($check['viewer']);
+            $urls = array_filter(array_map('trim', explode("\n", (string) get_option('e2pdf_allowed_urls', ''))));
+            $urls[] = home_url();
+            $urls[] = site_url();
+            foreach ($urls as $url) {
+                if (strpos($viewer, trailingslashit($url)) === 0) {
+                    unset($check['viewer']);
+                }
+            }
+        }
+
+        // save folder: inside save folders
+        if (isset($check['dir'])) {
+            // save folder: google drive folder or not used for the media library
+            if ($attributes->get('media') || $attributes->get('gdrive')) {
+                unset($check['dir']);
+            } else {
+                $dir = $check['dir'];
+                if ($template) {
+                    $dir = $attributes->get('filter') ? $template->extension()->convert_shortcodes($dir, true) : $template->extension()->render($dir);
+                }
+                $dir = rtrim(trim($this->helper->load('convert')->to_file_dir($dir)), '/') . '/';
+                if (strpos($dir, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $dir)) {
+                    $dir = ABSPATH . $dir;
+                }
+                // existing part of the folder with resolved symlinks, the rest is created by e2pdf-save
+                $path = rtrim($dir, '/');
+                $rest = '';
+                while (!is_dir($path) && dirname($path) !== $path) {
+                    $rest = basename($path) . '/' . $rest;
+                    $path = dirname($path);
+                }
+                $path = trailingslashit(wp_normalize_path((string) realpath($path))) . $rest;
+                $folders = array_filter(array_map('trim', explode("\n", (string) get_option('e2pdf_write_dirs', ''))));
+                foreach ($folders as $folder) {
+                    if (strpos($folder, '/') !== 0 && !preg_match('/^[A-Za-z]:/', $folder)) {
+                        $folder = ABSPATH . $folder;
+                    }
+                    $folder = wp_normalize_path((string) realpath($folder));
+                    if (strpos($dir, '/../') === false && $folder && strpos($path, trailingslashit($folder)) === 0) {
+                        unset($check['dir']);
+                    }
+                }
+            }
+        }
+
+        // zapier webhook: local or whitelisted
+        if (isset($check['webhook'])) {
+            $webhooks = array_filter(array_map('trim', explode("\n", (string) get_option('e2pdf_zapier_webhooks', ''))));
+            if ($check['webhook'] === 'local' || in_array((string) $check['webhook'], $webhooks, true)) {
+                unset($check['webhook']);
+            }
+        }
+
+        // all attributes checked
+        return apply_filters('e2pdf_shortcode_access', empty($check), $shortcode, $attributes, $template, $context);
+    }
+
     public function action_e2pdf_hash_clear() {
         // phpcs:disable WordPress.Security.NonceVerification.Recommended
         if (isset($_GET['e2pdf-hash'])) {
@@ -6702,6 +7022,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if (function_exists('get_the_ID')) {
             $atts = array_filter((array) $atts, 'strlen');
             $atts['dataset'] = get_the_ID();
+            $template = new Model_E2pdf_Template();
+            if (isset($atts['id'])) {
+                $template->load($atts['id']);
+            }
+            if ($template->get('extension') === 'wordpress' && $template->get('item') == get_post_type($atts['dataset'])) { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
+                $atts['hash'] = $this->helper->load('shortcode')->hash(['dataset'], '', $atts);
+            }
             return $this->e2pdf_download($atts);
         }
         return '';
@@ -6712,6 +7039,13 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
         if (function_exists('get_the_ID')) {
             $atts = array_filter((array) $atts, 'strlen');
             $atts['dataset'] = get_the_ID();
+            $template = new Model_E2pdf_Template();
+            if (isset($atts['id'])) {
+                $template->load($atts['id']);
+            }
+            if ($template->get('extension') === 'wordpress' && $template->get('item') == get_post_type($atts['dataset'])) { // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled
+                $atts['hash'] = $this->helper->load('shortcode')->hash(['dataset'], '', $atts);
+            }
             return $this->e2pdf_view($atts);
         }
         return '';

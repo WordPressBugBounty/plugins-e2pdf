@@ -44,15 +44,16 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
      * @return json
      */
     public function ajax_change_license_key() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_license')) {
+        $response = [];
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_license') && (current_user_can('manage_options') || current_user_can('e2pdf_license'))) {
             $data = $this->post->get('data');
-            $this->helper->load('license')->change(isset($data['license_key']) ? $data['license_key'] : '');
+            $request = $this->helper->load('license')->change(isset($data['license_key']) ? $data['license_key'] : '');
             $response = [
                 'redirect' => $this->helper->get_url(
-                        [
-                            'page' => 'e2pdf-license',
-                            'notification' => isset($request['error']) ? $this->add_notification('error', $request['error']) : $this->add_notification('update', __('License Key Changed', 'e2pdf')),
-                        ]
+                    [
+                        'page' => 'e2pdf-license',
+                        'notification' => is_array($request) && isset($request['error']) ? $this->add_notification('error', $request['error']) : $this->add_notification('update', __('License Key Changed', 'e2pdf')),
+                    ]
                 ),
             ];
         } else {
@@ -62,20 +63,20 @@ class Controller_E2pdf_License extends Helper_E2pdf_View {
     }
 
     public function ajax_deactivate_all_templates() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_license')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_license') && (current_user_can('manage_options') || current_user_can('e2pdf_license'))) {
             $model_e2pdf_api = new Model_E2pdf_Api();
             $model_e2pdf_api->set(
-                    [
-                        'action' => 'template/deactivateall',
-                    ]
+                [
+                    'action' => 'template/deactivateall',
+                ]
             );
             $request = $model_e2pdf_api->request();
             $response = [
                 'redirect' => $this->helper->get_url(
-                        [
-                            'page' => 'e2pdf-license',
-                            'notification' => isset($request['error']) ? $this->add_notification('error', $request['error']) : $this->add_notification('update', __('Templates Deactivated', 'e2pdf')),
-                        ]
+                    [
+                        'page' => 'e2pdf-license',
+                        'notification' => isset($request['error']) ? $this->add_notification('error', $request['error']) : $this->add_notification('update', __('Templates Deactivated', 'e2pdf')),
+                    ]
                 ),
             ];
         } else {

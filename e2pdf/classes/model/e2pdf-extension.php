@@ -16,7 +16,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     private $extension;
 
     public function load($name) {
-        if (in_array($name, get_option('e2pdf_disabled_extensions', []), true)) {
+        if (!is_string($name) || in_array($name, get_option('e2pdf_disabled_extensions', []), true)) {
             return false;
         }
         $class = 'Extension_E2pdf_' . ucfirst($name);
@@ -93,6 +93,14 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
             return $this->extension()->verify();
         }
         return false;
+    }
+
+    public function access($atts = [], $user_id = 0) {
+        if ($this->extension() && method_exists($this->extension(), 'access')) {
+            $atts = $this->extension()->access($atts, $user_id);
+            $atts = apply_filters('e2pdf_shortcode_extension_' . $this->extension()->info('key') . '_access', $atts, $user_id, $this->extension());
+        }
+        return (array) apply_filters('e2pdf_shortcode_extension_access', $atts, $user_id, $this->extension());
     }
 
     public function import($xml, $options = []) {

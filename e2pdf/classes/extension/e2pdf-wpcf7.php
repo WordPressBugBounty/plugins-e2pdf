@@ -297,8 +297,31 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         add_action('vsz_cf7_after_insert_db', array($this, 'action_vsz_cf7_after_insert_db'), 10, 3);
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values: the Contact Form 7 mail tags of the form, e.g. [your-name], [text-418], [menu-27]. Multiple files / images: [e2pdf-format-output explode="," output="{0}"][upload-file-629][/e2pdf-format-output] (1st), output="{1}" (2nd). (Drag and Drop Multiple File Upload).',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Messages: "Thank you for your message. It has been sent."',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Mail / Mail (2): message body',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
     // load filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
         add_filter('e2pdf_model_options_get_options_options', array($this, 'filter_e2pdf_model_options_get_options_options'));
         add_filter('vxcf_after_saving_addons', array($this, 'filter_vxcf_after_saving_addons'), 10, 4);
     }
@@ -609,6 +632,28 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
     public function strip_shortcodes($value) {
         $value = preg_replace('~(?:\[/?)[^/\]]+/?\]~s', '', $value);
         return $value;
+    }
+
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = array(), $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry');
+            $capability = 'manage_options';
+            if ($this->get_storing_engine() == '1') {
+                // CRM Entries
+                $capability = 'vxcf_leads_read_entries';
+            } elseif ($this->get_storing_engine() == '2') {
+                // Contact Form 7 Database Addon (CFDB7)
+                $capability = 'cfdb7_access';
+            } elseif ($this->get_storing_engine() == '3') {
+                // Advanced CF7 DB: view capability of the form
+                $capability = 'cf7_db_form_view' . $this->get('item');
+            }
+            if ((!empty($entry['meta']['current_user_id']) && (int) $entry['meta']['current_user_id'] === $user_id) || user_can($user_id, $capability) || ($this->get_storing_engine() == '2' && user_can($user_id, 'manage_options'))) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
     }
 
     // verify
@@ -1058,10 +1103,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 $wpdb->delete($wpdb->prefix . 'e2pdf_datasets', $where);
 
                 if ($dataset_id) {
-                    $upload_dir = $this->helper->get('wpcf7_dir') . $dataset_id . '/';
-                    if (is_dir($upload_dir)) {
-                        $this->helper->delete_dir($upload_dir);
-                    }
+                    $this->helper->delete_wpcf7_dir($dataset_id);
                 }
                 return true;
             }
@@ -1268,6 +1310,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                     $atts = shortcode_parse_atts($shortcode[3]);
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash([], 'wpcf7_success_message', $atts)]);
                         $success_message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $success_message);
                     }
                 }
@@ -1279,7 +1322,13 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('wpcf7_attachments');
@@ -1288,6 +1337,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
 
     // filter success message
     public function filter_success_message($success_message) {
+        $form_id = class_exists('WPCF7_Submission') && WPCF7_Submission::get_instance() ? WPCF7_Submission::get_instance()->get_contact_form()->id() : 0;
         if (false !== strpos($success_message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-download',
@@ -1303,26 +1353,22 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                     } else {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($this->get('dataset') && (string) $atts['dataset'] === (string) $this->get('dataset')))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-
-                            if ($template->get('extension') === 'wpcf7') {
+                            if ($template->get('extension') === 'wpcf7' && $template->get('item') == $form_id) {
                                 if (!$this->get('dataset')) {
                                     $this->save_item();
                                 }
-                                $atts['dataset'] = $this->get('dataset');
-                                $shortcode[3] .= ' dataset="' . $this->get('dataset') . '"';
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $this->get('dataset')]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['iframe_download'])) {
-                            $shortcode[3] .= ' iframe_download="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'iframe_download' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wpcf7_success_message', $atts)]);
                         $success_message = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $success_message);
                     }
                 }
@@ -1333,6 +1379,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
 
     // filter mail body
     public function filter_mail_body($success_message, $tpl = 'mail') {
+        $form_id = class_exists('WPCF7_Submission') && WPCF7_Submission::get_instance() ? WPCF7_Submission::get_instance()->get_contact_form()->id() : 0;
 
         if (false !== strpos($success_message, '[')) {
             $shortcode_tags = array(
@@ -1349,54 +1396,48 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
+                    $hash_data = [];
 
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($this->get('dataset') && (string) $atts['dataset'] === (string) $this->get('dataset')))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'wpcf7') {
+                            if ($template->get('extension') === 'wpcf7' && $template->get('item') == $form_id) {
                                 if (!$this->get('dataset')) {
                                     $this->save_item();
                                 }
-                                $atts['dataset'] = $this->get('dataset');
-                                $shortcode[3] .= ' dataset="' . $this->get('dataset') . '"';
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $this->get('dataset')]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'is_tmp' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wpcf7_mail', $atts)]);
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
-                            $tmp = false;
-                            if (substr($file, 0, 4) === 'tmp:') {
-                                $file = substr($file, 4);
-                                $tmp = true;
-                            }
-                            if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            $tmp = substr($file, 0, 4) === 'tmp:';
+                            $file = $tmp ? substr($file, 4) : $file;
+                            if (is_file($file)) {
                                 if ($tmp) {
                                     $this->helper->add('wpcf7_attachments', $file);
                                 }
-                            } else {
-                                $this->helper->add('wpcf7_attachments', $file);
+                                $this->get('submission')->add_extra_attachments($file, $tpl);
                             }
-                            $this->get('submission')->add_extra_attachments($file, $tpl);
                         }
                         $success_message = str_replace($shortcode_value, '', $success_message);
                     } else {
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($this->get('dataset') && (string) $atts['dataset'] === (string) $this->get('dataset')))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'wpcf7') {
+                            if ($template->get('extension') === 'wpcf7' && $template->get('item') == $form_id) {
                                 if (!$this->get('dataset')) {
                                     $this->save_item();
                                 }
-                                $atts['dataset'] = $this->get('dataset');
-                                $shortcode[3] .= ' dataset="' . $this->get('dataset') . '"';
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $this->get('dataset')]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'wpcf7_mail', $atts)]);
                         $success_message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $success_message);
                     }
                 }

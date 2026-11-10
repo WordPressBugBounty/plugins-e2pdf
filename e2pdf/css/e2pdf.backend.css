@@ -223,7 +223,7 @@
 }
 
 .widefat.e2pdf-templates-list .column-shortcode {
-    width: 11em;
+    width: 14em;
     overflow: visible;
 }
 
@@ -240,6 +240,16 @@
     width: 100%;
     font-size: 10px;
     text-align: center;
+}
+
+.e2pdf-templates-list .dashicons.e2pdf-access-check-warning {
+    position: static;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    margin: 0 4px 0 0;
+    color: #dba617;
+    vertical-align: top;
 }
 
 .e2pdf-tabs-panel li a,
@@ -306,6 +316,35 @@ a.e2pdf-be {
 
 a.e2pdf-be:hover {
     background: #eee;
+}
+
+a.e2pdf-be-settings {
+    position: absolute;
+    top: 50%;
+    right: 7px;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    color: #a0a5aa;
+    text-decoration: none;
+    box-shadow: none;
+}
+
+a.e2pdf-be-settings .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+a.e2pdf-be-settings:hover,
+a.e2pdf-be-settings:focus-visible {
+    color: #0073aa;
+    color: var(--wp-admin-theme-color);
+}
+
+a.e2pdf-be-settings:focus {
+    box-shadow: none;
 }
 
 .e2pdf-center {
@@ -1422,7 +1461,7 @@ a.e2pdf-link:link,
 a.e2pdf-link:visited,
 a.e2pdf-link:hover {
     text-decoration: none;
-    vertical-align: middle;
+    vertical-align: top;
     outline:none;
     -moz-outline-style: none;
     -webkit-box-shadow: none;
@@ -1549,7 +1588,23 @@ a.e2pdf-color-green, .e2pdf-color-green, .e2pdf-license-status .valid {
 }
 
 .e2pdf-options-list .e2pdf-value {
-    line-height: 30px;
+    line-height: 40px;
+}
+
+.e2pdf-options-list .e2pdf-note {
+    line-height: 20px;
+    margin: -15px 0 16px;
+    color: #646970;
+}
+
+.e2pdf-options-list input[type="text"] + .e2pdf-note,
+.e2pdf-options-list input[type="file"] + .e2pdf-note {
+    margin-top: 0;
+}
+
+.e2pdf-options-list .e2pdf-prefield-field + .e2pdf-note {
+    clear: both;
+    margin-top: 0;
 }
 
 .e2pdf-export-shortcodes {
@@ -1870,14 +1925,20 @@ a.e2pdf-vm-element:hover {
 
 .js .meta-box-sortables .postbox .e2pdf-closed .toggle-indicator:before, .e2pdf-closed .toggle-indicator:before {
     content: "\f140";
-    vertical-align: text-bottom;
+    vertical-align: middle;
     font: 400 20px/1 dashicons;
 }
 
 .js .meta-box-sortables .postbox .e2pdf-closed.e2pdf-opened .toggle-indicator:before, .e2pdf-closed.e2pdf-opened .toggle-indicator:before {
     content: "\f142";
-    vertical-align: text-bottom;
+    vertical-align: middle;
     font: 400 20px/1 dashicons;
+}
+
+.button.e2pdf-hidden-dropdown {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .e2pdf-hidden-dropdown-content {
@@ -2063,7 +2124,7 @@ input[type='radio'].e2pdf-input-height {
 }
 
 .e2pdf-condition textarea {
-    height: 30px;
+    height: 40px;
     line-height: 24px;
     margin-top: 0;
 }
@@ -2111,6 +2172,8 @@ input[type='checkbox'].e2pdf-input-height:checked:before {
     font-size: 13px;
     padding: 0 5px;
     float: left;
+    height: 40px;
+    line-height: 40px;
 }
 
 .e2pdf-prefield-field {
@@ -2122,7 +2185,6 @@ input[type='checkbox'].e2pdf-input-height:checked:before {
 
 input.e2pdf-mod-rewrite-url {
     font-size: 13px;
-    min-height: 0;
 }
 
 .e2pdf-w-upload {
@@ -2326,7 +2388,7 @@ ul.add-menu-item-tabs li, ul.category-tabs li, ul.wp-tab-bar li {
 
 .e2pdf-datasets-refresh {
     position: absolute;
-    top: 5px;
+    top: 10px;
     right: 0;
 }
 
@@ -2432,6 +2494,90 @@ input[type=checkbox].e2pdf-checkbox:checked::before {
     display: inline-block;
 }
 
+.e2pdf_page_e2pdf-templates .CodeMirror-hints {
+    z-index: 1000000 !important;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror-wrap {
+    margin-bottom: 20px;
+    resize: vertical;
+    overflow: hidden;
+    border: 1px solid #949494;
+    border-radius: 2px;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror-dialog {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: #f6f7f7;
+    border-bottom: 1px solid #dcdcde;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror.dialog-opened .CodeMirror-lines {
+    padding-top: 40px;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror-dialog .CodeMirror-search-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    margin: 0;
+    font-size: 12px;
+    font-weight: normal;
+    color: #1d2327;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror-dialog input[type='text'] {
+    width: 14em !important;
+    height: 26px;
+    min-height: 26px;
+    margin: 0;
+    padding: 0 8px;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    background: #fff;
+    color: #1d2327;
+    font-family: monospace;
+    font-size: 12px;
+    box-shadow: none;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror-dialog input[type='text']:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror-dialog .CodeMirror-search-hint {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #646970 !important;
+    font-size: 11px;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror-dialog button {
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid #2271b1;
+    border-radius: 3px;
+    background: #f6f7f7;
+    color: #2271b1;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.e2pdf_page_e2pdf-templates .CodeMirror-dialog button:hover {
+    background: #f0f0f1;
+    border-color: #0a4b78;
+    color: #0a4b78;
+}
+
 @media screen and (max-width: 782px) {
     .wp-list-table.e2pdf-templates-list tr:not(.inline-edit-row):not(.no-items) td.column-id, .wp-list-table .is-expanded td.column-id {
         display: table-cell !important;
@@ -2446,6 +2592,17 @@ input[type=checkbox].e2pdf-checkbox:checked::before {
 
     .wp-list-table.e2pdf-templates-list tr:not(.inline-edit-row):not(.no-items) td.column-id:before {
         display: none;
+    }
+
+    .wp-list-table.e2pdf-templates-list tr:not(.inline-edit-row):not(.no-items) td.column-title:before {
+        display: none;
+    }
+
+    .tablenav.top.e2pdf-templates-list-tablenav .alignright.actions {
+        display: block;
+        float: none;
+        margin-bottom: 10px;
+        text-align: right;
     }
 
     .wp-list-table.e2pdf-templates-list td.column-shortcode .misc-pub-section {

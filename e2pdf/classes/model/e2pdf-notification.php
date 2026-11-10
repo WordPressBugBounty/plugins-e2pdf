@@ -55,12 +55,17 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
         $notifications = $this->load();
         $now = time();
 
-        if ($notification_id && isset($notifications[$notification_id])) {
-            $this->notifications[$notification_id] = [
-                'type' => $notifications[$notification_id]['type'],
-                'text' => $notifications[$notification_id]['text'],
-            ];
-            unset($notifications[$notification_id]);
+        if ($notification_id) {
+            foreach (explode(',', (string) $notification_id) as $id) {
+                $id = trim($id);
+                if ($id && isset($notifications[$id])) {
+                    $this->notifications[$id] = [
+                        'type' => $notifications[$id]['type'],
+                        'text' => $notifications[$id]['text'],
+                    ];
+                    unset($notifications[$id]);
+                }
+            }
         }
 
         foreach ($notifications as $id => $entry) {
@@ -132,6 +137,19 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
                     [
                         'type' => 'error',
                         'text' => $message,
+                    ]
+            );
+        }
+
+        if (!get_option('e2pdf_access_check', '0')) {
+            array_unshift(
+                    $this->notifications,
+                    [
+                        'type' => 'notice',
+                        'text' => sprintf(
+                                __('<strong>Important:</strong> Global Access Check is disabled: <a target="_blank" rel="noopener noreferrer" href="%s">Read More »</a>', 'e2pdf'),
+                                esc_url('https://e2pdf.com/docs/shortcodes/access-check')
+                        ),
                     ]
             );
         }

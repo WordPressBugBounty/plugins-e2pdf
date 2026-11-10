@@ -37,7 +37,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                         $redirect_url['s'] = $this->post->get('s');
                     }
                     $this->redirect(
-                            $this->helper->get_url($redirect_url)
+                        $this->helper->get_url($redirect_url)
                     );
                 } else {
                     $action = $this->post->get('action') != '-1' ? $this->post->get('action') : $this->post->get('action2');
@@ -57,6 +57,19 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                                 $this->deactivate_template($value);
                             }
                             $this->add_notification('update', sprintf(__('Templates Deactivated: %d', 'e2pdf'), count($this->post->get('post'))));
+                        } elseif (($action == 'access_check_enable' || $action == 'access_check_disable') && current_user_can('manage_options')) {
+                            foreach ($this->post->get('post') as $key => $value) {
+                                $template = new Model_E2pdf_Template();
+                                if ($template->load((int) $value, false)) {
+                                    $template->set('access_check', $action == 'access_check_enable' ? '1' : '0');
+                                    $template->update(array('access_check'));
+                                }
+                            }
+                            if ($action == 'access_check_enable') {
+                                $this->add_notification('update', sprintf(__('Access Check Enabled: %d', 'e2pdf'), count($this->post->get('post'))));
+                            } else {
+                                $this->add_notification('update', sprintf(__('Access Check Disabled: %d', 'e2pdf'), count($this->post->get('post'))));
+                            }
                         } elseif ($action == 'restore') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->restore_template($value);
@@ -142,21 +155,21 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                                         }
                                         if (isset($element['properties']['html_worker']) && $element['properties']['html_worker']) {
                                             $element['value'] = $this->helper->load('properties')->html_worker(
-                                                    $element['value']
+                                                $element['value']
                                             );
                                         }
                                         $pages[$page_key]['elements'][$element_key]['value'] = $this->helper->load('filter')->filter_html_tags(
-                                                $element['value']
+                                            $element['value']
                                         );
                                         break;
                                     case 'e2pdf-page-number':
                                         if (isset($element['properties']['html_worker']) && $element['properties']['html_worker']) {
                                             $element['value'] = $this->helper->load('properties')->html_worker(
-                                                    $element['value']
+                                                $element['value']
                                             );
                                         }
                                         $pages[$page_key]['elements'][$element_key]['value'] = $this->helper->load('filter')->filter_html_tags(
-                                                $element['value']
+                                            $element['value']
                                         );
                                         break;
                                     default:
@@ -183,11 +196,11 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             }
         } else {
             $this->redirect(
-                    $this->helper->get_url(
-                            [
-                                'page' => 'e2pdf',
-                            ]
-                    )
+                $this->helper->get_url(
+                    [
+                        'page' => 'e2pdf',
+                    ]
+                )
             );
         }
     }
@@ -203,143 +216,18 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         if (empty($preview)) {
             $this->close_tab_response();
         } else {
-            $data = $preview;
-            $pages = $preview['pages'];
-            unset($preview['pages']);
             if (wp_verify_nonce(isset($preview['_wpnonce']) ? $preview['_wpnonce'] : '', 'e2pdf_templates')) {
-                $template = new Model_E2pdf_Template();
-                foreach ($data as $key => $value) {
-                    $template->set($key, $value);
-                }
-                $template->set('uid', $template->get('uid', true));
-                $template->set('activated', $template->get('activated', true));
-
-                $preview_pages = array();
-                foreach ($pages as $page_key => $page) {
-                    $new_page = new Model_E2pdf_Page();
-                    foreach ($page as $page_set_key => $page_set_value) {
-                        $new_page->set($page_set_key, $page_set_value);
-                    }
-                    $new_page->set('page_id', $page_key);
-
-                    $elements = array();
-                    foreach ($page['elements'] as $element_key => $element) {
-                        if (isset($element['type'])) {
-                            switch ($element['type']) {
-                                case 'e2pdf-image':
-                                    if (isset($element['properties']['quality']) && $element['properties']['quality']) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
-                                    } else {
-                                        $element['properties']['quality'] = $template->get('optimization');
-                                        $pages[$page_key]['elements'][$element_key]['properties']['quality'] = $template->get('optimization');
-                                    }
-                                    if ($image = $this->helper->load('image')->get_image($element['value'], null, $element)) {
-                                        $element['value'] = $image;
-                                    } else {
-                                        $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/upload.svg');
-                                        $element['properties']['preview'] = '1';
-                                    }
-                                    break;
-                                case 'e2pdf-signature':
-                                    $esig = isset($element['properties']['esig']) && $element['properties']['esig'] ? true : false;
-                                    if (!$esig) {
-                                        if ($image = $this->helper->load('image')->get_image($element['value'])) {
-                                            $element['value'] = $image;
-                                        } else {
-                                            $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/signature.svg');
-                                            $element['properties']['preview'] = '1';
-                                        }
-                                    }
-                                    break;
-                                case 'e2pdf-qrcode':
-                                    $element['type'] = 'e2pdf-image';
-                                    $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/qrcode.svg');
-                                    $element['properties']['preview'] = '1';
-                                    break;
-                                case 'e2pdf-barcode':
-                                    $element['type'] = 'e2pdf-image';
-                                    $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/barcode.svg');
-                                    $element['properties']['preview'] = '1';
-                                    break;
-                                case 'e2pdf-graph':
-                                    $element['type'] = 'e2pdf-image';
-                                    $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/graph.svg');
-                                    $element['properties']['preview'] = '1';
-                                    break;
-                                case 'e2pdf-html':
-                                    if (isset($element['properties']['hide_page_if_empty'])) {
-                                        unset($element['properties']['hide_page_if_empty']);
-                                    }
-                                    if (isset($element['properties']['hide_if_empty'])) {
-                                        unset($element['properties']['hide_if_empty']);
-                                    }
-                                    if (isset($element['properties']['nl2br']) && $element['properties']['nl2br']) {
-                                        $element['value'] = nl2br($element['value']);
-                                    }
-                                    if (isset($element['properties']['html_worker']) && $element['properties']['html_worker']) {
-                                        $element['value'] = $this->helper->load('properties')->html_worker(
-                                                $element['value']
-                                        );
-                                    }
-                                    $element['value'] = $this->helper->load('filter')->filter_html_tags(
-                                            $element['value']
-                                    );
-                                    break;
-                                case 'e2pdf-page-number':
-                                    $element['value'] = str_replace(array('[e2pdf-page-number]', '[e2pdf-page-total]'), array('e2pdf-page-number', 'e2pdf-page-total'), $element['value']);
-                                    if (isset($element['properties']['html_worker']) && $element['properties']['html_worker']) {
-                                        $element['value'] = $this->helper->load('properties')->html_worker(
-                                                $element['value']
-                                        );
-                                    }
-                                    $element['value'] = $this->helper->load('filter')->filter_html_tags(
-                                            $element['value']
-                                    );
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-
-                        $new_element = new Model_E2pdf_Element();
-                        foreach ($element as $element_set_key => $element_set_value) {
-                            $new_element->set($element_set_key, $element_set_value);
-                        }
-
-                        if (isset($element['properties'])) {
-                            $element_properties = $element['properties'];
-                        } else {
-                            $element_properties = array();
-                        }
-                        $new_element->set('properties', $element_properties);
-                        $elements[] = $new_element->get_element();
-                    }
-
-                    $new_page->set('elements', $elements);
-                    $preview_pages[] = $new_page->get_page();
-                }
-
-                $template->set('pages', $preview_pages);
-                $template->load_fonts();
-
                 $type = isset($_GET['type']) ? sanitize_text_field(wp_unslash($_GET['type'])) : false;
-                if ($type == 'php') {
-                    $request = $template->render('php');
-                    if (isset($request['error'])) {
-                        $this->add_notification('error', $request['error']);
-                        $this->render('blocks', 'notifications');
-                    } else {
-                        $this->download_response('php', $request['file'], 'template');
-                        exit;
-                    }
+                $request = $this->preview_template($preview, $type);
+                if (isset($request['error'])) {
+                    $this->add_notification('error', $request['error']);
+                    $this->render('blocks', 'notifications');
+                } elseif ($type == 'php') {
+                    $this->download_response('php', $request['file'], 'template');
+                    exit;
                 } else {
-                    $request = $template->render();
-                    if (isset($request['error'])) {
-                        $this->add_notification('error', $request['error']);
-                        $this->render('blocks', 'notifications');
-                    } else {
-                        $this->download_response($template->get('format'), $request['file'], $template->get_name(), 'inline', false, true);
-                        exit;
-                    }
+                    $this->download_response($request['format'], $request['file'], $request['name'], 'inline', false, true);
+                    exit;
                 }
             } else {
                 wp_die($this->message('wp_verify_nonce_error'));
@@ -380,16 +268,17 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                 $this->load_scripts();
                 $this->load_styles($template->get('extension'));
             } else {
+                $this->view('template', false);
                 $this->add_notification('error', __('Something went wrong!', 'e2pdf'));
                 $this->render('blocks', 'notifications');
             }
         } else {
             $this->redirect(
-                    $this->helper->get_url(
-                            [
-                                'page' => 'e2pdf-templates',
-                            ]
-                    )
+                $this->helper->get_url(
+                    [
+                        'page' => 'e2pdf-templates',
+                    ]
+                )
             );
         }
     }
@@ -408,16 +297,16 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             wp_die($this->message('wp_verify_nonce_error'));
         }
         $this->redirect(
-                $this->helper->get_url(
-                        [
-                            'page' => 'e2pdf-templates',
-                            'status' => $this->get->get('status'),
-                            'orderby' => $this->get->get('orderby'),
-                            'order' => $this->get->get('order'),
-                            's' => $this->get->get('s'),
-                            'notification' => $notification,
-                        ]
-                )
+            $this->helper->get_url(
+                [
+                    'page' => 'e2pdf-templates',
+                    'status' => $this->get->get('status'),
+                    'orderby' => $this->get->get('orderby'),
+                    'order' => $this->get->get('order'),
+                    's' => $this->get->get('s'),
+                    'notification' => $notification,
+                ]
+            )
         );
     }
 
@@ -435,16 +324,16 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             wp_die($this->message('wp_verify_nonce_error'));
         }
         $this->redirect(
-                $this->helper->get_url(
-                        [
-                            'page' => 'e2pdf-templates',
-                            'status' => $this->get->get('status'),
-                            'orderby' => $this->get->get('orderby'),
-                            'order' => $this->get->get('order'),
-                            's' => $this->get->get('s'),
-                            'notification' => $notification,
-                        ]
-                )
+            $this->helper->get_url(
+                [
+                    'page' => 'e2pdf-templates',
+                    'status' => $this->get->get('status'),
+                    'orderby' => $this->get->get('orderby'),
+                    'order' => $this->get->get('order'),
+                    's' => $this->get->get('s'),
+                    'notification' => $notification,
+                ]
+            )
         );
     }
 
@@ -463,16 +352,16 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         }
 
         $this->redirect(
-                $this->helper->get_url(
-                        [
-                            'page' => 'e2pdf-templates',
-                            'status' => $this->get->get('status'),
-                            'orderby' => $this->get->get('orderby'),
-                            'order' => $this->get->get('order'),
-                            's' => $this->get->get('s'),
-                            'notification' => $notification,
-                        ]
-                )
+            $this->helper->get_url(
+                [
+                    'page' => 'e2pdf-templates',
+                    'status' => $this->get->get('status'),
+                    'orderby' => $this->get->get('orderby'),
+                    'order' => $this->get->get('order'),
+                    's' => $this->get->get('s'),
+                    'notification' => $notification,
+                ]
+            )
         );
     }
 
@@ -490,16 +379,16 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             wp_die($this->message('wp_verify_nonce_error'));
         }
         $this->redirect(
-                $this->helper->get_url(
-                        [
-                            'page' => 'e2pdf-templates',
-                            'status' => $this->get->get('status'),
-                            'orderby' => $this->get->get('orderby'),
-                            'order' => $this->get->get('order'),
-                            's' => $this->get->get('s'),
-                            'notification' => $notification,
-                        ]
-                )
+            $this->helper->get_url(
+                [
+                    'page' => 'e2pdf-templates',
+                    'status' => $this->get->get('status'),
+                    'orderby' => $this->get->get('orderby'),
+                    'order' => $this->get->get('order'),
+                    's' => $this->get->get('s'),
+                    'notification' => $notification,
+                ]
+            )
         );
     }
 
@@ -652,35 +541,35 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                         $template->set('resample', (string) $xml->template->resample);
                     }
                     $template->set(
-                            'dataset_title',
-                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->dataset_title, $options, $xml, $template, $extension)
+                        'dataset_title',
+                        apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->dataset_title, $options, $xml, $template, $extension)
                     );
                     if (isset($xml->template->dataset_title1)) {
                         $template->set(
-                                'dataset_title1',
-                                apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->dataset_title1, $options, $xml, $template, $extension)
+                            'dataset_title1',
+                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->dataset_title1, $options, $xml, $template, $extension)
                         );
                     }
                     if (isset($xml->template->dataset_title2)) {
                         $template->set(
-                                'dataset_title2',
-                                apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->dataset_title2, $options, $xml, $template, $extension)
+                            'dataset_title2',
+                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->dataset_title2, $options, $xml, $template, $extension)
                         );
                     }
                     $template->set(
-                            'button_title',
-                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->button_title, $options, $xml, $template, $extension)
+                        'button_title',
+                        apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->button_title, $options, $xml, $template, $extension)
                     );
                     if (isset($xml->template->dpdf)) {
                         $template->set(
-                                'dpdf',
-                                apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->dpdf, $options, $xml, $template, $extension)
+                            'dpdf',
+                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->dpdf, $options, $xml, $template, $extension)
                         );
                     }
                     if (isset($xml->template->attachments)) {
                         $template->set(
-                                'attachments',
-                                apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->attachments, $options, $xml, $template, $extension)
+                            'attachments',
+                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->attachments, $options, $xml, $template, $extension)
                         );
                     }
                     $template->set('inline', (string) $xml->template->inline);
@@ -691,24 +580,29 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                     if (isset($xml->template->font_processor)) {
                         $template->set('font_processor', (string) $xml->template->font_processor);
                     }
+                    if (isset($xml->template->access_check) && current_user_can('manage_options')) {
+                        $template->set('access_check', (string) $xml->template->access_check === '1' ? '1' : '0');
+                    } elseif (!$template->get('ID')) {
+                        $template->set('access_check', get_option('e2pdf_access_check', '0') ? '1' : '0');
+                    }
                     $template->set(
-                            'name',
-                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->name, $options, $xml, $template, $extension)
+                        'name',
+                        apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->name, $options, $xml, $template, $extension)
                     );
                     if (isset($xml->template->savename)) {
                         $template->set(
-                                'savename',
-                                apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->savename, $options, $xml, $template, $extension)
+                            'savename',
+                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->savename, $options, $xml, $template, $extension)
                         );
                     }
                     $template->set(
-                            'password',
-                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->password, $options, $xml, $template, $extension)
+                        'password',
+                        apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->password, $options, $xml, $template, $extension)
                     );
                     if (isset($xml->template->owner_password)) {
                         $template->set(
-                                'owner_password',
-                                apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->owner_password, $options, $xml, $template, $extension)
+                            'owner_password',
+                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->owner_password, $options, $xml, $template, $extension)
                         );
                     }
                     if (isset($xml->template->permissions)) {
@@ -718,26 +612,26 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                     }
                     if (isset($xml->template->hooks)) {
                         $template->set(
-                                'hooks',
-                                (string) $xml->template->hooks
+                            'hooks',
+                            (string) $xml->template->hooks
                         );
                     }
 
                     $template->set(
-                            'meta_title',
-                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->meta_title, $options, $xml, $template, $extension)
+                        'meta_title',
+                        apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->meta_title, $options, $xml, $template, $extension)
                     );
                     $template->set(
-                            'meta_subject',
-                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->meta_subject, $options, $xml, $template, $extension)
+                        'meta_subject',
+                        apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->meta_subject, $options, $xml, $template, $extension)
                     );
                     $template->set(
-                            'meta_author',
-                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->meta_author, $options, $xml, $template, $extension)
+                        'meta_author',
+                        apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->meta_author, $options, $xml, $template, $extension)
                     );
                     $template->set(
-                            'meta_keywords',
-                            apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->meta_keywords, $options, $xml, $template, $extension)
+                        'meta_keywords',
+                        apply_filters('e2pdf_controller_templates_import_replace_shortcodes', (string) $xml->template->meta_keywords, $options, $xml, $template, $extension)
                     );
                     if (isset($xml->template->lang_code)) {
                         $template->set('lang_code', (string) $xml->template->lang_code);
@@ -751,16 +645,16 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                     }
                     $template->set('fonts', $this->helper->load('convert')->unserialize(base64_decode((string) $xml->template->fonts)));
                     $template->set(
-                            'properties',
-                            apply_filters('e2pdf_controller_templates_import_properties', $this->helper->load('convert')->unserialize(base64_decode((string) $xml->template->properties)), $options, $xml, $template, $extension)
+                        'properties',
+                        apply_filters('e2pdf_controller_templates_import_properties', $this->helper->load('convert')->unserialize(base64_decode((string) $xml->template->properties)), $options, $xml, $template, $extension)
                     );
                     $template->set(
-                            'actions',
-                            apply_filters('e2pdf_controller_templates_import_actions', $this->helper->load('convert')->unserialize(base64_decode((string) $xml->template->actions)), $options, $xml, $template, $extension)
+                        'actions',
+                        apply_filters('e2pdf_controller_templates_import_actions', $this->helper->load('convert')->unserialize(base64_decode((string) $xml->template->actions)), $options, $xml, $template, $extension)
                     );
                     $template->set(
-                            'pages',
-                            apply_filters('e2pdf_controller_templates_import_pages', $pages, $options, $xml, $template, $extension)
+                        'pages',
+                        apply_filters('e2pdf_controller_templates_import_pages', $pages, $options, $xml, $template, $extension)
                     );
 
                     if ($options['fonts'] && $xml->fonts) {
@@ -827,23 +721,23 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                         $template->activate();
                         if ($template->get('ID')) {
                             $this->add_notification(
-                                    'update', sprintf(
-                                            __('Template Imported: <a target="_blank" href="%1$s">View</a> | <a target="_blank" href="%2$s">Edit</a>', 'e2pdf'),
-                                            $this->helper->get_url(
-                                                    [
-                                                        'page' => 'e2pdf-templates',
-                                                        'action' => 'view',
-                                                        'id' => $template->get('ID')
-                                                    ]
-                                            ),
-                                            $this->helper->get_url(
-                                                    [
-                                                        'page' => 'e2pdf-templates',
-                                                        'action' => 'edit',
-                                                        'id' => $template->get('ID')
-                                                    ]
-                                            )
+                                'update', sprintf(
+                                    __('Template Imported: <a target="_blank" href="%1$s">View</a> | <a target="_blank" href="%2$s">Edit</a>', 'e2pdf'),
+                                    $this->helper->get_url(
+                                        [
+                                            'page' => 'e2pdf-templates',
+                                            'action' => 'view',
+                                            'id' => $template->get('ID')
+                                        ]
+                                    ),
+                                    $this->helper->get_url(
+                                        [
+                                            'page' => 'e2pdf-templates',
+                                            'action' => 'edit',
+                                            'id' => $template->get('ID')
+                                        ]
                                     )
+                                )
                             );
                         } else {
                             $this->add_notification('error', __('Something went wrong!', 'e2pdf'));
@@ -975,192 +869,13 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_templates')) {
                 if ($this->helper->load('xml')->check()) {
-                    $options = $this->post->get('options');
-                    $xml = $this->helper->load('xml')->create('backup');
-                    $template = new Model_E2pdf_Template();
-                    if ($template->load($this->post->get('id'))) {
-                        if ($template->get('title') != '') {
-                            $filename = $template->get('ID') . ' - ' . $template->get('title') . '.' . date('Y-m-d.H-i-s') . '.e2pdf';
-                        } else {
-                            $filename = date('Y-m-d.H-i-s') . '.e2pdf';
-                        }
-                        $pages = $template->get('pages');
-                        if ($options['images']) {
-                            foreach ($pages as $page_key => $page) {
-                                if (isset($page['elements']) && !empty($page['elements'])) {
-                                    foreach ($page['elements'] as $element_key => $element) {
-                                        if ($element['type'] === 'e2pdf-image') {
-                                            $file = false;
-                                            if ($this->helper->load('pdf')->get_extension($element['value'])) {
-                                                $file = $this->helper->load('pdf')->get_pdf($element['value']);
-                                            } else {
-                                                $file = $this->helper->load('image')->get_image($element['value']);
-                                            }
-                                            if ($file) {
-                                                $pages[$page_key]['elements'][$element_key]['base64'] = $file;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        /*
-                         *  Build Xml
-                         */
-                        $xml->addChildCData('version', $this->helper->get('version'));
-                        $xml->addChildCData('date', date('Y-m-d H:i:s'));
-
-                        $options_xml = $xml->addChild('options');
-                        foreach ($options as $option_key => $option) {
-                            $options_xml->addChildCData($option_key, $option);
-                        }
-                        $template_xml = $xml->addChild('template');
-                        $template_xml->addChildCData('ID', $template->get('ID'));
-                        $template_xml->addChildCData('title', $template->get('title'));
-                        $template_xml->addChildCData('created_at', $template->get('created_at'));
-                        $template_xml->addChildCData('updated_at', $template->get('updated_at'));
-                        $template_xml->addChildCData('flatten', $template->get('flatten'));
-                        $template_xml->addChildCData('tab_order', $template->get('tab_order'));
-                        $template_xml->addChildCData('compression', $template->get('compression'));
-                        $template_xml->addChildCData('optimization', $template->get('optimization'));
-                        $template_xml->addChildCData('appearance', $template->get('appearance'));
-                        $template_xml->addChildCData('width', $template->get('width'));
-                        $template_xml->addChildCData('height', $template->get('height'));
-                        $template_xml->addChildCData('extension', $template->get('extension'));
-                        $template_xml->addChildCData('item', $template->get('item'));
-                        $template_xml->addChildCData('item1', $template->get('item1'));
-                        $template_xml->addChildCData('item2', $template->get('item2'));
-                        $template_xml->addChildCData('format', $template->get('format'));
-                        $template_xml->addChildCData('resample', $template->get('resample'));
-                        $template_xml->addChildCData(
-                                'dataset_title',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('dataset_title'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'dataset_title1',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('dataset_title1'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'dataset_title2',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('dataset_title2'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'button_title',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('button_title'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'dpdf',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('dpdf'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'attachments',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('attachments'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData('inline', $template->get('inline'));
-                        $template_xml->addChildCData('auto', $template->get('auto'));
-                        $template_xml->addChildCData('rtl', $template->get('rtl'));
-                        $template_xml->addChildCData('font_processor', $template->get('font_processor'));
-                        $template_xml->addChildCData(
-                                'name',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('name'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'savename',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('savename'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'password',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('password'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'owner_password',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('owner_password'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData('permissions', base64_encode(serialize($template->get('permissions'))));
-                        $template_xml->addChildCData('hooks', $template->get('hooks'));
-                        $template_xml->addChildCData(
-                                'meta_title',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('meta_title'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'meta_subject',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('meta_subject'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'meta_author',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('meta_author'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData(
-                                'meta_keywords',
-                                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('meta_keywords'), $options, $template, $template->extension())
-                        );
-                        $template_xml->addChildCData('lang_code', $template->get('lang_code'));
-                        $template_xml->addChildCData('font', $template->get('font'));
-                        $template_xml->addChildCData('font_size', $template->get('font_size'));
-                        $template_xml->addChildCData('font_color', $template->get('font_color'));
-                        $template_xml->addChildCData('line_height', $template->get('line_height'));
-                        $template_xml->addChildCData('text_align', $template->get('text_align'));
-                        $template_xml->addChildCData('fonts', base64_encode(serialize($template->get('fonts'))));
-                        $template_xml->addChildCData(
-                                'properties', base64_encode(
-                                        serialize(
-                                                apply_filters('e2pdf_controller_templates_backup_properties', $template->get('properties'), $options, $template, $template->extension())
-                                        )
-                                )
-                        );
-                        $template_xml->addChildCData(
-                                'actions', base64_encode(
-                                        serialize(
-                                                apply_filters('e2pdf_controller_templates_backup_actions', $template->get('actions'), $options, $template, $template->extension())
-                                        )
-                                )
-                        );
-                        $template_xml->addChildCData('pages', base64_encode(
-                                        serialize(
-                                                apply_filters('e2pdf_controller_templates_backup_pages', $pages, $options, $template, $template->extension())
-                                        )
-                                )
-                        );
-
-                        // include pdf
-                        if ($template->get('pdf')) {
-                            $pdf_xml = $xml->addChild('pdf');
-                            $pdf_xml->addChildCData('source', base64_encode(file_get_contents($this->helper->get('pdf_dir') . $template->get('pdf') . '/' . $template->get('pdf') . '.pdf')));
-                            $pdf_xml_images = $pdf_xml->addChild('images');
-                            foreach ($template->get('pages') as $key => $page) {
-                                $pdf_xml_image = $pdf_xml_images->addChild('image');
-                                $pdf_xml_image->addChildCData('page_id', $page['page_id']);
-                                $pdf_xml_image->addChildCData('source', base64_encode(file_get_contents($this->helper->get('pdf_dir') . $template->get('pdf') . '/images/' . $page['page_id'] . '.png')));
-                            }
-                        }
-
-                        // include fonts
-                        if ($options['fonts']) {
-                            $fonts_xml = $xml->addChild('fonts');
-                            if ($template->get('fonts')) {
-                                $model_e2pdf_font = new Model_E2pdf_Font();
-                                foreach ($template->get('fonts') as $key => $value) {
-                                    $font = $fonts_xml->addChild('font');
-                                    $font->addChildCData('title', $value);
-                                    $font->addChildCData('name', $key);
-                                    $font->addChildCData('value', $model_e2pdf_font->get_font($key));
-                                }
-                            }
-                        }
-
-                        // include item
-                        if ($options['item']) {
-                            if ($template->extension()->method('backup')) {
-                                $item = $xml->addChild('item');
-                                $template->extension()->backup($item);
-                            }
-                        }
-                        $this->download_response('xml', $this->helper->load('xml')->get_xml(), $filename);
-                        exit;
-                    } else {
-                        $this->add_notification('error', __('Something went wrong!', 'e2pdf'));
+                    $request = $this->backup_template($this->post->get('id'), $this->post->get('options'));
+                    if (isset($request['error'])) {
+                        $this->add_notification('error', $request['error']);
                         $this->render('blocks', 'notifications');
+                    } else {
+                        $this->download_response('xml', $request['file'], $request['name']);
+                        exit;
                     }
                 }
             } else {
@@ -1231,18 +946,18 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             }
         }
         $this->redirect(
-                $this->helper->get_url(
-                        [
-                            'page' => 'e2pdf-templates',
-                        ]
-                )
+            $this->helper->get_url(
+                [
+                    'page' => 'e2pdf-templates',
+                ]
+            )
         );
     }
 
     // ajax save form
     public function ajax_save_form() {
         global $wpdb;
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = json_decode($this->post->get('data'), true);
             $template = new Model_E2pdf_Template();
             if (isset($data['ID'])) {
@@ -1250,6 +965,11 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             }
             if (!isset($data['permissions'])) {
                 $data['permissions'] = array();
+            }
+            if (current_user_can('manage_options')) {
+                $data['access_check'] = !empty($data['access_check']) ? '1' : '0';
+            } else {
+                $data['access_check'] = $template->get('access_check');
             }
             foreach ($data as $key => $value) {
                 if ($key == 'pdf' && $value) {
@@ -1286,12 +1006,12 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                 }
                 $response = array(
                     'redirect' => $this->helper->get_url(
-                            array(
-                                'page' => 'e2pdf-templates',
-                                'action' => 'edit',
-                                'id' => $template->get('ID'),
-                                'notification' => $this->add_notification('update', __('Template Saved', 'e2pdf')),
-                            )
+                        array(
+                            'page' => 'e2pdf-templates',
+                            'action' => 'edit',
+                            'id' => $template->get('ID'),
+                            'notification' => $this->add_notification('update', __('Template Saved', 'e2pdf')),
+                        )
                     ),
                 );
             }
@@ -1303,7 +1023,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
     public function ajax_get_styles() {
 
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = $this->post->get('data');
             $content = array();
             if (isset($data['extension']) && isset($data['item'])) {
@@ -1323,7 +1043,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
     // ajax extension
     public function ajax_extension() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = $this->post->get('data');
             $extension = new Model_E2pdf_Extension();
             $content = array();
@@ -1360,7 +1080,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
     // ajax visual mapper
     public function ajax_visual_mapper() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = $this->post->get('data');
             $item = isset($data['item']) ? $data['item'] : '';
             $item1 = isset($data['item1']) ? $data['item1'] : '';
@@ -1395,11 +1115,11 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
     // ajax upload
     public function ajax_upload() {
 
-        if (!wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (!wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') || !(current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $this->json_response(
-                    [
-                        'error' => $this->message('wp_verify_nonce_error'),
-                    ]
+                [
+                    'error' => $this->message('wp_verify_nonce_error'),
+                ]
             );
         }
 
@@ -1417,9 +1137,9 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         $file = $this->helper->load('files')->upload($this->files->get('pdf'), ['pdf'], ['application/pdf']);
         if (isset($file['error'])) {
             $this->json_response(
-                    [
-                        'error' => $file['error'],
-                    ]
+                [
+                    'error' => $file['error'],
+                ]
             );
         }
 
@@ -1432,21 +1152,21 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
         $model_e2pdf_api = new Model_E2pdf_Api();
         $model_e2pdf_api->set(
-                array(
-                    'action' => 'template/upload2',
-                    'data' => array(
-                        'title' => $file['name'],
-                        'pdf' => $upload,
-                    ),
-                )
+            array(
+                'action' => 'template/upload2',
+                'data' => array(
+                    'title' => $file['name'],
+                    'pdf' => $upload,
+                ),
+            )
         );
         $request = $model_e2pdf_api->request();
 
         if (isset($request['error'])) {
             $this->json_response(
-                    [
-                        'error' => $request['error'],
-                    ]
+                [
+                    'error' => $request['error'],
+                ]
             );
         }
 
@@ -1466,9 +1186,9 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
         if (!move_uploaded_file($file['tmp_name'], $pdf_dir . $pdf_name . '.pdf')) {
             $this->json_response(
-                    [
-                        'error' => 'Failed to move uploaded file',
-                    ]
+                [
+                    'error' => 'Failed to move uploaded file',
+                ]
             );
         }
 
@@ -1616,24 +1336,24 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             }
 
             $this->json_response(
-                    [
-                        'redirect' => $this->helper->get_url(
-                                [
-                                    'page' => 'e2pdf-templates',
-                                    'action' => 'edit',
-                                    'id' => $template->get('ID'),
-                                ]
-                        ),
-                    ]
+                [
+                    'redirect' => $this->helper->get_url(
+                        [
+                            'page' => 'e2pdf-templates',
+                            'action' => 'edit',
+                            'id' => $template->get('ID'),
+                        ]
+                    ),
+                ]
             );
         } catch (Exception $ex) {
             if (file_exists($pdf_dir)) {
-                $this->helper->delete_dir($pdf_dir);
+                $this->helper->delete_pdf_dir($pdf_name);
             }
             $this->json_response(
-                    [
-                        'error' => $ex->getMessage(),
-                    ]
+                [
+                    'error' => $ex->getMessage(),
+                ]
             );
         }
     }
@@ -1641,11 +1361,11 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
     // ajax reupload
     public function ajax_reupload() {
 
-        if (!wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (!wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') || !(current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $this->json_response(
-                    [
-                        'error' => $this->message('wp_verify_nonce_error'),
-                    ]
+                [
+                    'error' => $this->message('wp_verify_nonce_error'),
+                ]
             );
         }
 
@@ -1661,9 +1381,9 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         $file = $this->helper->load('files')->upload($this->files->get('pdf'), ['pdf'], ['application/pdf']);
         if (isset($file['error'])) {
             $this->json_response(
-                    [
-                        'error' => $file['error'],
-                    ]
+                [
+                    'error' => $file['error'],
+                ]
             );
         }
 
@@ -1676,30 +1396,30 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
         $model_e2pdf_api = new Model_E2pdf_Api();
         $model_e2pdf_api->set(
-                array(
-                    'action' => 'template/upload2',
-                    'data' => array(
-                        'title' => $file['name'],
-                        'pdf' => $upload,
-                    ),
-                )
+            array(
+                'action' => 'template/upload2',
+                'data' => array(
+                    'title' => $file['name'],
+                    'pdf' => $upload,
+                ),
+            )
         );
         $request = $model_e2pdf_api->request();
 
         if (isset($request['error'])) {
             $this->json_response(
-                    [
-                        'error' => $request['error'],
-                    ]
+                [
+                    'error' => $request['error'],
+                ]
             );
         }
 
         $template = new Model_E2pdf_Template();
         if (!$template->load($template_id)) {
             $this->json_response(
-                    [
-                        'error' => __('Failed to load E2Pdf Template', 'e2pdf'),
-                    ]
+                [
+                    'error' => __('Failed to load E2Pdf Template', 'e2pdf'),
+                ]
             );
         }
 
@@ -1717,9 +1437,9 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
         if (!move_uploaded_file($file['tmp_name'], $pdf_dir . $pdf_name . '.pdf')) {
             $this->json_response(
-                    [
-                        'error' => 'Failed to move uploaded file',
-                    ]
+                [
+                    'error' => 'Failed to move uploaded file',
+                ]
             );
         }
 
@@ -1833,31 +1553,31 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
             $template->save(true);
 
             $this->json_response(
-                    [
-                        'redirect' => $this->helper->get_url(
-                                array(
-                                    'page' => 'e2pdf-templates',
-                                    'action' => 'edit',
-                                    'id' => $template->get('ID'),
-                                )
-                        ),
-                    ]
+                [
+                    'redirect' => $this->helper->get_url(
+                        array(
+                            'page' => 'e2pdf-templates',
+                            'action' => 'edit',
+                            'id' => $template->get('ID'),
+                        )
+                    ),
+                ]
             );
         } catch (Exception $ex) {
             if (file_exists($pdf_dir)) {
-                $this->helper->delete_dir($pdf_dir);
+                $this->helper->delete_pdf_dir($pdf_name);
             }
             $this->json_response(
-                    [
-                        'error' => $ex->getMessage(),
-                    ]
+                [
+                    'error' => $ex->getMessage(),
+                ]
             );
         }
     }
 
     // ajax auto
     public function ajax_auto() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = $this->post->get('data');
 
             $extension = $data['extension'];
@@ -1896,7 +1616,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
     // ajax activate template
     public function ajax_activate_template() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = $this->post->get('data');
             $id = $data['id'];
             if (!$id) {
@@ -1920,7 +1640,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
     // ajax deactivaate template
     public function ajax_deactivate_template() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = $this->post->get('data');
             $id = $data['id'];
             if (!$id) {
@@ -1944,20 +1664,20 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
 
     // ajax email
     public function ajax_email() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = $this->post->get('data');
             $email = isset($data['email']) ? trim($data['email']) : '';
             $email_code = isset($data['email_code']) ? trim($data['email_code']) : '';
             $model_e2pdf_api = new Model_E2pdf_Api();
             $model_e2pdf_api->set(
-                    array(
-                        'action' => 'common/email',
-                        'data' => array(
-                            'email' => $email,
-                            'email_code' => $email_code,
-                            'email_confirm' => isset($data['email_code']),
-                        ),
-                    )
+                array(
+                    'action' => 'common/email',
+                    'data' => array(
+                        'email' => $email,
+                        'email_code' => $email_code,
+                        'email_confirm' => isset($data['email_code']),
+                    ),
+                )
             );
             $request = $model_e2pdf_api->request();
             if (isset($request['error'])) {
@@ -2079,6 +1799,326 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
         $template = new Model_E2pdf_Template();
         if ($id && $template->load($id, false)) {
             return $template->deactivate();
+        } else {
+            return array(
+                'error' => __('Something went wrong!', 'e2pdf'),
+            );
+        }
+    }
+
+    // preview template
+    public function preview_template($data = array(), $type = false) {
+        $pages = $data['pages'];
+        $template = new Model_E2pdf_Template();
+        foreach ($data as $key => $value) {
+            $template->set($key, $value);
+        }
+        $template->set('uid', $template->get('uid', true));
+        $template->set('activated', $template->get('activated', true));
+
+        $preview_pages = array();
+        foreach ($pages as $page_key => $page) {
+            $new_page = new Model_E2pdf_Page();
+            foreach ($page as $page_set_key => $page_set_value) {
+                $new_page->set($page_set_key, $page_set_value);
+            }
+            $new_page->set('page_id', $page_key);
+
+            $elements = array();
+            foreach ($page['elements'] as $element_key => $element) {
+                if (isset($element['type'])) {
+                    switch ($element['type']) {
+                        case 'e2pdf-image':
+                            if (isset($element['properties']['quality']) && $element['properties']['quality']) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                            } else {
+                                $element['properties']['quality'] = $template->get('optimization');
+                                $pages[$page_key]['elements'][$element_key]['properties']['quality'] = $template->get('optimization');
+                            }
+                            if ($image = $this->helper->load('image')->get_image($element['value'], null, $element)) {
+                                $element['value'] = $image;
+                            } else {
+                                $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/upload.svg');
+                                $element['properties']['preview'] = '1';
+                            }
+                            break;
+                        case 'e2pdf-signature':
+                            $esig = isset($element['properties']['esig']) && $element['properties']['esig'] ? true : false;
+                            if (!$esig) {
+                                if ($image = $this->helper->load('image')->get_image($element['value'])) {
+                                    $element['value'] = $image;
+                                } else {
+                                    $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/signature.svg');
+                                    $element['properties']['preview'] = '1';
+                                }
+                            }
+                            break;
+                        case 'e2pdf-qrcode':
+                            $element['type'] = 'e2pdf-image';
+                            $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/qrcode.svg');
+                            $element['properties']['preview'] = '1';
+                            break;
+                        case 'e2pdf-barcode':
+                            $element['type'] = 'e2pdf-image';
+                            $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/barcode.svg');
+                            $element['properties']['preview'] = '1';
+                            break;
+                        case 'e2pdf-graph':
+                            $element['type'] = 'e2pdf-image';
+                            $element['value'] = $this->helper->load('image')->get_image($this->helper->get('plugin_dir') . 'img/graph.svg');
+                            $element['properties']['preview'] = '1';
+                            break;
+                        case 'e2pdf-html':
+                            if (isset($element['properties']['hide_page_if_empty'])) {
+                                unset($element['properties']['hide_page_if_empty']);
+                            }
+                            if (isset($element['properties']['hide_if_empty'])) {
+                                unset($element['properties']['hide_if_empty']);
+                            }
+                            if (isset($element['properties']['nl2br']) && $element['properties']['nl2br']) {
+                                $element['value'] = nl2br($element['value']);
+                            }
+                            if (isset($element['properties']['html_worker']) && $element['properties']['html_worker']) {
+                                $element['value'] = $this->helper->load('properties')->html_worker(
+                                    $element['value']
+                                );
+                            }
+                            $element['value'] = $this->helper->load('filter')->filter_html_tags(
+                                $element['value']
+                            );
+                            break;
+                        case 'e2pdf-page-number':
+                            $element['value'] = str_replace(array('[e2pdf-page-number]', '[e2pdf-page-total]'), array('e2pdf-page-number', 'e2pdf-page-total'), $element['value']);
+                            if (isset($element['properties']['html_worker']) && $element['properties']['html_worker']) {
+                                $element['value'] = $this->helper->load('properties')->html_worker(
+                                    $element['value']
+                                );
+                            }
+                            $element['value'] = $this->helper->load('filter')->filter_html_tags(
+                                $element['value']
+                            );
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                $new_element = new Model_E2pdf_Element();
+                foreach ($element as $element_set_key => $element_set_value) {
+                    $new_element->set($element_set_key, $element_set_value);
+                }
+
+                if (isset($element['properties'])) {
+                    $element_properties = $element['properties'];
+                } else {
+                    $element_properties = array();
+                }
+                $new_element->set('properties', $element_properties);
+                $elements[] = $new_element->get_element();
+            }
+
+            $new_page->set('elements', $elements);
+            $preview_pages[] = $new_page->get_page();
+        }
+
+        $template->set('pages', $preview_pages);
+        $template->load_fonts();
+
+        $request = $template->render($type == 'php' ? 'php' : false);
+        if (!isset($request['error'])) {
+            $request['name'] = $template->get_name();
+            $request['format'] = $template->get('format');
+        }
+        return $request;
+    }
+
+    // backup template
+    public function backup_template($id = false, $options = array()) {
+        $id = (int) $id;
+        $xml = $this->helper->load('xml')->create('backup');
+        $template = new Model_E2pdf_Template();
+        if ($id && $template->load($id)) {
+            if ($template->get('title') != '') {
+                $filename = $template->get('ID') . ' - ' . $template->get('title') . '.' . date('Y-m-d.H-i-s') . '.e2pdf';
+            } else {
+                $filename = date('Y-m-d.H-i-s') . '.e2pdf';
+            }
+            $pages = $template->get('pages');
+            if ($options['images']) {
+                foreach ($pages as $page_key => $page) {
+                    if (isset($page['elements']) && !empty($page['elements'])) {
+                        foreach ($page['elements'] as $element_key => $element) {
+                            if ($element['type'] === 'e2pdf-image') {
+                                $file = false;
+                                if ($this->helper->load('pdf')->get_extension($element['value'])) {
+                                    $file = $this->helper->load('pdf')->get_pdf($element['value']);
+                                } else {
+                                    $file = $this->helper->load('image')->get_image($element['value']);
+                                }
+                                if ($file) {
+                                    $pages[$page_key]['elements'][$element_key]['base64'] = $file;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            /*
+             *  Build Xml
+             */
+            $xml->addChildCData('version', $this->helper->get('version'));
+            $xml->addChildCData('date', date('Y-m-d H:i:s'));
+
+            $options_xml = $xml->addChild('options');
+            foreach ($options as $option_key => $option) {
+                $options_xml->addChildCData($option_key, $option);
+            }
+            $template_xml = $xml->addChild('template');
+            $template_xml->addChildCData('ID', $template->get('ID'));
+            $template_xml->addChildCData('title', $template->get('title'));
+            $template_xml->addChildCData('created_at', $template->get('created_at'));
+            $template_xml->addChildCData('updated_at', $template->get('updated_at'));
+            $template_xml->addChildCData('flatten', $template->get('flatten'));
+            $template_xml->addChildCData('tab_order', $template->get('tab_order'));
+            $template_xml->addChildCData('compression', $template->get('compression'));
+            $template_xml->addChildCData('optimization', $template->get('optimization'));
+            $template_xml->addChildCData('appearance', $template->get('appearance'));
+            $template_xml->addChildCData('width', $template->get('width'));
+            $template_xml->addChildCData('height', $template->get('height'));
+            $template_xml->addChildCData('extension', $template->get('extension'));
+            $template_xml->addChildCData('item', $template->get('item'));
+            $template_xml->addChildCData('item1', $template->get('item1'));
+            $template_xml->addChildCData('item2', $template->get('item2'));
+            $template_xml->addChildCData('format', $template->get('format'));
+            $template_xml->addChildCData('resample', $template->get('resample'));
+            $template_xml->addChildCData(
+                'dataset_title',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('dataset_title'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'dataset_title1',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('dataset_title1'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'dataset_title2',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('dataset_title2'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'button_title',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('button_title'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'dpdf',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('dpdf'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'attachments',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('attachments'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData('inline', $template->get('inline'));
+            $template_xml->addChildCData('auto', $template->get('auto'));
+            $template_xml->addChildCData('rtl', $template->get('rtl'));
+            $template_xml->addChildCData('font_processor', $template->get('font_processor'));
+            $template_xml->addChildCData(
+                'name',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('name'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'savename',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('savename'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'password',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('password'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'owner_password',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('owner_password'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData('permissions', base64_encode(serialize($template->get('permissions'))));
+            $template_xml->addChildCData('access_check', $template->get('access_check'));
+            $template_xml->addChildCData('hooks', $template->get('hooks'));
+            $template_xml->addChildCData(
+                'meta_title',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('meta_title'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'meta_subject',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('meta_subject'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'meta_author',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('meta_author'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData(
+                'meta_keywords',
+                apply_filters('e2pdf_controller_templates_backup_replace_shortcodes', $template->get('meta_keywords'), $options, $template, $template->extension())
+            );
+            $template_xml->addChildCData('lang_code', $template->get('lang_code'));
+            $template_xml->addChildCData('font', $template->get('font'));
+            $template_xml->addChildCData('font_size', $template->get('font_size'));
+            $template_xml->addChildCData('font_color', $template->get('font_color'));
+            $template_xml->addChildCData('line_height', $template->get('line_height'));
+            $template_xml->addChildCData('text_align', $template->get('text_align'));
+            $template_xml->addChildCData('fonts', base64_encode(serialize($template->get('fonts'))));
+            $template_xml->addChildCData(
+                'properties', base64_encode(
+                    serialize(
+                        apply_filters('e2pdf_controller_templates_backup_properties', $template->get('properties'), $options, $template, $template->extension())
+                    )
+                )
+            );
+            $template_xml->addChildCData(
+                'actions', base64_encode(
+                    serialize(
+                        apply_filters('e2pdf_controller_templates_backup_actions', $template->get('actions'), $options, $template, $template->extension())
+                    )
+                )
+            );
+            $template_xml->addChildCData('pages', base64_encode(
+                serialize(
+                    apply_filters('e2pdf_controller_templates_backup_pages', $pages, $options, $template, $template->extension())
+                )
+            )
+            );
+
+            // include pdf
+            if ($template->get('pdf')) {
+                $pdf_xml = $xml->addChild('pdf');
+                $pdf_xml->addChildCData('source', base64_encode(file_get_contents($this->helper->get('pdf_dir') . $template->get('pdf') . '/' . $template->get('pdf') . '.pdf')));
+                $pdf_xml_images = $pdf_xml->addChild('images');
+                foreach ($template->get('pages') as $key => $page) {
+                    $pdf_xml_image = $pdf_xml_images->addChild('image');
+                    $pdf_xml_image->addChildCData('page_id', $page['page_id']);
+                    $pdf_xml_image->addChildCData('source', base64_encode(file_get_contents($this->helper->get('pdf_dir') . $template->get('pdf') . '/images/' . $page['page_id'] . '.png')));
+                }
+            }
+
+            // include fonts
+            if ($options['fonts']) {
+                $fonts_xml = $xml->addChild('fonts');
+                if ($template->get('fonts')) {
+                    $model_e2pdf_font = new Model_E2pdf_Font();
+                    foreach ($template->get('fonts') as $key => $value) {
+                        $font = $fonts_xml->addChild('font');
+                        $font->addChildCData('title', $value);
+                        $font->addChildCData('name', $key);
+                        $font->addChildCData('value', $model_e2pdf_font->get_font($key));
+                    }
+                }
+            }
+
+            // include item
+            if ($options['item']) {
+                if ($template->extension()->method('backup')) {
+                    $item = $xml->addChild('item');
+                    $template->extension()->backup($item);
+                }
+            }
+            return array(
+                'file' => $this->helper->load('xml')->get_xml(),
+                'name' => $filename,
+            );
         } else {
             return array(
                 'error' => __('Something went wrong!', 'e2pdf'),
@@ -2561,13 +2601,13 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
     // load metaboxes
     public function load_metaboxes() {
         add_meta_box(
-                'e2pdf_templates_save', __('Preset', 'e2pdf'), array($this, 'render_metabox'), null, 'side', 'default', array('tpl' => 'e2pdf_templates_save')
+            'e2pdf_templates_save', __('Preset', 'e2pdf'), array($this, 'render_metabox'), null, 'side', 'default', array('tpl' => 'e2pdf_templates_save')
         );
         add_meta_box(
-                'e2pdf_templates_builder', __('PDF Builder', 'e2pdf'), array($this, 'render_metabox'), null, 'side', 'default', array('tpl' => 'e2pdf_templates_builder')
+            'e2pdf_templates_builder', __('PDF Builder', 'e2pdf'), array($this, 'render_metabox'), null, 'side', 'default', array('tpl' => 'e2pdf_templates_builder')
         );
         add_meta_box(
-                'e2pdf_templates_settings', __('Settings', 'e2pdf'), array($this, 'render_metabox'), null, 'side', 'default', array('tpl' => 'e2pdf_templates_settings')
+            'e2pdf_templates_settings', __('Settings', 'e2pdf'), array($this, 'render_metabox'), null, 'side', 'default', array('tpl' => 'e2pdf_templates_settings')
         );
     }
 

@@ -109,6 +109,7 @@ class Helper_E2pdf_License {
             update_option('e2pdf_license', $request['license_key']);
         }
         $this->load();
+        return $request;
     }
 
     // load templates

@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 ?>
 <?php
 $wrapper = '';
-if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($this->get->get('action') === 'edit') && $this->view->template) && get_option('e2pdf_new_edit_layout', '1')) {
+if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($this->get->get('action') === 'edit') && $this->view->template)) {
     $wrapper = 'e2pdf-new-edit-layout';
 }
 ?>
@@ -40,10 +40,18 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                     $this->render('blocks', 'bulk-actions', array(
                         'id' => 'doaction',
                         'name' => 'action',
-                        'options' => array(
-                            'activate' => __('Activate', 'e2pdf'),
-                            'deactivate' => __('Deactivate', 'e2pdf'),
-                            'trash' => __('Trash', 'e2pdf'),
+                        'options' => array_merge(
+                            array(
+                                'activate' => __('Activate', 'e2pdf'),
+                                'deactivate' => __('Deactivate', 'e2pdf'),
+                            ),
+                            current_user_can('manage_options') ? array(
+                                'access_check_enable' => __('Enable Access Check', 'e2pdf'),
+                                'access_check_disable' => __('Disable Access Check', 'e2pdf'),
+                            ) : array(),
+                            array(
+                                'trash' => __('Trash', 'e2pdf'),
+                            )
                         )
                     ));
                 }
@@ -114,7 +122,7 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                                 </th>
                                 <td class="id column-id" data-colname="ID"><?php echo (int) $template->get('ID'); ?></td>
                                 <td class="title column-title has-row-actions column-primary page-title" data-colname="Title"><div class="locked-info"><span class="locked-avatar"></span><span class="locked-text"></span></div>
-                                    <strong><a class="row-title" href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'edit', 'id' => $template->get('ID')))); ?>"><?php echo esc_html($template->get('title')); ?></a></strong>
+                                    <strong><?php if (!$template->get('access_check')) { ?><span class="dashicons dashicons-warning e2pdf-access-check-warning" title="<?php esc_attr_e('Access Check is disabled', 'e2pdf'); ?>"></span><?php } ?><a class="row-title" href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'edit', 'id' => $template->get('ID')))); ?>"><?php echo esc_html($template->get('title')); ?></a></strong>
                                     <div class="row-actions">
                                         <?php if ($this->get->get('status') == 'trash') { ?>
                                             <span class="restore"><a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'restore', 'id' => $template->get('ID'), '_wpnonce' => wp_create_nonce('e2pdf_templates'), 'status' => $this->get->get('status'), 's' => $this->get->get('s'), 'orderby' => $this->get->get('orderby'), 'order' => $this->get->get('order')))); ?>" rel="permalink"><?php _e('Restore', 'e2pdf'); ?></a>  | </span>
@@ -176,23 +184,13 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                                 </td>
                                 <td class="shortcode column-shortcode" data-colname="Shortcode">
                                     <div class="e2pdf-rel e2pdf-closed">
-                                        <a href="javascript:void(0);" class="e2pdf-link e2pdf-hidden-dropdown button e2pdf-w100 e2pdf-center"><?php _e('Shortcodes', 'e2pdf') ?> <span class="toggle-indicator" aria-hidden="true"></span></a>
+                                        <a href="javascript:void(0);" class="e2pdf-link e2pdf-hidden-dropdown button e2pdf-w100"><?php _e('Shortcodes', 'e2pdf') ?> <span class="toggle-indicator" aria-hidden="true"></span></a>
                                         <div class="e2pdf-hidden-dropdown-content">
-                                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-attachment id="<?php echo (int) $template->get('ID'); ?>"]'>
-                                            </div>
-                                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-download id="<?php echo (int) $template->get('ID'); ?>"]'>
-                                            </div>
-                                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-save id="<?php echo (int) $template->get('ID'); ?>"]'>
-                                            </div>
-                                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-view id="<?php echo (int) $template->get('ID'); ?>"]'>
-                                            </div>
-                                            <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
-                                                <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-zapier id="<?php echo (int) $template->get('ID'); ?>"]'>
-                                            </div>
+                                            <?php foreach (['download', 'attachment', 'save', 'view', 'zapier'] as $shortcode) { ?>
+                                                <div class="misc-pub-section  misc-pub-e2pdf-shortcode">
+                                                    <input placeholder="<?php _e('Shortcode', 'e2pdf') ?>" class="e2pdf-center e2pdf-copy-field e2pdf-w100" type="text" readonly="readonly" value='[e2pdf-<?php echo esc_attr($shortcode); ?> id="<?php echo (int) $template->get('ID'); ?>"]'>
+                                                </div>
+                                            <?php } ?>
                                         </div>
                                     </div>
                                 </td>
@@ -273,10 +271,18 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                     $this->render('blocks', 'bulk-actions', array(
                         'id' => 'doaction2',
                         'name' => 'action2',
-                        'options' => array(
-                            'activate' => __('Activate', 'e2pdf'),
-                            'deactivate' => __('Deactivate', 'e2pdf'),
-                            'trash' => __('Trash', 'e2pdf'),
+                        'options' => array_merge(
+                            array(
+                                'activate' => __('Activate', 'e2pdf'),
+                                'deactivate' => __('Deactivate', 'e2pdf'),
+                            ),
+                            current_user_can('manage_options') ? array(
+                                'access_check_enable' => __('Enable Access Check', 'e2pdf'),
+                                'access_check_disable' => __('Disable Access Check', 'e2pdf'),
+                            ) : array(),
+                            array(
+                                'trash' => __('Trash', 'e2pdf'),
+                            )
                         )
                     ));
                 }
@@ -294,17 +300,6 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
         <?php $this->render('blocks', 'debug-panel'); ?>
     <?php } elseif ($this->get->get('action')) { ?>
         <?php if ($this->get->get('action') === 'create' || ($this->get->get('action') === 'edit' && $this->view->template)) { ?>
-            <?php if (!get_option('e2pdf_new_edit_layout', '1')) { ?>
-                <div id="e2pdf-form-editor-header" class="e2pdf-form-editor-header">
-                    <h1><?php echo $this->get->get('action') === 'edit' ? esc_html(sprintf(__("ID: %d | Edit Template", 'e2pdf'), (int) $this->view->template->get('ID'))) : __('New Template', 'e2pdf'); ?>
-                        <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'create'))); ?>" class="page-title-action">
-                            <?php _e('Add New', 'e2pdf') ?>
-                        </a>
-                    </h1>
-                    <hr class="wp-header-end">
-                    <?php $this->render('blocks', 'notifications'); ?>
-                </div>
-            <?php } ?>
             <div id="poststuff">
                 <form method="post" id="e2pdf-build-form">
                     <div id="post-body" class="metabox-holder columns-2">
@@ -325,17 +320,20 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                                     <input type="hidden" name="hooks" value="<?php echo esc_attr($this->view->template->get('hooks')); ?>">
                                 <?php } ?>
                                 <div id="e2pdf-build-form-wrapper" class="e2pdf-build-form-wrapper">
-                                    <?php if (get_option('e2pdf_new_edit_layout', '1')) { ?>
-                                        <div id="e2pdf-form-editor-header" class="e2pdf-form-editor-header">
-                                            <h1><?php echo $this->get->get('action') === 'edit' ? esc_html(sprintf(__("ID: %d | Edit Template", 'e2pdf'), (int) $this->view->template->get('ID'))) : __('New Template', 'e2pdf'); ?>
-                                                <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'create'))); ?>" class="page-title-action">
-                                                    <?php _e('Add New', 'e2pdf') ?>
-                                                </a>
-                                            </h1>
-                                            <hr class="wp-header-end">
-                                            <?php $this->render('blocks', 'notifications'); ?>
-                                        </div>
-                                    <?php } ?>
+                                    <div id="e2pdf-form-editor-header" class="e2pdf-form-editor-header">
+                                        <h1><?php echo $this->get->get('action') === 'edit' ? esc_html(sprintf(__("ID: %d | Edit Template", 'e2pdf'), (int) $this->view->template->get('ID'))) : __('New Template', 'e2pdf'); ?>
+                                            <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'create'))); ?>" class="page-title-action">
+                                                <?php _e('Add New', 'e2pdf') ?>
+                                            </a>
+                                        </h1>
+                                        <hr class="wp-header-end">
+                                        <?php $this->render('blocks', 'notifications'); ?>
+                                        <?php if ($this->view->template->get('ID') && !$this->view->template->get('access_check') && get_option('e2pdf_access_check', '0')) { ?>
+                                            <div class="e2pdf-notice notice notice-warning">
+                                                <p><?php printf(__(' <strong>Important:</strong> Template Access Check is disabled: <a href="%s" target="_blank">Read More »</a>', 'e2pdf'), esc_url('https://e2pdf.com/docs/shortcodes/access-check')); ?></p>
+                                            </div>
+                                        <?php } ?>
+                                    </div>
                                     <div id="e2pdf-form-editor-container" class="e2pdf-form-editor-container">
                                         <div id="titlediv">
                                             <?php

@@ -130,227 +130,288 @@ class Controller_E2pdf extends Helper_E2pdf_View {
             $disposition = 'attachment';
         }
 
-        $atts = array(
+        $data = array(
+            'template_id' => $template_id,
+            'dataset' => $dataset,
+            'dataset2' => $dataset2,
+            'wc_order_id' => $wc_order_id,
+            'wc_product_item_id' => $wc_product_item_id,
             'user_id' => 0,
             'inline' => $disposition == 'inline' ? '1' : '0',
+            'args' => array(),
         );
 
-        $args = array();
         if ($this->post->get('options')) {
             foreach ($this->post->get('options') as $key => $value) {
                 if ($key == 'args') {
                     if (is_array($value)) {
                         foreach ($value as $sub_key => $sub_value) {
                             if ($sub_value !== '') {
-                                $args['arg' . ($sub_key + 1)] = stripslashes($sub_value);
+                                $data['args']['arg' . ($sub_key + 1)] = stripslashes($sub_value);
                             }
                         }
                     }
                 } else {
-                    $atts[$key] = stripslashes($value);
+                    $data[$key] = stripslashes($value);
                 }
             }
         }
 
         if ($template_id && ($dataset || $dataset2)) {
-
-            $template = new Model_E2pdf_Template();
-            if ($template->load($template_id)) {
-
-                $entry = new Model_E2pdf_Entry();
-                $entry->set_data('template_id', $template_id);
-                $template->extension()->set('template_id', $template_id);
-
-                if ($dataset) {
-                    $entry->set_data('dataset', $dataset);
-                    $template->extension()->set('dataset', $dataset);
-                }
-
-                if ($dataset2) {
-                    $entry->set_data('dataset2', $dataset2);
-                    $template->extension()->set('dataset2', $dataset2);
-                }
-
-                if ($wc_order_id) {
-                    $entry->set_data('wc_order_id', $wc_order_id);
-                    $template->extension()->set('wc_order_id', $wc_order_id);
-                }
-
-                if ($wc_product_item_id) {
-                    $entry->set_data('wc_product_item_id', $wc_product_item_id);
-                    $template->extension()->set('wc_product_item_id', $wc_product_item_id);
-                }
-
-                if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
-                } else {
-                    if (array_key_exists('user_id', $atts)) {
-                        $user_id = (int) $atts['user_id'];
-                        $entry->set_data('user_id', $user_id);
-                        $template->extension()->set('user_id', $user_id);
-                    } else {
-                        $user_id = get_current_user_id();
-                        $entry->set_data('user_id', $user_id);
-                        $template->extension()->set('user_id', $user_id);
-                    }
-                }
-
-                if (!empty($args)) {
-                    $entry->set_data('args', $args);
-                    $template->extension()->set('args', $args);
-                }
-
-                if ($template->extension()->get_storing_engine() !== false) {
-                    $entry->set_data('storing_engine', $template->extension()->get_storing_engine());
-                    $template->extension()->set('storing_engine', $template->extension()->get_storing_engine());
-                }
-
-                if ($template->extension()->verify()) {
-                    add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
-                    if (array_key_exists('inline', $atts)) {
-                        $inline = $atts['inline'];
-                        if ($template->get('inline') !== $inline) {
-                            $entry->set_data('inline', $inline);
-                        }
-                    }
-
-                    if (array_key_exists('flatten', $atts)) {
-                        $flatten = $atts['flatten'];
-                        if ($template->get('flatten') !== $flatten) {
-                            $entry->set_data('flatten', $flatten);
-                            $template->set('flatten', $flatten);
-                        }
-                    }
-
-                    if (array_key_exists('format', $atts)) {
-                        $format = $atts['format'];
-                        if ($template->get('format') !== $format) {
-                            if ($template->set('format', $format)) {
-                                $entry->set_data('format', $format);
-                            }
-                        }
-                    }
-
-                    if (array_key_exists('name', $atts) && $template->get('name') !== $atts['name']) {
-                        if (!array_key_exists('filter', $atts)) {
-                            $name = $template->extension()->render($atts['name']);
-                        } else {
-                            $name = $template->extension()->convert_shortcodes($atts['name'], true);
-                        }
-                        $entry->set_data('name', $name);
-                        $template->set('name', $name);
-                    } else {
-                        $template->set('name', $template->extension()->render($template->get('name')));
-                    }
-
-                    if (array_key_exists('savename', $atts) && $template->get('savename') !== $atts['savename']) {
-                        if (!array_key_exists('filter', $atts)) {
-                            $savename = $template->extension()->render($atts['savename']);
-                        } else {
-                            $savename = $template->extension()->convert_shortcodes($atts['savename'], true);
-                        }
-                        $entry->set_data('savename', $name);
-                        $template->set('savename', $name);
-                    } else {
-                        $template->set('savename', $template->extension()->render($template->get('savename')));
-                    }
-
-                    if (array_key_exists('password', $atts) && $template->get('password') !== $atts['password']) {
-                        if (!array_key_exists('filter', $atts)) {
-                            $password = $template->extension()->render($atts['password']);
-                        } else {
-                            $password = $template->extension()->convert_shortcodes($atts['password'], true);
-                        }
-                        $entry->set_data('password', $password);
-                        $template->set('password', $password);
-                    } else {
-                        $template->set('password', $template->extension()->render($template->get('password')));
-                    }
-
-                    if (array_key_exists('dpdf', $atts)) {
-                        if (!array_key_exists('filter', $atts)) {
-                            $dpdf = $template->extension()->render($atts['dpdf']);
-                        } else {
-                            $dpdf = $template->extension()->convert_shortcodes($atts['dpdf'], true);
-                        }
-                        $entry->set_data('dpdf', $dpdf);
-                        $template->set('dpdf', $dpdf);
-                    } else {
-                        $template->set('dpdf', $template->extension()->render($template->get('dpdf')));
-                    }
-
-                    if (array_key_exists('meta_title', $atts)) {
-                        if (!array_key_exists('filter', $atts)) {
-                            $meta_title = $template->extension()->render($atts['meta_title']);
-                        } else {
-                            $meta_title = $template->extension()->convert_shortcodes($atts['meta_title'], true);
-                        }
-                        $entry->set_data('meta_title', $meta_title);
-                        $template->set('meta_title', $meta_title);
-                    } else {
-                        $template->set('meta_title', $template->extension()->render($template->get('meta_title')));
-                    }
-
-                    if (array_key_exists('meta_subject', $atts)) {
-                        if (!array_key_exists('filter', $atts)) {
-                            $meta_subject = $template->extension()->render($atts['meta_subject']);
-                        } else {
-                            $meta_subject = $template->extension()->convert_shortcodes($atts['meta_subject'], true);
-                        }
-                        $entry->set_data('meta_subject', $meta_subject);
-                        $template->set('meta_subject', $meta_subject);
-                    } else {
-                        $template->set('meta_subject', $template->extension()->render($template->get('meta_subject')));
-                    }
-
-                    if (array_key_exists('meta_author', $atts)) {
-                        if (!array_key_exists('filter', $atts)) {
-                            $meta_author = $template->extension()->render($atts['meta_author']);
-                        } else {
-                            $meta_author = $template->extension()->convert_shortcodes($atts['meta_author'], true);
-                        }
-                        $entry->set_data('meta_author', $meta_author);
-                        $template->set('meta_author', $meta_author);
-                    } else {
-                        $template->set('meta_author', $template->extension()->render($template->get('meta_author')));
-                    }
-
-                    if (array_key_exists('meta_keywords', $atts)) {
-                        if (!array_key_exists('filter', $atts)) {
-                            $meta_keywords = $template->extension()->render($atts['meta_keywords']);
-                        } else {
-                            $meta_keywords = $template->extension()->convert_shortcodes($atts['meta_keywords'], true);
-                        }
-                        $entry->set_data('meta_keywords', $meta_keywords);
-                        $template->set('meta_keywords', $meta_keywords);
-                    } else {
-                        $template->set('meta_keywords', $template->extension()->render($template->get('meta_keywords')));
-                    }
-
-                    $template->extension()->set('entry', $entry);
-                    $template->fill();
-                    $request = $template->render();
-
-                    if (isset($request['error'])) {
-                        $this->add_notification('error', $request['error']);
-                        $this->render('blocks', 'notifications');
-                        $this->index_action();
-                    } else {
-                        do_action('e2pdf_controller_e2pdf_export_completed', $request['file'], $template);
-                        $this->download_response($template->get('format'), $request['file'], $template->get_name(), $disposition, false, true);
-                        exit;
-                    }
-                    remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
-                } else {
-                    $this->add_notification('error', __('Incorrect Dataset', 'e2pdf'));
-                    $this->render('blocks', 'notifications');
-                }
-            } else {
-                $this->add_notification('error', __("Template can't be loaded", 'e2pdf'));
+            $request = $this->create_pdf($data);
+            if (isset($request['error'])) {
+                $this->add_notification('error', $request['error']);
                 $this->render('blocks', 'notifications');
+                $this->index_action();
+            } else {
+                $this->download_response($request['format'], $request['file'], $request['name'], $disposition, false, true);
+                exit;
             }
         } else {
             $this->handle_404();
         }
+    }
+
+    /**
+     * create pdf, used by export_action and MCP
+     * $template - not saved template (template editor preview)
+     */
+    public function create_pdf($data = array(), $template = null) {
+
+        $template_id = isset($data['template_id']) && $data['template_id'] ? (int) $data['template_id'] : 0;
+        if (!$template_id && isset($data['id']) && $data['id']) {
+            $template_id = (int) $data['id'];
+        }
+        $dataset = isset($data['dataset']) && $data['dataset'] ? $data['dataset'] : false;
+        $dataset2 = isset($data['dataset2']) && $data['dataset2'] ? $data['dataset2'] : false;
+        $wc_order_id = isset($data['wc_order_id']) && $data['wc_order_id'] ? $data['wc_order_id'] : false;
+        $wc_product_item_id = isset($data['wc_product_item_id']) && $data['wc_product_item_id'] ? $data['wc_product_item_id'] : false;
+
+        $atts = array(
+            'user_id' => 0,
+            'inline' => '1',
+        );
+        foreach ($data as $key => $value) {
+            if (!in_array($key, array('template_id', 'id', 'dataset', 'dataset2', 'wc_order_id', 'wc_product_item_id', 'args'), true)) {
+                $atts[$key] = $value;
+            }
+        }
+
+        $args = array();
+        if (!empty($data['args']) && is_array($data['args'])) {
+            $args = $data['args'];
+        }
+
+        if (!$template_id || (!$dataset && !$dataset2)) {
+            return array(
+                'error' => __('Incorrect Dataset', 'e2pdf'),
+                'error_code' => 'incorrect_dataset',
+            );
+        }
+
+        if (!$template) {
+            $template = new Model_E2pdf_Template();
+            if (!$template->load($template_id)) {
+                return array(
+                    'error' => __("Template can't be loaded", 'e2pdf'),
+                    'error_code' => 'template_not_found',
+                );
+            }
+        }
+
+        $entry = new Model_E2pdf_Entry();
+        $entry->set_data('template_id', $template_id);
+        $template->extension()->set('template_id', $template_id);
+
+        if ($dataset) {
+            $entry->set_data('dataset', $dataset);
+            $template->extension()->set('dataset', $dataset);
+        }
+
+        if ($dataset2) {
+            $entry->set_data('dataset2', $dataset2);
+            $template->extension()->set('dataset2', $dataset2);
+        }
+
+        if ($wc_order_id) {
+            $entry->set_data('wc_order_id', $wc_order_id);
+            $template->extension()->set('wc_order_id', $wc_order_id);
+        }
+
+        if ($wc_product_item_id) {
+            $entry->set_data('wc_product_item_id', $wc_product_item_id);
+            $template->extension()->set('wc_product_item_id', $wc_product_item_id);
+        }
+
+        if ($template->get('extension') == 'wordpress' && $template->get('item') == '-3') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+        } else {
+            if (array_key_exists('user_id', $atts)) {
+                $user_id = (int) $atts['user_id'];
+                $entry->set_data('user_id', $user_id);
+                $template->extension()->set('user_id', $user_id);
+            } else {
+                $user_id = get_current_user_id();
+                $entry->set_data('user_id', $user_id);
+                $template->extension()->set('user_id', $user_id);
+            }
+        }
+
+        if (!empty($args)) {
+            $entry->set_data('args', $args);
+            $template->extension()->set('args', $args);
+        }
+
+        if ($template->extension()->get_storing_engine() !== false) {
+            $entry->set_data('storing_engine', $template->extension()->get_storing_engine());
+            $template->extension()->set('storing_engine', $template->extension()->get_storing_engine());
+        }
+
+        if (!$template->extension()->verify()) {
+            return array(
+                'error' => __('Incorrect Dataset', 'e2pdf'),
+                'error_code' => 'incorrect_dataset',
+            );
+        }
+
+        add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
+        if (array_key_exists('inline', $atts)) {
+            $inline = $atts['inline'];
+            if ($template->get('inline') !== $inline) {
+                $entry->set_data('inline', $inline);
+            }
+        }
+
+        if (array_key_exists('flatten', $atts)) {
+            $flatten = $atts['flatten'];
+            if ($template->get('flatten') !== $flatten) {
+                $entry->set_data('flatten', $flatten);
+                $template->set('flatten', $flatten);
+            }
+        }
+
+        if (array_key_exists('format', $atts)) {
+            $format = $atts['format'];
+            if ($template->get('format') !== $format) {
+                if ($template->set('format', $format)) {
+                    $entry->set_data('format', $format);
+                }
+            }
+        }
+
+        if (array_key_exists('name', $atts) && $template->get('name') !== $atts['name']) {
+            if (!array_key_exists('filter', $atts)) {
+                $name = $template->extension()->render($atts['name']);
+            } else {
+                $name = $template->extension()->convert_shortcodes($atts['name'], true);
+            }
+            $entry->set_data('name', $name);
+            $template->set('name', $name);
+        } else {
+            // keep $name defined for the savename mapping below
+            $name = $template->extension()->render($template->get('name'));
+            $template->set('name', $name);
+        }
+
+        if (array_key_exists('savename', $atts) && $template->get('savename') !== $atts['savename']) {
+            if (!array_key_exists('filter', $atts)) {
+                $savename = $template->extension()->render($atts['savename']);
+            } else {
+                $savename = $template->extension()->convert_shortcodes($atts['savename'], true);
+            }
+            $entry->set_data('savename', $name);
+            $template->set('savename', $name);
+        } else {
+            $template->set('savename', $template->extension()->render($template->get('savename')));
+        }
+
+        if (array_key_exists('password', $atts) && $template->get('password') !== $atts['password']) {
+            if (!array_key_exists('filter', $atts)) {
+                $password = $template->extension()->render($atts['password']);
+            } else {
+                $password = $template->extension()->convert_shortcodes($atts['password'], true);
+            }
+            $entry->set_data('password', $password);
+            $template->set('password', $password);
+        } else {
+            $template->set('password', $template->extension()->render($template->get('password')));
+        }
+
+        if (array_key_exists('dpdf', $atts)) {
+            if (!array_key_exists('filter', $atts)) {
+                $dpdf = $template->extension()->render($atts['dpdf']);
+            } else {
+                $dpdf = $template->extension()->convert_shortcodes($atts['dpdf'], true);
+            }
+            $entry->set_data('dpdf', $dpdf);
+            $template->set('dpdf', $dpdf);
+        } else {
+            $template->set('dpdf', $template->extension()->render($template->get('dpdf')));
+        }
+
+        if (array_key_exists('meta_title', $atts)) {
+            if (!array_key_exists('filter', $atts)) {
+                $meta_title = $template->extension()->render($atts['meta_title']);
+            } else {
+                $meta_title = $template->extension()->convert_shortcodes($atts['meta_title'], true);
+            }
+            $entry->set_data('meta_title', $meta_title);
+            $template->set('meta_title', $meta_title);
+        } else {
+            $template->set('meta_title', $template->extension()->render($template->get('meta_title')));
+        }
+
+        if (array_key_exists('meta_subject', $atts)) {
+            if (!array_key_exists('filter', $atts)) {
+                $meta_subject = $template->extension()->render($atts['meta_subject']);
+            } else {
+                $meta_subject = $template->extension()->convert_shortcodes($atts['meta_subject'], true);
+            }
+            $entry->set_data('meta_subject', $meta_subject);
+            $template->set('meta_subject', $meta_subject);
+        } else {
+            $template->set('meta_subject', $template->extension()->render($template->get('meta_subject')));
+        }
+
+        if (array_key_exists('meta_author', $atts)) {
+            if (!array_key_exists('filter', $atts)) {
+                $meta_author = $template->extension()->render($atts['meta_author']);
+            } else {
+                $meta_author = $template->extension()->convert_shortcodes($atts['meta_author'], true);
+            }
+            $entry->set_data('meta_author', $meta_author);
+            $template->set('meta_author', $meta_author);
+        } else {
+            $template->set('meta_author', $template->extension()->render($template->get('meta_author')));
+        }
+
+        if (array_key_exists('meta_keywords', $atts)) {
+            if (!array_key_exists('filter', $atts)) {
+                $meta_keywords = $template->extension()->render($atts['meta_keywords']);
+            } else {
+                $meta_keywords = $template->extension()->convert_shortcodes($atts['meta_keywords'], true);
+            }
+            $entry->set_data('meta_keywords', $meta_keywords);
+            $template->set('meta_keywords', $meta_keywords);
+        } else {
+            $template->set('meta_keywords', $template->extension()->render($template->get('meta_keywords')));
+        }
+
+        $template->extension()->set('entry', $entry);
+        // export: no shortcode access check
+        add_filter('e2pdf_shortcode_access', '__return_true', 999);
+        $template->fill();
+        $request = $template->render();
+        remove_filter('e2pdf_shortcode_access', '__return_true', 999);
+
+        remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
+
+        if (!isset($request['error'])) {
+            do_action('e2pdf_controller_e2pdf_export_completed', $request['file'], $template);
+            $request['name'] = $template->get_name();
+            $request['format'] = $template->get('format');
+        }
+
+        return $request;
     }
 
     public function get_bulks_list($filters = array(), $count = false) {
@@ -505,7 +566,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
      * @return json - Templates list
      */
     public function ajax_templates() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf') && (current_user_can('manage_options') || current_user_can('e2pdf'))) {
 
             $wpml = $this->helper->load('translator')->isWPML();
             if ($wpml) {
@@ -579,7 +640,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
     }
 
     public function ajax_datasets_refresh() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf') && (current_user_can('manage_options') || current_user_can('e2pdf'))) {
             $data = $this->post->get('data');
             $template_id = (int) $data['id'];
             $name = $data['name'];
@@ -617,7 +678,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
      * @return json - Entries list
      */
     public function ajax_dataset() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf') && (current_user_can('manage_options') || current_user_can('e2pdf'))) {
             $data = $this->post->get('data');
             $template_id = (int) $data['id'];
             $datasets = isset($data['datasets']) ? $data['datasets'] : array();
@@ -661,7 +722,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
 
     public function ajax_delete_item() {
 
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf') && (current_user_can('manage_options') || current_user_can('e2pdf'))) {
 
             $data = $this->post->get('data');
 
@@ -695,7 +756,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
     }
 
     public function ajax_delete_items() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf') && (current_user_can('manage_options') || current_user_can('e2pdf'))) {
 
             $data = $this->post->get('data');
             $template_id = (int) $data['template'];
@@ -727,7 +788,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
     }
 
     public function ajax_bulk_create() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf') && (current_user_can('manage_options') || current_user_can('e2pdf'))) {
             $this->helper->load('license')->load();
             if ($this->helper->get('license')->get('type') === false) {
                 $response = array(
@@ -788,7 +849,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
     }
 
     public function ajax_bulk_action() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf') && (current_user_can('manage_options') || current_user_can('e2pdf'))) {
             $data = $this->post->get('data');
             $bulk_id = (int) $data['bulk'];
             $action = isset($data['action']) && in_array($data['action'], array('delete', 'start', 'stop')) ? $data['action'] : false;
@@ -824,7 +885,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
     }
 
     public function ajax_bulk_progress() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf') && (current_user_can('manage_options') || current_user_can('e2pdf'))) {
             $data = $this->post->get('data');
             $bulks = isset($data['bulks']) && is_array($data['bulks']) ? $data['bulks'] : array();
             $progress = array();
@@ -900,7 +961,10 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                             }
                         }
                         add_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
+                        // bulk export: no shortcode access check
+                        add_filter('e2pdf_shortcode_access', '__return_true', 999);
                         $model_e2pdf_shortcode->e2pdf_save($atts);
+                        remove_filter('e2pdf_shortcode_access', '__return_true', 999);
                         remove_filter('acf/shortcode/prevent_access_to_fields_on_non_public_posts', [$this->helper, '__return_false'], 999);
                     }
                 }
@@ -934,7 +998,7 @@ class Controller_E2pdf extends Helper_E2pdf_View {
                 $zip->close();
                 do_action('e2pdf_controller_e2pdf_bulk_export_completed_zip', $zip_path, $model_e2pdf_bulk);
             }
-            $this->helper->delete_dir($pdf_dir);
+            $this->helper->delete_bulk_dir($model_e2pdf_bulk->get('uid'));
             $model_e2pdf_bulk->set('status', 'completed');
         } else {
             if ($model_e2pdf_bulk->get_active_status() == 'stop') {

@@ -83,7 +83,7 @@ class Model_E2pdf_AdobeSign extends Model_E2pdf_Model {
                                     'page' => 'e2pdf-settings',
                                     'action' => 'adobesign',
                                 )
-                        ),
+                        )
                 ),
                 'scope' => implode('+', $scopes),
             );

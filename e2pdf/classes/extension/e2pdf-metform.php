@@ -149,8 +149,61 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
         add_action('add_meta_boxes', array($this, 'hook_metform_entry_view'));
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (MetForm): [mf-field-name] (e.g. [mf-text]). Multiple files / images: [e2pdf-format-output explode="," output="{0}"][mf-file-upload][/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Repeater: single value [mf-repeater-name-input-name-1] (1 = first row); loop: [e2pdf-for][e2pdf-for-data][mf-repeater-name][/e2pdf-for-data][e2pdf-for-do][mf-repeater-name-input-name-[e2pdf-for-key]][/e2pdf-for-do][/e2pdf-for].',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Form settings: success message (the form needs "Store Entries" enabled)',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Form settings: confirmation / notification email',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
+    // submitted values can't add e2pdf shortcodes to emails and confirmation messages
+    public function filter_rest_request_before_callbacks($response, $handler, $request) {
+        if (0 === strpos($request->get_route(), '/metform/v1/entries/insert/')) {
+            foreach ($request->get_params() as $key => $value) {
+                if (is_array($value)) {
+                    array_walk_recursive($value, function (&$item) {
+                        if (is_string($item)) {
+                            $item = str_replace('[e2pdf-', '&#91;e2pdf-', $item);
+                        }
+                    });
+                } elseif (is_string($value)) {
+                    $value = str_replace('[e2pdf-', '&#91;e2pdf-', $value);
+                }
+                $request->set_param($key, $value);
+            }
+        }
+        return $response;
+    }
+
+    // removes the mail filter when all form mails are sent
+    public function filter_rest_request_after_callbacks($response, $handler, $request) {
+        if (0 === strpos($request->get_route(), '/metform/v1/entries/insert/')) {
+            remove_filter('wp_mail', array($this, 'filter_wp_mail'), 11);
+        }
+        return $response;
+    }
+
     // load filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
+        add_filter('rest_request_before_callbacks', array($this, 'filter_rest_request_before_callbacks'), 10, 3);
+        add_filter('rest_request_after_callbacks', array($this, 'filter_rest_request_after_callbacks'), 10, 3);
         add_filter('post_row_actions', array($this, 'hook_metform_row_actions'), 10, 2);
         add_filter('manage_metform-entry_posts_columns', array($this, 'hook_metform_entry_row_column'), 11);
 
@@ -312,6 +365,20 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
             return true;
         }
         return false;
+    }
+
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry_id = (int) $atts['dataset'];
+            if ($entry_id) {
+                $author = $this->get('cached_entry') && (int) $this->get('dataset') === $entry_id ? get_post_field('post_author', $entry_id) : '';
+                if (user_can($user_id, 'edit_post', $entry_id) || (!empty($author) && (int) $author === $user_id)) {
+                    unset($atts['dataset']);
+                }
+            }
+        }
+        return $atts;
     }
 
     // visual mapper
@@ -993,7 +1060,8 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
     // is repeater
     public function is_repeater($value) {
         if (is_array($value)) {
-            $key = array_key_first($value);
+            reset($value);
+            $key = key($value);
             if (false !== strpos($key, 'repeater-')) {
                 return true;
             }
@@ -1014,21 +1082,26 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
             $reflection = new ReflectionProperty(get_class($submission), 'form_settings');
             $reflection->setAccessible(true);
             $form_settings = $reflection->getValue($submission);
-            $form_settings['success_message'] = $this->filter_message($form_settings['success_message'], $dataset);
+
+            $form_id_reflection = new ReflectionProperty(get_class($submission), 'form_id');
+            $form_id_reflection->setAccessible(true);
+            $form_id = $form_id_reflection->getValue($submission);
+
+            $form_settings['success_message'] = $this->filter_message($form_settings['success_message'], $dataset, 'message', $form_id);
 
             if (isset($form_settings['enable_user_notification']) && $form_settings['enable_user_notification'] == 1) {
-                $form_settings['user_email_body'] = $this->filter_message($form_settings['user_email_body'], $dataset, 'mail');
+                $form_settings['user_email_body'] = $this->filter_message($form_settings['user_email_body'], $dataset, 'mail', $form_id);
             }
 
             if (isset($form_settings['enable_admin_notification']) && $form_settings['enable_admin_notification'] == 1) {
-                $form_settings['admin_email_body'] = $this->filter_message($form_settings['admin_email_body'], $dataset, 'mail');
+                $form_settings['admin_email_body'] = $this->filter_message($form_settings['admin_email_body'], $dataset, 'mail', $form_id);
             }
             $reflection->setValue($submission, $form_settings);
         }
     }
 
     // filter message
-    public function filter_message($message = '', $dataset = '', $type = 'message') {
+    public function filter_message($message = '', $dataset = '', $type = 'message', $form_id = 0) {
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-download',
@@ -1045,28 +1118,29 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    $hash_data = [];
+                    if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'metform') {
-                            $atts['dataset'] = $dataset;
-                            $shortcode[3] .= ' dataset="' . $dataset . '"';
+                        if ($template->get('extension') === 'metform' && $template->get('item') == $form_id) {
+                            $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                            $hash_data[] = 'dataset';
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true']);
                     if (!isset($atts['iframe_download']) && $type == 'message') {
                         $shortcode[3] .= ' iframe_download="true"';
                     }
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         if ($type == 'mail') {
                             add_filter('wp_mail', array($this, 'filter_wp_mail'), 11);
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, ($type === 'mail' ? 'metform_mail' : 'metform_success_message'), $atts)]);
                             $message = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $message);
                         } else {
                             $message = str_replace($shortcode_value, '', $message);
                         }
                     } else {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, ($type === 'mail' ? 'metform_mail' : 'metform_success_message'), $atts)]);
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                     }
                 }
@@ -1091,21 +1165,17 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
                     $atts = shortcode_parse_atts($shortcode[3]);
                     $file = false;
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
-                            $tmp = false;
-                            if (substr($file, 0, 4) === 'tmp:') {
-                                $file = substr($file, 4);
-                                $tmp = true;
-                            }
-                            if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            $tmp = substr($file, 0, 4) === 'tmp:';
+                            $file = $tmp ? substr($file, 4) : $file;
+                            if (is_file($file)) {
                                 if ($tmp) {
                                     $this->helper->add('metform_attachments', $file);
                                 }
-                            } else {
-                                $this->helper->add('metform_attachments', $file);
+                                $args['attachments'][] = $file;
                             }
-                            $args['attachments'][] = $file;
                         }
                         $args['message'] = str_replace($shortcode_value, '', $args['message']);
                     }
@@ -1129,12 +1199,17 @@ class Extension_E2pdf_Metform extends Model_E2pdf_Model {
 
     // after mail sent
     public function after_mail_sent() {
-        remove_filter('wp_mail', array($this, 'filter_wp_mail'), 30);
         $files = $this->helper->get('metform_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('metform_attachments');

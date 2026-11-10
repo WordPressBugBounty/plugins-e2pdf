@@ -148,6 +148,7 @@ class Helper_E2pdf_Db {
         `password` text NOT NULL,
         `owner_password` text NOT NULL,
         `permissions` longtext NOT NULL,
+        `access_check` enum('0','1') NOT NULL DEFAULT '0',
         `hooks` longtext NOT NULL,
         `meta_title` text NOT NULL,
         `meta_subject` text NOT NULL,
@@ -258,6 +259,10 @@ class Helper_E2pdf_Db {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `permissions` longtext NOT NULL AFTER owner_password;");
         }
 
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'access_check';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_templates` ADD COLUMN `access_check` enum('0','1') NOT NULL DEFAULT '0' AFTER permissions;");
+        }
+
         $wpdb->query("UPDATE `" . $db_prefix . "e2pdf_templates` SET permissions = 'a:1:{i:0;s:8:\"printing\";}' WHERE permissions = ''");
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_templates` LIKE 'hooks';")) {
@@ -285,11 +290,17 @@ class Helper_E2pdf_Db {
         `uid` varchar(255) NOT NULL,
         `entry` longtext,
         `pdf_num` int(11) NOT NULL DEFAULT '0',
+        `created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
             PRIMARY KEY (`ID`)
         ) " . $collate . "");
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_entries` LIKE 'pdf_num';")) {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_entries` ADD COLUMN `pdf_num` int(11) NOT NULL DEFAULT '0';");
+        }
+
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_entries` LIKE 'created_at';")) {
+            $wpdb->query($wpdb->prepare("ALTER TABLE `" . $db_prefix . "e2pdf_entries` ADD COLUMN `created_at` datetime NOT NULL DEFAULT %s;", current_time('mysql', 1)));
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_entries` ALTER COLUMN `created_at` SET DEFAULT '0000-00-00 00:00:00';");
         }
 
         $index = $wpdb->get_row("SHOW INDEX FROM `" . $db_prefix . "e2pdf_entries` WHERE key_name = 'uid';");
@@ -445,6 +456,7 @@ class Helper_E2pdf_Db {
         `password` text NOT NULL,
         `owner_password` text NOT NULL,
         `permissions` longtext NOT NULL,
+        `access_check` enum('0','1') NOT NULL DEFAULT '0',
         `hooks` longtext NOT NULL,
         `meta_title` text NOT NULL,
         `meta_subject` text NOT NULL,
@@ -542,6 +554,10 @@ class Helper_E2pdf_Db {
             $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `permissions` longtext NOT NULL AFTER owner_password;");
         }
 
+        if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'access_check';")) {
+            $wpdb->query("ALTER TABLE `" . $db_prefix . "e2pdf_revisions` ADD COLUMN `access_check` enum('0','1') NOT NULL DEFAULT '0' AFTER permissions;");
+        }
+
         $wpdb->query("UPDATE `" . $db_prefix . "e2pdf_revisions` SET permissions = 'a:1:{i:0;s:8:\"printing\";}' WHERE permissions = ''");
 
         if (!$wpdb->get_var("SHOW COLUMNS FROM `" . $db_prefix . "e2pdf_revisions` LIKE 'hooks';")) {
@@ -582,10 +598,13 @@ class Helper_E2pdf_Db {
             PRIMARY KEY (`ID`)
         ) " . $collate . "");
 
-        if (!$this->db_check($db_prefix) && $maybe_row_format) {
+        $check = $this->db_check($db_prefix);
+        if (!$check && $maybe_row_format) {
             $this->db_row_format($db_prefix);
         } else {
-            $this->db_optimize($db_prefix);
+            if ($check) {
+                update_option('e2pdf_db_version', Helper_E2pdf_Helper::instance()->get('version'));
+            }
             update_option('e2pdf_font_processor', '1');
         }
 
@@ -719,7 +738,7 @@ class Helper_E2pdf_Db {
 
         $db_structure = array(
             'e2pdf_templates' => array(
-                'format' => __('Undefined', 'e2pdf'),
+                'format' => 'Undefined',
                 'check' => false,
                 'columns' => array(
                     'ID' => array(),
@@ -755,6 +774,7 @@ class Helper_E2pdf_Db {
                     'password' => array(),
                     'owner_password' => array(),
                     'permissions' => array(),
+                    'access_check' => array(),
                     'hooks' => array(),
                     'meta_title' => array(),
                     'meta_subject' => array(),
@@ -777,13 +797,14 @@ class Helper_E2pdf_Db {
                 ),
             ),
             'e2pdf_entries' => array(
-                'format' => __('Undefined', 'e2pdf'),
+                'format' => 'Undefined',
                 'check' => false,
                 'columns' => array(
                     'ID' => array(),
                     'uid' => array(),
                     'entry' => array(),
                     'pdf_num' => array(),
+                    'created_at' => array(),
                 ),
             ),
             'e2pdf_datasets' => array(
@@ -798,7 +819,7 @@ class Helper_E2pdf_Db {
                 ),
             ),
             'e2pdf_pages' => array(
-                'format' => __('Undefined', 'e2pdf'),
+                'format' => 'Undefined',
                 'check' => false,
                 'columns' => array(
                     'PID' => array(),
@@ -810,7 +831,7 @@ class Helper_E2pdf_Db {
                 ),
             ),
             'e2pdf_elements' => array(
-                'format' => __('Undefined', 'e2pdf'),
+                'format' => 'Undefined',
                 'check' => false,
                 'columns' => array(
                     'PID' => array(),
@@ -830,7 +851,7 @@ class Helper_E2pdf_Db {
                 ),
             ),
             'e2pdf_revisions' => array(
-                'format' => __('Undefined', 'e2pdf'),
+                'format' => 'Undefined',
                 'check' => false,
                 'columns' => array(
                     'PID' => array(),
@@ -867,6 +888,7 @@ class Helper_E2pdf_Db {
                     'password' => array(),
                     'owner_password' => array(),
                     'permissions' => array(),
+                    'access_check' => array(),
                     'hooks' => array(),
                     'meta_title' => array(),
                     'meta_subject' => array(),
@@ -886,7 +908,7 @@ class Helper_E2pdf_Db {
                 ),
             ),
             'e2pdf_bulks' => array(
-                'format' => __('Undefined', 'e2pdf'),
+                'format' => 'Undefined',
                 'check' => false,
                 'columns' => array(
                     'ID' => array(),

@@ -93,9 +93,9 @@ class Helper_E2pdf_If {
         } else {
             $response = $this->helper->load('shortcode')->get_shortcode_content($tags['e2pdf-if-else'], $value);
         }
-        if ($response && false !== strpos($response, '[e2pdf-if-' . $if + 1)) {
+        if ($response && false !== strpos($response, '[e2pdf-if-' . ($if + 1))) {
             $shortcode_tags = array(
-                'e2pdf-if-' . $if + 1,
+                'e2pdf-if-' . ($if + 1),
             );
             preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $response, $matches);
             $tagnames = array_intersect($shortcode_tags, $matches[1]);

@@ -314,15 +314,40 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         add_action('frm_edit_entry_sidebar', array($this, 'hook_formidable_entry_edit'));
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (Formidable shortcodes): [FIELD_ID] or [field_key] with Formidable attributes, e.g. [5 wpautop=0], [5 show="first"], [5 sep=", "], [5 sanitize=1], user ID field [5 show="ID"]. Files: [5 size="full"]; Multiple files / images: [e2pdf-format-output explode=", " output="{0}"][5 size="full"][/e2pdf-format-output] (1st), output="{1}" (2nd). Protected files: [5 size="full" decrypt="1"].',
+                'Repeater: [100:1] (field 100, entry 1), [foreach 100][101]: [102][/foreach 100]. Conditions: [if 5 equals="something"]...[/if 5]. Views: [display-frm-data id="1" filter="limited" entry_id="[id]"].',
+                'Entry values: [id], [key], [ip], [form_name], [created-at format="F j, Y"], [updated-at format="F j, Y"], [post_id], [sitename], [siteurl], [admin_email], [default-message]. Another form entry: [e2pdf-frm-entry-values id="ENTRY_ID" field_id="123"].',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Form Settings: On Submit > Show Message',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Actions & Notifications: Send Email > message',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
     /**
      * Load filters for this extension
      */
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
 
         if (!get_option('e2pdf_formidable_disable_filter', '0')) {
             add_filter('frm_display_entry_content', array(new Model_E2pdf_Filter(), 'pre_filter'), 9);
             add_filter('frm_display_entry_content', array(new Model_E2pdf_Filter(), 'filter'), 25);
-            add_filter('frm_display_entry_content', array($this, 'filter_frm_display_entry_content'), 30);
+            add_filter('frm_display_entry_content', array($this, 'filter_frm_display_entry_content'), 30, 2);
             add_filter('frm_content', array(new Model_E2pdf_Filter(), 'pre_filter'));
             add_filter('frm_content', array(new Model_E2pdf_Filter(), 'filter'), 25);
         }
@@ -754,6 +779,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         if (false === strpos($content, '[')) {
             return $content;
         }
+        $form_id = is_object($form) ? $form->id : $form;
         $shortcode_tags = array(
             'e2pdf-download',
             'e2pdf-save',
@@ -768,38 +794,52 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             foreach ($shortcodes[0] as $key => $shortcode_value) {
                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                 $atts = shortcode_parse_atts($shortcode[3]);
+                $hash_data = [];
                 if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                 } else {
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
-                        $template = new Model_E2pdf_Template();
-                        $template->load($atts['id']);
-                        if ($template->get('extension') === 'formidable') {
-                            $entry_id = is_object($dataset_id) ? $dataset_id->id : $dataset_id;
-                            if ($entry_id) {
+                    if (isset($atts['id'])) {
+                        $entry_id = is_object($dataset_id) ? $dataset_id->id : $dataset_id;
+                        if ($entry_id) {
+                            $template = new Model_E2pdf_Template();
+                            $template->load($atts['id']);
+                            if ($template->get('extension') === 'formidable') {
                                 if ($template->get('item') == '-2') {
-                                    if ($template->get('item1') == $form->id) {
-                                        $atts['dataset'] = $entry_id;
-                                        $shortcode[3] .= ' dataset="' . $entry_id . '"';
-                                    } elseif (!isset($atts['dataset2']) && $template->get('item2') == $form->id) {
-                                        $atts['dataset2'] = $entry_id;
-                                        $shortcode[3] .= ' dataset2="' . $entry_id . '"';
+                                    if ($template->get('item1') == $form_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                                        $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                                        $hash_data[] = 'dataset';
+                                    } elseif ($template->get('item2') == $form_id && (!isset($atts['dataset2']) || (string) $atts['dataset2'] === (string) $entry_id)) {
+                                        $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset2' => $entry_id]);
+                                        $hash_data[] = 'dataset2';
                                     }
-                                } else {
-                                    $atts['dataset'] = $entry_id;
-                                    $shortcode[3] .= ' dataset="' . $entry_id . '"';
+                                    if (isset($atts['dataset']) && !in_array('dataset', $hash_data, true)) {
+                                        $child_entry = FrmEntry::getOne($atts['dataset']);
+                                        if ($child_entry && $child_entry->form_id == $template->get('item1') && $child_entry->parent_item_id == $entry_id) {
+                                            $hash_data[] = 'dataset';
+                                        }
+                                    }
+                                    if (isset($atts['dataset2']) && !in_array('dataset2', $hash_data, true)) {
+                                        $child_entry = FrmEntry::getOne($atts['dataset2']);
+                                        if ($child_entry && $child_entry->form_id == $template->get('item2') && $child_entry->parent_item_id == $entry_id) {
+                                            $hash_data[] = 'dataset2';
+                                        }
+                                    }
+                                } elseif ($template->get('item') == $form_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                                    $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                                    $hash_data[] = 'dataset';
+                                } elseif (isset($atts['dataset'])) {
+                                    $child_entry = FrmEntry::getOne($atts['dataset']);
+                                    if ($child_entry && $child_entry->form_id == $template->get('item') && $child_entry->parent_item_id == $entry_id) {
+                                        $hash_data[] = 'dataset';
+                                    }
                                 }
                             }
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                    if ($this->get('iframe_download')) {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['iframe_download' => 'true']);
                     }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
-                    if (!isset($atts['iframe_download']) && $this->get('iframe_download')) {
-                        $shortcode[3] .= ' iframe_download="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'formidable_content', $atts)]);
                     $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                 }
             }
@@ -808,7 +848,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         return $content;
     }
 
-    public function filter_frm_display_entry_content($content) {
+    public function filter_frm_display_entry_content($content, $entry = null) {
 
         if (false === strpos($content, '[')) {
             return $content;
@@ -829,15 +869,41 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                 $atts = shortcode_parse_atts($shortcode[3]);
                 if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                 } else {
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
+                    $hash_data = [];
+                    if (isset($atts['id']) && isset($entry->id) && isset($entry->form_id)) {
+                        $template = new Model_E2pdf_Template();
+                        $template->load($atts['id']);
+                        if ($template->get('extension') === 'formidable') {
+                            if ($template->get('item') == '-2') {
+                                if ($template->get('item1') == $entry->form_id && isset($atts['dataset']) && (string) $atts['dataset'] === (string) $entry->id) {
+                                    $hash_data[] = 'dataset';
+                                } elseif ($template->get('item2') == $entry->form_id && isset($atts['dataset2']) && (string) $atts['dataset2'] === (string) $entry->id) {
+                                    $hash_data[] = 'dataset2';
+                                }
+                                if (isset($atts['dataset']) && !in_array('dataset', $hash_data, true)) {
+                                    $child_entry = FrmEntry::getOne($atts['dataset']);
+                                    if ($child_entry && $child_entry->form_id == $template->get('item1') && $child_entry->parent_item_id == $entry->id) {
+                                        $hash_data[] = 'dataset';
+                                    }
+                                }
+                                if (isset($atts['dataset2']) && !in_array('dataset2', $hash_data, true)) {
+                                    $child_entry = FrmEntry::getOne($atts['dataset2']);
+                                    if ($child_entry && $child_entry->form_id == $template->get('item2') && $child_entry->parent_item_id == $entry->id) {
+                                        $hash_data[] = 'dataset2';
+                                    }
+                                }
+                            } elseif ($template->get('item') == $entry->form_id && isset($atts['dataset']) && (string) $atts['dataset'] === (string) $entry->id) {
+                                $hash_data[] = 'dataset';
+                            } elseif (isset($atts['dataset'])) {
+                                $child_entry = FrmEntry::getOne($atts['dataset']);
+                                if ($child_entry && $child_entry->form_id == $template->get('item') && $child_entry->parent_item_id == $entry->id) {
+                                    $hash_data[] = 'dataset';
+                                }
+                            }
+                        }
                     }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
-                    if (!isset($atts['iframe_download'])) {
-                        $shortcode[3] .= ' iframe_download="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true', 'iframe_download' => 'true']);
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'formidable_entry', $atts)]);
                     $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                 }
             }
@@ -1062,58 +1128,67 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     foreach ($shortcodes[0] as $key => $shortcode_value) {
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
+                        $hash_data = [];
                         $file = false;
                         if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
-                            if (!isset($atts['dataset']) && isset($atts['id'])) {
-                                $template = new Model_E2pdf_Template();
-                                $template->load($atts['id']);
-                                if ($template->get('extension') === 'formidable') {
-                                    $entry_id = is_object($dataset_id) ? $dataset_id->id : $dataset_id;
-                                    if ($entry_id) {
+                            if (isset($atts['id'])) {
+                                $entry_id = is_object($dataset_id) ? $dataset_id->id : $dataset_id;
+                                if ($entry_id) {
+                                    $template = new Model_E2pdf_Template();
+                                    $template->load($atts['id']);
+                                    if ($template->get('extension') === 'formidable') {
                                         if ($template->get('item') == '-2') {
-                                            if ($template->get('item1') == $form->id) {
-                                                $atts['dataset'] = $entry_id;
-                                                $shortcode[3] .= ' dataset="' . $entry_id . '"';
-                                            } elseif (!isset($atts['dataset2']) && $template->get('item2') == $form->id) {
-                                                $atts['dataset2'] = $entry_id;
-                                                $shortcode[3] .= ' dataset2="' . $entry_id . '"';
+                                            if ($template->get('item1') == $form->id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                                                $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                                                $hash_data[] = 'dataset';
+                                            } elseif ($template->get('item2') == $form->id && (!isset($atts['dataset2']) || (string) $atts['dataset2'] === (string) $entry_id)) {
+                                                $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset2' => $entry_id]);
+                                                $hash_data[] = 'dataset2';
                                             }
-                                        } else {
-                                            $atts['dataset'] = $entry_id;
-                                            $shortcode[3] .= ' dataset="' . $entry_id . '"';
+                                            if (isset($atts['dataset']) && !in_array('dataset', $hash_data, true)) {
+                                                $child_entry = FrmEntry::getOne($atts['dataset']);
+                                                if ($child_entry && $child_entry->form_id == $template->get('item1') && $child_entry->parent_item_id == $entry_id) {
+                                                    $hash_data[] = 'dataset';
+                                                }
+                                            }
+                                            if (isset($atts['dataset2']) && !in_array('dataset2', $hash_data, true)) {
+                                                $child_entry = FrmEntry::getOne($atts['dataset2']);
+                                                if ($child_entry && $child_entry->form_id == $template->get('item2') && $child_entry->parent_item_id == $entry_id) {
+                                                    $hash_data[] = 'dataset2';
+                                                }
+                                            }
+                                        } elseif ($template->get('item') == $form->id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                                            $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                                            $hash_data[] = 'dataset';
+                                        } elseif (isset($atts['dataset'])) {
+                                            $child_entry = FrmEntry::getOne($atts['dataset']);
+                                            if ($child_entry && $child_entry->form_id == $template->get('item') && $child_entry->parent_item_id == $entry_id) {
+                                                $hash_data[] = 'dataset';
+                                            }
                                         }
                                     }
                                 }
                             }
-                            if (!isset($atts['apply'])) {
-                                $shortcode[3] .= ' apply="true"';
-                            }
-                            if (!isset($atts['filter'])) {
-                                $shortcode[3] .= ' filter="true"';
-                            }
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
                             $transient = false;
-                            if (isset($atts['use_args_entry']) && $atts['use_args_entry'] == 'true' && $atts['dataset'] == $dataset_id) {
+                            if (isset($atts['use_args_entry']) && $atts['use_args_entry'] == 'true' && isset($atts['dataset']) && $atts['dataset'] == $dataset_id) {
                                 $dataset = 'tmp_' . $this->helper->load('encryption')->random_md5();
                                 $transient = 'e2pdf_' . $dataset;
                                 set_transient($transient, $args['entry'], 1800);
-                                $atts['dataset'] = $dataset;
-                                $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
                             }
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'formidable_mail', $atts)]);
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {
-                                $tmp = false;
-                                if (substr($file, 0, 4) === 'tmp:') {
-                                    $file = substr($file, 4);
-                                    $tmp = true;
-                                }
-                                if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                $tmp = substr($file, 0, 4) === 'tmp:';
+                                $file = $tmp ? substr($file, 4) : $file;
+                                if (is_file($file)) {
                                     if ($tmp) {
                                         $this->helper->add('formidable_attachments', $file);
                                     }
-                                } else {
-                                    $this->helper->add('formidable_attachments', $file);
+                                    $attachments[] = $file;
                                 }
-                                $attachments[] = $file;
                             }
                             if ($transient) {
                                 delete_transient($transient);
@@ -1869,7 +1944,13 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('formidable_attachments');
@@ -3475,6 +3556,24 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         return $verify;
     }
 
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry');
+            if ((!empty($entry->user_id) && (int) $entry->user_id === $user_id) || user_can($user_id, 'frm_view_entries') || user_can($user_id, 'administrator')) {
+                unset($atts['dataset']);
+            }
+        }
+        // second entry of the merged template
+        if (isset($atts['dataset2']) && $this->get('item') == '-2') {
+            $entry = $this->get('cached_entry2');
+            if ((!empty($entry->user_id) && (int) $entry->user_id === $user_id) || user_can($user_id, 'frm_view_entries') || user_can($user_id, 'administrator')) {
+                unset($atts['dataset2']);
+            }
+        }
+        return $atts;
+    }
+
     /**
      * Create Form based on uploaded PDF
      * @param object $template - Template Object to work with
@@ -4103,6 +4202,11 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
      * @return string - Output of shortcode
      */
     public function shortcode_e2pdf_frm_repeatable($atts = array()) {
+
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_frm_repeatable', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
+        
         $id = (int) $atts['id'];
         $field_id = $atts['field_id'];
 
@@ -4116,6 +4220,11 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
      * @return string - Output of shortcodes
      */
     public function shortcode_e2pdf_frm_entry_values($atts = array()) {
+
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_frm_entry_values', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
+        
         $form_id = (int) $atts['id'];
         $field_id = $atts['field_id'];
         $separator = isset($atts['separator']) ? $atts['separator'] : "\r\n";
@@ -4142,6 +4251,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
      * @return string - Output of shortcode
      */
     public function shortcode_e2pdf_frm_lookup_values($atts = array()) {
+
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_frm_lookup_values', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
 
         $id = isset($atts['id']) ? $atts['id'] : false;
         $user_id = isset($atts['user_id']) ? $atts['user_id'] : '0';
@@ -4200,6 +4313,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
      * @return string - Output of shortcode
      */
     public function shortcode_e2pdf_frm_data_values($atts = array()) {
+
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_frm_data_values', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
 
         $id = isset($atts['id']) ? $atts['id'] : false;
         $user_id = isset($atts['user_id']) ? $atts['user_id'] : '0';

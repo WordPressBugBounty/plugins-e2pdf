@@ -98,6 +98,27 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
             }
         }
 
+        $mcp_users = array(
+            '' => __('--- Select ---', 'e2pdf')
+        );
+        if (get_option('e2pdf_mcp_user_id')) {
+            $mcp_user = get_userdata(get_option('e2pdf_mcp_user_id'));
+            if ($mcp_user) {
+                $mcp_users[$mcp_user->ID] = $mcp_user->user_login;
+            }
+        }
+        if (in_array('mcp_group', $only_group) && current_user_can('manage_options')) {
+            foreach (array('manage_options', 'e2pdf', 'e2pdf_templates') as $cap) {
+                $users = get_users(array(
+                    'capability' => $cap,
+                    'fields' => array('ID', 'user_login'),
+                ));
+                foreach ($users as $user) {
+                    $mcp_users[$user->ID] = $user->user_login;
+                }
+            }
+        }
+
         $processors = array(
             '0' => 'Default (Stable Version)',
         );
@@ -170,6 +191,15 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                             'api3.e2pdf.com' => 'api3.e2pdf.com (EU, Cloudflare)',
                             'api4.e2pdf.com' => 'api4.e2pdf.com (EU)',
                         ),
+                    ),
+                    array(
+                        'name' => '',
+                        'key' => 'e2pdf_ssl_verify',
+                        'value' => get_option('e2pdf_ssl_verify', '0'),
+                        'default_value' => '0',
+                        'type' => 'checkbox',
+                        'checkbox_value' => '1',
+                        'placeholder' => __('Verify SSL Certificate', 'e2pdf'),
                     ),
                     array(
                         'name' => __('API Transfer', 'e2pdf'),
@@ -283,6 +313,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'default_value' => '',
                         'value' => max(10, (int) get_option('e2pdf_cache_pdfs_ttl', '180')),
                         'type' => 'text',
+                        'class' => 'e2pdf-numbers',
                         'placeholder' => '10',
                         'prefield' => __('TTL (sec)', 'e2pdf') . ':',
                     ),
@@ -316,15 +347,6 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'type' => 'checkbox',
                         'checkbox_value' => '1',
                         'placeholder' => __('Fix Chrome iOS Download Name (might be not compatible with certain setups)', 'e2pdf'),
-                    ),
-                    array(
-                        'name' => __('New Edit Layout', 'e2pdf'),
-                        'key' => 'e2pdf_new_edit_layout',
-                        'value' => get_option('e2pdf_new_edit_layout', '1'),
-                        'default_value' => '0',
-                        'type' => 'checkbox',
-                        'checkbox_value' => '1',
-                        'placeholder' => __('New Edit Layout', 'e2pdf'),
                     ),
                     array(
                         'name' => __('Hide Warnings', 'e2pdf'),
@@ -421,7 +443,45 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
             'permissions_group' => array(
                 'name' => __('Permissions', 'e2pdf'),
                 'action' => 'permissions',
-                'options' => array(),
+                'options' => array(
+                    array(
+                        'name' => __('Shortcodes', 'e2pdf'),
+                        'key' => 'e2pdf_access_check',
+                        'value' => get_option('e2pdf_access_check', '0'),
+                        'default_value' => '0',
+                        'type' => 'checkbox',
+                        'checkbox_value' => '1',
+                        'placeholder' => __('Access Check', 'e2pdf'),
+                        'cap' => 'manage_options',
+                    ),
+                    array(
+                        'name' => __('Writable Folders', 'e2pdf'),
+                        'key' => 'e2pdf_write_dirs',
+                        'value' => get_option('e2pdf_write_dirs', ''),
+                        'default_value' => '',
+                        'type' => 'textarea',
+                        'placeholder' => __('One folder per line, relative or absolute, e.g. wp-content/uploads/invoices', 'e2pdf'),
+                        'description' => sprintf(__('For %1$s in %2$s. Relative paths start from the WordPress root: %3$s', 'e2pdf'), '<strong>dir</strong>', '[e2pdf-save]', '<strong>' . esc_html(ABSPATH) . '</strong>'),
+                    ),
+                    array(
+                        'name' => __('Readable Folders', 'e2pdf'),
+                        'key' => 'e2pdf_read_dirs',
+                        'value' => get_option('e2pdf_read_dirs', ''),
+                        'default_value' => '',
+                        'type' => 'textarea',
+                        'placeholder' => __('One folder per line, relative or absolute, e.g. wp-content/uploads/documents', 'e2pdf'),
+                        'description' => sprintf(__('For %1$s and %2$s. Relative paths start from the WordPress root: %3$s', 'e2pdf'), '<strong>pdf</strong>', '<strong>dpdf</strong>', '<strong>' . esc_html(ABSPATH) . '</strong>'),
+                    ),
+                    array(
+                        'name' => __('Allowed URLs', 'e2pdf'),
+                        'key' => 'e2pdf_allowed_urls',
+                        'value' => get_option('e2pdf_allowed_urls', ''),
+                        'default_value' => '',
+                        'type' => 'textarea',
+                        'placeholder' => __('One URL per line, e.g. https://cdn.example.com/pdf/', 'e2pdf'),
+                        'description' => sprintf(__('For %1$s, %2$s and %3$s.', 'e2pdf'), '<strong>pdf</strong>', '<strong>site_url</strong>', '<strong>viewer</strong>'),
+                    ),
+                ),
             ),
             'zapier_group' => array(
                 'name' => 'Zapier',
@@ -442,12 +502,97 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'type' => 'text',
                         'readonly' => 'readonly',
                         'class' => 'e2pdf-copy-field',
+                        'cap' => 'manage_options',
+                    ),
+                    array(
+                        'name' => '',
+                        'key' => 'e2pdf_zapier_regenerate_api_key',
+                        'value' => '0',
+                        'default_value' => '0',
+                        'type' => 'checkbox',
+                        'checkbox_value' => '1',
+                        'placeholder' => __('Regenerate API Key', 'e2pdf'),
+                        'cap' => 'manage_options',
+                    ),
+                    array(
+                        'name' => __('Webhooks', 'e2pdf'),
+                        'key' => 'e2pdf_zapier_webhooks',
+                        'value' => get_option('e2pdf_zapier_webhooks', ''),
+                        'default_value' => '',
+                        'type' => 'textarea',
+                        'placeholder' => __('Allowed Zapier webhook URLs, one per line', 'e2pdf'),
+                    ),
+                ),
+            ),
+            'mcp_group' => array(
+                'name' => 'AI MCP',
+                'action' => 'mcp',
+                'options' => array(
+                    array(
+                        'name' => __('MCP Server', 'e2pdf'),
+                        'key' => 'e2pdf_mcp',
+                        'value' => get_option('e2pdf_mcp', '0'),
+                        'default_value' => '0',
+                        'type' => 'checkbox',
+                        'checkbox_value' => '1',
+                        'placeholder' => __('Enabled', 'e2pdf'),
+                        'cap' => 'manage_options',
+                    ),
+                    array(
+                        'name' => __('Connection Name', 'e2pdf'),
+                        'key' => 'e2pdf_mcp_connection_name',
+                        'value' => 'E2Pdf (' . wp_parse_url(site_url(), PHP_URL_HOST) . ')',
+                        'default_value' => '',
+                        'type' => 'text',
+                        'readonly' => 'readonly',
+                        'class' => 'e2pdf-copy-field',
+                        'cap' => 'manage_options',
+                    ),
+                    array(
+                        'name' => __('Server URL', 'e2pdf'),
+                        'key' => 'e2pdf_mcp_api_url',
+                        'value' => site_url('/e2pdf-rpc/v1/mcp/' . get_option('e2pdf_mcp_api_url', '')),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'readonly' => 'readonly',
+                        'class' => 'e2pdf-copy-field',
+                        'cap' => 'manage_options',
+                    ),
+                    array(
+                        'name' => 'Authorization',
+                        'key' => 'e2pdf_mcp_api_key',
+                        'value' => 'Bearer ' . get_option('e2pdf_mcp_api_key', ''),
+                        'default_value' => '',
+                        'type' => 'text',
+                        'readonly' => 'readonly',
+                        'class' => 'e2pdf-copy-field',
+                        'cap' => 'manage_options',
+                    ),
+                    array(
+                        'name' => '',
+                        'key' => 'e2pdf_mcp_regenerate_api_key',
+                        'value' => '0',
+                        'default_value' => '0',
+                        'type' => 'checkbox',
+                        'checkbox_value' => '1',
+                        'placeholder' => __('Regenerate API Key', 'e2pdf'),
+                        'cap' => 'manage_options',
+                    ),
+                    array(
+                        'name' => __('Run As User', 'e2pdf'),
+                        'key' => 'e2pdf_mcp_user_id',
+                        'value' => get_option('e2pdf_mcp_user_id', ''),
+                        'default_value' => '',
+                        'type' => 'select',
+                        'options' => $mcp_users,
+                        'cap' => 'manage_options',
                     ),
                 ),
             ),
             'gdrive_group' => array(
                 'name' => 'Google Drive',
                 'action' => 'gdrive',
+                'cap' => 'manage_options',
                 'options' => array(
                     array(
                         'name' => 'Redirect URI',
@@ -507,6 +652,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
             'adobesign_group' => array(
                 'name' => 'Adobe Sign',
                 'action' => 'adobesign',
+                'cap' => 'manage_options',
                 'options' => array(
                     array(
                         'name' => 'Redirect URI',
@@ -864,32 +1010,211 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                 }
             }
 
+            // skip groups which require capability the current user does not have
+            foreach ($options as $group_key => $group) {
+                if (isset($group['cap']) && !current_user_can($group['cap'])) {
+                    unset($options[$group_key]);
+                }
+            }
+
+            // skip options which require capability the current user does not have
+            foreach ($options as $group_key => $group) {
+                foreach ($group['options'] as $option_key => $option) {
+                    if (isset($option['cap']) && !current_user_can($option['cap'])) {
+                        unset($options[$group_key]['options'][$option_key]);
+                    }
+                }
+                if (!empty($group['options']) && empty($options[$group_key]['options'])) {
+                    unset($options[$group_key]);
+                }
+            }
+
             return $options;
         }
     }
 
     // update options
     public static function update_options($group = '', $data = array()) {
-        $options = self::get_options(false, array($group));
-        foreach ($options as $group_key => $group) {
-            foreach ($group['options'] as $option_key => $option_value) {
-                if (isset($option_value['key']) && array_key_exists($option_value['key'], $data)) {
-                    if (isset($option_value['readonly']) && $option_value['readonly'] == 'readonly') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
-                    } else {
-                        if ($option_value['key'] == 'e2pdf_mod_rewrite_url') {
-                            if (false === strpos($data[$option_value['key']], '%uid%')) {
-                                $data[$option_value['key']] = rtrim($data[$option_value['key']], '/') . '/%uid%/';
+        $helper = Helper_E2pdf_Helper::instance();
+        $result = array(
+            'reload' => false,
+            'error' => '',
+        );
+
+        if ('permissions_group' === $group && isset($data['permissions']) && is_array($data['permissions']) && current_user_can('manage_options')) {
+            $caps = $helper->get_caps();
+            foreach ($data['permissions'] as $role_key => $permission) {
+                $role = get_role($role_key);
+                if ($role && is_array($permission)) {
+                    foreach ($permission as $cap_key => $cap) {
+                        if (isset($caps[$cap_key])) {
+                            if ($cap) {
+                                $role->add_cap($cap_key);
+                            } else {
+                                $role->remove_cap($cap_key);
                             }
-                            if (!trim(str_replace(array('/', '%uid%'), array('', ''), $data[$option_value['key']]))) {
-                                $data[$option_value['key']] = 'e2pdf/%uid%/';
-                            }
-                            $data[$option_value['key']] = ltrim($data[$option_value['key']], '/');
                         }
-                        update_option($option_value['key'], $data[$option_value['key']]);
                     }
                 }
             }
         }
-        return true;
+
+        if ('extensions_group' === $group && isset($data['e2pdf_disabled_extensions']) && is_array($data['e2pdf_disabled_extensions'])) {
+            $disabled_extensions = array_map('sanitize_text_field', wp_unslash($data['e2pdf_disabled_extensions']));
+            update_option('e2pdf_disabled_extensions', array_values(array_filter($disabled_extensions, 'strlen')));
+            return $result;
+        }
+
+        $options = self::get_options(false, array($group));
+        foreach ($options as $group_key => $group_options) {
+            foreach ($group_options['options'] as $option_key => $option_value) {
+                if (!isset($option_value['key'])) {
+                    continue;
+                }
+                $option = $option_value['key'];
+                if (array_key_exists($option, $data)) {
+                    if (isset($option_value['readonly']) && $option_value['readonly'] == 'readonly') { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                    } else {
+                        switch ($option) {
+                            case 'e2pdf_mod_rewrite_url':
+                                if (false === strpos($data['e2pdf_mod_rewrite_url'], '%uid%')) {
+                                    $data['e2pdf_mod_rewrite_url'] = rtrim($data['e2pdf_mod_rewrite_url'], '/') . '/%uid%/';
+                                }
+                                if (!trim(str_replace(array('/', '%uid%'), array('', ''), $data['e2pdf_mod_rewrite_url']))) {
+                                    $data['e2pdf_mod_rewrite_url'] = 'e2pdf/%uid%/';
+                                }
+                                $data['e2pdf_mod_rewrite_url'] = ltrim($data['e2pdf_mod_rewrite_url'], '/');
+                                break;
+                            case 'e2pdf_zapier_regenerate_api_key':
+                                if (current_user_can('manage_options') && $data['e2pdf_zapier_regenerate_api_key']) {
+                                    update_option('e2pdf_zapier_api_key', strtoupper(wordwrap(wp_generate_password('24', false), 4, '-', true)));
+                                }
+                                $data['e2pdf_zapier_regenerate_api_key'] = '0';
+                                break;
+                            case 'e2pdf_mcp_regenerate_api_key':
+                                if (current_user_can('manage_options') && $data['e2pdf_mcp_regenerate_api_key']) {
+                                    update_option('e2pdf_mcp_api_key', wp_generate_password('64', false));
+                                }
+                                $data['e2pdf_mcp_regenerate_api_key'] = '0';
+                                break;
+                            case 'e2pdf_mcp_user_id':
+                                if (current_user_can('manage_options')) {
+                                    $user = get_userdata((int) $data['e2pdf_mcp_user_id']);
+                                    $data['e2pdf_mcp_user_id'] = $user ? $user->ID : '';
+                                } else {
+                                    $data['e2pdf_mcp_user_id'] = get_option('e2pdf_mcp_user_id', '');
+                                }
+                                break;
+                            case 'e2pdf_write_dirs':
+                                $abspath = wp_normalize_path(ABSPATH);
+                                $dirs = array();
+                                foreach (explode("\n", $data['e2pdf_write_dirs']) as $dir) {
+                                    $dir = trim($dir);
+                                    if (strlen(wp_normalize_path($dir)) > strlen($abspath) && strpos(wp_normalize_path($dir), $abspath) === 0) {
+                                        $dir = substr(wp_normalize_path($dir), strlen($abspath));
+                                    }
+                                    $dirs[] = $dir;
+                                }
+                                $data['e2pdf_write_dirs'] = implode("\n", $dirs);
+                                break;
+                            case 'e2pdf_read_dirs':
+                                $abspath = wp_normalize_path(ABSPATH);
+                                $dirs = array();
+                                foreach (explode("\n", $data['e2pdf_read_dirs']) as $dir) {
+                                    $dir = trim($dir);
+                                    if (strlen(wp_normalize_path($dir)) > strlen($abspath) && strpos(wp_normalize_path($dir), $abspath) === 0) {
+                                        $dir = substr(wp_normalize_path($dir), strlen($abspath));
+                                    }
+                                    $dirs[] = $dir;
+                                }
+                                $data['e2pdf_read_dirs'] = implode("\n", $dirs);
+                                break;
+                            case 'e2pdf_user_email':
+                                if (get_option('e2pdf_user_email', '') != $data['e2pdf_user_email']) {
+                                    $model_e2pdf_api = new Model_E2pdf_Api();
+                                    $model_e2pdf_api->set(
+                                            array(
+                                                'action' => 'common/owner',
+                                                'data' => array(
+                                                    'email' => trim($data['e2pdf_user_email']),
+                                                ),
+                                            )
+                                    );
+                                    $request = $model_e2pdf_api->request();
+
+                                    if (isset($request['error'])) {
+                                        if (in_array($request['error'], array('incorrect_email', 'The E2Pdf account e-mail has not been found'), true)) {
+                                            $request['error'] = sprintf(__('An account with that E-mail address was not found at E2Pdf.com. You can register at %s', 'e2pdf'), 'https://e2pdf.com/register');
+                                        }
+                                        $data['e2pdf_user_email'] = get_option('e2pdf_user_email', '');
+                                        $result['error'] = $request['error'];
+                                    }
+                                }
+                                break;
+                            case 'e2pdf_debug':
+                                if (get_option('e2pdf_debug', '0') != $data['e2pdf_debug'] || ($data['e2pdf_debug'] && get_option('e2pdf_memory_time', '0') != $data['e2pdf_debug'])) {
+                                    $result['reload'] = true;
+                                }
+                                break;
+                            case 'e2pdf_recovery_mode_email':
+                                if (get_option('e2pdf_recovery_mode_email', '') != $data['e2pdf_recovery_mode_email']) {
+                                    $result['reload'] = true;
+                                }
+                                break;
+                            case 'e2pdf_dev_update':
+                                if (get_option('e2pdf_dev_update', '0') != $data['e2pdf_dev_update']) {
+                                    delete_site_transient('update_plugins');
+                                }
+                                break;
+                            case 'e2pdf_api':
+                                if ($data['e2pdf_api'] && $data['e2pdf_api'] != get_option('e2pdf_api', 'api.e2pdf.com')) {
+                                    update_option('e2pdf_cached_fonts', array());
+                                }
+                                break;
+                            case 'e2pdf_cache':
+                                if (get_option('e2pdf_cache', '1') !== $data['e2pdf_cache']) {
+                                    $helper->load('cache')->purge_objects_cache();
+                                }
+                                break;
+                            case 'e2pdf_cache_fonts':
+                                if (get_option('e2pdf_cache_fonts', '1') !== $data['e2pdf_cache_fonts']) {
+                                    $helper->load('cache')->purge_fonts_cache();
+                                }
+                                break;
+                            case 'e2pdf_cache_pdfs':
+                                if (get_option('e2pdf_cache_pdfs', '0') !== $data['e2pdf_cache_pdfs']) {
+                                    $helper->load('cache')->purge_pdfs_cache();
+                                }
+                                if ($data['e2pdf_cache_pdfs']) {
+                                    if (!wp_next_scheduled('e2pdf_cache_pdfs_cron')) {
+                                        wp_schedule_event(time(), 'hourly', 'e2pdf_cache_pdfs_cron');
+                                    }
+                                } else {
+                                    wp_clear_scheduled_hook('e2pdf_cache_pdfs_cron');
+                                    $helper->load('cache')->purge_pdfs_cache();
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+
+                        $type = isset($option_value['type']) ? $option_value['type'] : '';
+                        switch ($type) {
+                            case 'textarea':
+                                update_option($option, sanitize_textarea_field(wp_unslash($data[$option])));
+                                break;
+                            case 'checkbox_list':
+                                update_option($option, is_array($data[$option]) ? array_map('sanitize_text_field', wp_unslash($data[$option])) : array());
+                                break;
+                            default:
+                                update_option($option, sanitize_text_field(wp_unslash($data[$option])));
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $result;
     }
 }

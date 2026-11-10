@@ -20,74 +20,21 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
     public function index_action() {
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
-                $reload = false;
-                if (
-                        get_option('e2pdf_debug', '0') != $this->post->get('e2pdf_debug') ||
-                        get_option('e2pdf_recovery_mode_email', '') != $this->post->get('e2pdf_recovery_mode_email') ||
-                        ($this->post->get('e2pdf_debug') && get_option('e2pdf_memory_time', '0') != $this->post->get('e2pdf_debug'))
-                ) {
-                    $reload = true;
+                $result = Model_E2pdf_Options::update_options('common_group', $this->post->get());
+                $notifications = array();
+                if ($result['error']) {
+                    $notifications[] = $this->add_notification('error', $result['error']);
                 }
-
-                $check_update = false;
-                if (get_option('e2pdf_dev_update', '0') != $this->post->get('e2pdf_dev_update')) {
-                    $check_update = true;
-                }
-
-                if ($this->post->get('e2pdf_api') && $this->post->get('e2pdf_api') != get_option('e2pdf_api', 'api.e2pdf.com')) {
-                    update_option('e2pdf_cached_fonts', array());
-                }
-
-                if (get_option('e2pdf_user_email', '') != $this->post->get('e2pdf_user_email')) {
-                    $model_e2pdf_api = new Model_E2pdf_Api();
-                    $model_e2pdf_api->set(
-                            array(
-                                'action' => 'common/owner',
-                                'data' => array(
-                                    'email' => trim($this->post->get('e2pdf_user_email')),
-                                ),
+                $notifications[] = $this->add_notification('update', __('Settings Saved', 'e2pdf'));
+                if ($result['reload']) {
+                    $this->redirect(
+                            $this->helper->get_url(
+                                    array(
+                                        'page' => 'e2pdf-settings',
+                                        'notification' => implode(',', $notifications),
+                                    )
                             )
                     );
-                    $request = $model_e2pdf_api->request();
-
-                    if (isset($request['error'])) {
-                        if ($request['error'] === 'incorrect_email') {
-                            $request['error'] = sprintf(__('An account with that E-mail address was not found at E2Pdf.com. You can register at %s', 'e2pdf'), 'https://e2pdf.com/register');
-                        }
-                        $this->post->set('e2pdf_user_email', get_option('e2pdf_user_email', ''));
-                        $this->add_notification('error', $request['error']);
-                    }
-                }
-
-                if (get_option('e2pdf_cache', '1') !== $this->post->get('e2pdf_cache')) {
-                    $this->helper->load('cache')->purge_objects_cache();
-                }
-
-                if (get_option('e2pdf_cache_fonts', '1') !== $this->post->get('e2pdf_cache_fonts')) {
-                    $this->helper->load('cache')->purge_fonts_cache();
-                }
-
-                if (get_option('e2pdf_cache_pdfs', '0') !== $this->post->get('e2pdf_cache_pdfs')) {
-                    $this->helper->load('cache')->purge_pdfs_cache();
-                }
-
-                Model_E2pdf_Options::update_options('common_group', $this->post->get());
-                $this->add_notification('update', __('Settings Saved', 'e2pdf'));
-
-                if ($this->post->get('e2pdf_cache_pdfs')) {
-                    if (!wp_next_scheduled('e2pdf_cache_pdfs_cron')) {
-                        wp_schedule_event(time(), 'hourly', 'e2pdf_cache_pdfs_cron');
-                    }
-                } else {
-                    wp_clear_scheduled_hook('e2pdf_cache_pdfs_cron');
-                    $this->helper->load('cache')->purge_pdfs_cache();
-                }
-
-                if ($check_update) {
-                    delete_site_transient('update_plugins');
-                }
-                if ($reload) {
-                    $this->redirect($this->helper->get_url(array('page' => 'e2pdf-settings')));
                 }
             } else {
                 wp_die($this->message('wp_verify_nonce_error'));
@@ -272,11 +219,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
 
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
-                if (!$this->post->get('e2pdf_disabled_extensions')) {
-                    update_option('e2pdf_disabled_extensions', array());
-                } else {
-                    update_option('e2pdf_disabled_extensions', array_filter($this->post->get('e2pdf_disabled_extensions')));
-                }
+                Model_E2pdf_Options::update_options('extensions_group', $this->post->get());
                 $this->redirect(
                         $this->helper->get_url(
                                 [
@@ -300,23 +243,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
     public function permissions_action() {
         if ($this->post->get('_wpnonce')) {
             if (wp_verify_nonce($this->post->get('_wpnonce'), 'e2pdf_settings')) {
-                $permissions = $this->post->get('permissions');
-                $roles = wp_roles()->roles;
-                $caps = $this->helper->get_caps();
-                foreach ($permissions as $permission_key => $permission) {
-                    $role = get_role($permission_key);
-                    if ($role) {
-                        foreach ($permission as $cap_key => $cap) {
-                            if (isset($caps[$cap_key])) {
-                                if ($cap) {
-                                    $role->add_cap($cap_key);
-                                } else {
-                                    $role->remove_cap($cap_key);
-                                }
-                            }
-                        }
-                    }
-                }
+                Model_E2pdf_Options::update_options('permissions_group', $this->post->get());
                 $this->add_notification('update', __('Settings Saved', 'e2pdf'));
             } else {
                 wp_die($this->message('wp_verify_nonce_error'));
@@ -330,6 +257,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
             }
         }
 
+        $this->view('options', Model_E2pdf_Options::get_options(false, array('permissions_group')));
         $this->view('groups', $this->get_groups());
         $this->view('roles', $roles);
         $this->view('caps', $this->helper->get_caps());
@@ -363,6 +291,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
                     'adobesign_group',
                     'gdrive_group',
                     'zapier_group',
+                    'mcp_group',
                 ),
                 true
         );
@@ -377,7 +306,7 @@ class Controller_E2pdf_Settings extends Helper_E2pdf_View {
      * @return json
      */
     public function ajax_delete_font() {
-        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_settings')) {
+        if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_settings') && (current_user_can('manage_options') || current_user_can('e2pdf_settings'))) {
             $font = $this->post->get('data');
             $model_e2pdf_font = new Model_E2pdf_Font();
             $model_e2pdf_font->delete_font($font);

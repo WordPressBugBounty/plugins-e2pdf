@@ -89,7 +89,7 @@
                     }
                     ?>
                     <?php if (isset($option_value['description'])) { ?>
-                        <div class="e2pdf-small">* <?php echo $option_value['description']; ?></div>
+                        <div class="e2pdf-note"><?php echo $option_value['description']; ?></div>
                     <?php } ?>
                 </div>
             </li>

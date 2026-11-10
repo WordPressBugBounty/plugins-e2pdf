@@ -73,6 +73,7 @@ if (!defined('ABSPATH')) {
             <div class="e2pdf-view-area">
                 <form enctype="multipart/form-data" method="post">
                     <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('e2pdf_settings'); ?>">
+                    <?php if (current_user_can('manage_options')) { ?>
                     <ul class="e2pdf-permissions-list">
                         <?php foreach ($this->view->roles as $role_key => $role) { ?>
                             <li>
@@ -94,6 +95,14 @@ if (!defined('ABSPATH')) {
                                 </div>
                             </li>
                         <?php } ?>
+                    </ul>
+                    <?php } ?>
+                    <ul class="e2pdf-options-list">
+                        <?php
+                        $this->render('field', 'group', array(
+                            'groups' => $this->view->options
+                        ));
+                        ?>
                     </ul>
                     <?php submit_button(); ?>
                 </form>

@@ -940,6 +940,16 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         return $element;
     }
 
+    // record attributes the user has no access to: the loaded entry has no owner and is allowed for admins
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            if (user_can($user_id, 'manage_options')) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
+    }
+
     // verify
     public function verify() {
         if ($this->get('cached_entry')) {
@@ -1099,9 +1109,7 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
             return $args;
         }
 
-        if ((defined('PWH_DCFH_PLUGIN_VERSION') && version_compare(PWH_DCFH_PLUGIN_VERSION, '1.5.1', '>=')) || defined('KS_PAC_DCFH_PLUGIN_FILE')) {
-            $args['message'] = preg_replace('/(\{)((e2pdf-download|e2pdf-view|e2pdf-save|e2pdf-attachment|e2pdf-adobesign|e2pdf-zapier)[^\}]*?)(\})/', '[$2]', $args['message']);
-        }
+        $args['message'] = $this->helper->load('shortcode')->unwrap($args['message'], $this->helper->shortcodes('main'));
 
         if (isset($args['message'])) {
             if (false !== strpos($args['message'], '[')) {
@@ -1119,34 +1127,25 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                     foreach ($shortcodes[0] as $key => $shortcode_value) {
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['filter'])) {
-                            $shortcode[3] .= ' filter="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
                         $file = false;
                         if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {
-                                $tmp = false;
-                                if (substr($file, 0, 4) === 'tmp:') {
-                                    $file = substr($file, 4);
-                                    $tmp = true;
-                                }
-                                if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                $tmp = substr($file, 0, 4) === 'tmp:';
+                                $file = $tmp ? substr($file, 4) : $file;
+                                if (is_file($file)) {
                                     if ($tmp) {
                                         $this->helper->add('divi_attachments', $file);
                                     }
-                                } else {
-                                    $this->helper->add('divi_attachments', $file);
-                                }
-                                $args['attachments'][] = $file;
-                                if (!has_action('wp_mail_succeeded', [$this, 'filter_wp_mail_attachments'])) {
-                                    add_action('wp_mail_succeeded', [$this, 'filter_wp_mail_attachments']);
-                                }
-                                if (!has_action('wp_mail_failed', [$this, 'filter_wp_mail_attachments'])) {
-                                    add_action('wp_mail_failed', [$this, 'filter_wp_mail_attachments']);
+                                    $args['attachments'][] = $file;
+                                    if (!has_action('wp_mail_succeeded', [$this, 'filter_wp_mail_attachments'])) {
+                                        add_action('wp_mail_succeeded', [$this, 'filter_wp_mail_attachments']);
+                                    }
+                                    if (!has_action('wp_mail_failed', [$this, 'filter_wp_mail_attachments'])) {
+                                        add_action('wp_mail_failed', [$this, 'filter_wp_mail_attachments']);
+                                    }
                                 }
                             }
                             $args['message'] = str_replace($shortcode_value, '', $args['message']);
@@ -1176,7 +1175,13 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('divi_attachments');
@@ -1186,6 +1191,29 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
     // load actions
     public function load_actions() { // phpcs:ignore Squiz.WhiteSpace.SuperfluousWhitespace.EndLine
         add_action('et_pb_contact_form_submit', [$this, 'action_et_pb_contact_form_submit'], 11);
+        add_action('wp', [$this, 'action_wp']);
+    }
+
+    // submitted values can't add e2pdf shortcodes to emails and confirmation messages
+    public function action_wp() {
+        // phpcs:disable WordPress.Security.NonceVerification.Missing
+        if (!empty($_POST) && preg_grep('/^(et_pb_contactform_submit_|_wpnonce-et-pb-contact-form-submitted-)/', array_keys($_POST))) {
+            foreach ($_POST as $key => $value) {
+                if (0 === strpos($key, 'et_pb_contact_')) {
+                    if (is_array($value)) {
+                        array_walk_recursive($value, function (&$item) {
+                            if (is_string($item)) {
+                                $item = str_replace(['[e2pdf-', '{e2pdf-'], ['&#91;e2pdf-', '&#123;e2pdf-'], $item);
+                            }
+                        });
+                    } elseif (is_string($value)) {
+                        $value = str_replace(['[e2pdf-', '{e2pdf-'], ['&#91;e2pdf-', '&#123;e2pdf-'], $value);
+                    }
+                    $_POST[$key] = $value;
+                }
+            }
+        }
+        // phpcs:enable
     }
 
     public function action_et_pb_contact_form_submit() {
@@ -1206,6 +1234,29 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
 
         // Divi 5
         add_filter('divi_module_library_register_module_attrs', [$this, 'filter_divi_module_library_register_module_attrs'], 11, 2);
+        add_filter('e2pdf_extension_mcp_instructions', [$this, 'filter_e2pdf_extension_mcp_instructions']);
+    }
+
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = [
+            'values' => [
+                'Field values (Divi merge tags): %%field_id%% (the Divi field ID). The Divi Contact Form must have its "Admin Label" set to the form selected in the template.',
+            ],
+            'places' => [
+                [
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Contact Form module: Success Message',
+                    'shortcodes' => ['[e2pdf-download]', '[e2pdf-view]'],
+                ],
+                [
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Contact Form module: Message Pattern',
+                    'shortcodes' => ['[e2pdf-attachment]', '[e2pdf-download]'],
+                ],
+            ],
+        ];
+        return $instructions;
     }
 
     public function filter_divi_module_library_register_module_attrs($module_attrs, $filter_args) {
@@ -1474,6 +1525,8 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
             return $module_attrs;
         }
 
+        $form_item = $item;
+
         $data = [
             'E2PDF_VERSION' => '1.32.40',
             'fields' => [],
@@ -1525,33 +1578,30 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         $item = false;
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
+                        $hash_data = [];
 
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'divi') {
+                            if ($template->get('extension') === 'divi' && $template->get('item') == $form_item) {
                                 $item = $template->get('item');
-                                $atts['dataset'] = $dataset;
-                                $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if (!isset($atts['apply'])) {
-                            $shortcode[3] .= ' apply="true"';
-                        }
-                        if (!isset($atts['iframe_download'])) {
-                            $shortcode[3] .= ' iframe_download="true"';
-                        }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'iframe_download' => 'true']);
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, ($message_key === 'successMessage' ? 'divi_success_message' : 'divi_mail'), $atts)]);
                         switch ($message_key) {
                             case 'successMessage':
                                 $module_attrs['module']['advanced']['successMessage']['desktop']['value'] = str_replace($shortcode_value, do_shortcode_tag($shortcode), $module_attrs['module']['advanced']['successMessage']['desktop']['value']);
                                 break;
                             case 'email':
-                                $module_attrs['email']['innerContent']['desktop']['value'] = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $module_attrs['email']['innerContent']['desktop']['value']);
+                                $module_attrs['email']['innerContent']['desktop']['value'] = str_replace($shortcode_value, $this->helper->load('shortcode')->wrap($shortcode), $module_attrs['email']['innerContent']['desktop']['value']);
                                 break;
                             case 'adminEmailRichTextMessage':
                             case 'confirmationEmailMessage':
                             case 'confirmationEmailRichTextMessage':
-                                $messages[$message_key] = str_replace($shortcode_value, '{' . $shortcode[2] . $shortcode[3] . '}', $messages[$message_key]);
+                                $messages[$message_key] = str_replace($shortcode_value, $this->helper->load('shortcode')->wrap($shortcode), $messages[$message_key]);
                                 break;
                             default:
                                 break;
@@ -1779,12 +1829,13 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         $item = false;
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
+                        $hash_data = [];
                         if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                         } else {
-                            if (!isset($atts['dataset']) && isset($atts['id'])) {
+                            if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                                 $template = new Model_E2pdf_Template();
                                 $template->load($atts['id']);
-                                if ($template->get('extension') === 'divi') {
+                                if ($template->get('extension') === 'divi' && !empty($props['admin_label']) && $template->get('item') == $props['admin_label']) {
                                     $item = $template->get('item');
                                     if (!$dataset) {
                                         $entry = new Model_E2pdf_Dataset();
@@ -1793,16 +1844,12 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                         $entry->set('entry', $data);
                                         $dataset = $entry->save();
                                     }
-                                    $atts['dataset'] = $dataset;
-                                    $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                    $hash_data[] = 'dataset';
                                 }
                             }
-                            if (!isset($atts['apply'])) {
-                                $shortcode[3] .= ' apply="true"';
-                            }
-                            if (!isset($atts['iframe_download'])) {
-                                $shortcode[3] .= ' iframe_download="true"';
-                            }
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'iframe_download' => 'true']);
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'divi_success_message', $atts)]);
                             $props['success_message'] = str_replace($this->encode_shortcodes($shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['success_message']);
                         }
                     }
@@ -1825,10 +1872,11 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         $item = false;
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        $hash_data = [];
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'divi') {
+                            if ($template->get('extension') === 'divi' && !empty($props['admin_label']) && $template->get('item') == $props['admin_label']) {
                                 $item = $template->get('item');
                                 if (!$dataset) {
                                     $entry = new Model_E2pdf_Dataset();
@@ -1837,18 +1885,15 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     $entry->set('entry', $data);
                                     $dataset = $entry->save();
                                 }
-                                $atts['dataset'] = $dataset;
-                                $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                $hash_data[] = 'dataset';
                             }
                         }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'divi_mail', $atts)]);
                         if ($admin_email_rich_text) {
-                            if ((defined('PWH_DCFH_PLUGIN_VERSION') && version_compare(PWH_DCFH_PLUGIN_VERSION, '1.5.1', '>=')) || defined('KS_PAC_DCFH_PLUGIN_FILE')) {
-                                $props['custom_message_richtext'] = str_replace($this->encode_shortcodes($shortcode_value), '{' . $shortcode[2] . $shortcode[3] . '}', $props['custom_message_richtext']);
-                            } else {
-                                $props['custom_message_richtext'] = str_replace($this->encode_shortcodes($shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['custom_message_richtext']);
-                            }
+                            $props['custom_message_richtext'] = str_replace($this->encode_shortcodes($shortcode_value), $this->helper->load('shortcode')->wrap($shortcode), $props['custom_message_richtext']);
                         } else {
-                            $props['custom_message'] = str_replace($this->encode_shortcodes($shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['custom_message']);
+                            $props['custom_message'] = str_replace($this->encode_shortcodes($shortcode_value), $this->helper->load('shortcode')->wrap($shortcode), $props['custom_message']);
                         }
                     }
                 }
@@ -1870,10 +1915,11 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                         $item = false;
                         $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                         $atts = shortcode_parse_atts($shortcode[3]);
-                        if (!isset($atts['dataset']) && isset($atts['id'])) {
+                        $hash_data = [];
+                        if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                             $template = new Model_E2pdf_Template();
                             $template->load($atts['id']);
-                            if ($template->get('extension') === 'divi') {
+                            if ($template->get('extension') === 'divi' && !empty($props['admin_label']) && $template->get('item') == $props['admin_label']) {
                                 $item = $template->get('item');
                                 if (!$dataset) {
                                     $entry = new Model_E2pdf_Dataset();
@@ -1882,22 +1928,15 @@ class Extension_E2pdf_Divi extends Model_E2pdf_Model {
                                     $entry->set('entry', $data);
                                     $dataset = $entry->save();
                                 }
-                                $atts['dataset'] = $dataset;
-                                $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                $hash_data[] = 'dataset';
                             }
                         }
-                        if ((defined('PWH_DCFH_PLUGIN_VERSION') && version_compare(PWH_DCFH_PLUGIN_VERSION, '1.5.1', '>=')) || defined('KS_PAC_DCFH_PLUGIN_FILE')) {
-                            if ($user_email_rich_text) {
-                                $props['confirmation_message_richtext'] = str_replace($this->encode_shortcodes($shortcode_value), '{' . $shortcode[2] . $shortcode[3] . '}', $props['confirmation_message_richtext']);
-                            } else {
-                                $props['confirmation_email_message'] = str_replace($this->encode_shortcodes($shortcode_value), '{' . $shortcode[2] . $shortcode[3] . '}', $props['confirmation_email_message']);
-                            }
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'divi_mail', $atts)]);
+                        if ($user_email_rich_text) {
+                            $props['confirmation_message_richtext'] = str_replace($this->encode_shortcodes($shortcode_value), $this->helper->load('shortcode')->wrap($shortcode), $props['confirmation_message_richtext']);
                         } else {
-                            if ($user_email_rich_text) {
-                                $props['confirmation_message_richtext'] = str_replace($this->encode_shortcodes($shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['confirmation_message_richtext']);
-                            } else {
-                                $props['confirmation_email_message'] = str_replace($this->encode_shortcodes($shortcode_value), '[' . $shortcode[2] . $shortcode[3] . ']', $props['confirmation_email_message']);
-                            }
+                            $props['confirmation_email_message'] = str_replace($this->encode_shortcodes($shortcode_value), $this->helper->load('shortcode')->wrap($shortcode), $props['confirmation_email_message']);
                         }
                     }
                 }

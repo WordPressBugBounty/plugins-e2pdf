@@ -117,8 +117,32 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
         }
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (JetFormBuilder macros): %field_name%. Multiple files / images: [e2pdf-format-output explode="," output="{0}"]%field_name%[/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Repeater: single value %repeater_name.0.field_name% (0 = first row); loop: [e2pdf-for][e2pdf-for-data]%repeater_name%[/e2pdf-for-data][e2pdf-for-do]%repeater_name.[e2pdf-for-key].field_name%[/e2pdf-for-do][/e2pdf-for].',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Form: General Message Settings > success message (download / view need a "Save Form Record" action)',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Post Submit Actions: Send Email > content',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
     // filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
         add_filter('jet-form-builder/before-end-form', array($this, 'filter_jet_form_builder_before_end_form'), 99);
         add_filter('jet-form-builder/send-email/message_content', array($this, 'filter_jet_form_builder_send_email_message_content'), 99, 2);
         add_filter('jet-form-builder/content-filters', array($this, 'filter_jet_form_builder_content_filter'));
@@ -133,43 +157,6 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
             ];
             return $hooks;
         });
-    }
-
-    public function filter_wp_kses_allowed_html($html, $context) {
-        if (is_array($context)) {
-            return $html;
-        }
-        if ($context === 'post') {
-            $html['iframe']['name'] = true;
-            $html['iframe']['onload'] = true;
-            $html['iframe']['style'] = true;
-            $html['iframe']['class'] = true;
-            $html['iframe']['width'] = true;
-            $html['iframe']['height'] = true;
-            $html['iframe']['src'] = true;
-            $html['iframe']['preload'] = true;
-            $html['iframe']['resolution'] = true;
-            $html['iframe']['cursor'] = true;
-            $html['iframe']['scroll'] = true;
-            $html['iframe']['spread'] = true;
-            $html['img']['onload'] = true;
-            $html['img']['style'] = true;
-            $html['img']['preload'] = true;
-            $html['img']['class'] = true;
-            $html['a']['lid'] = true;
-            $html['a']['download'] = true;
-            $html['a']['class'] = true;
-        }
-        return $html;
-    }
-
-    public function filter_safe_style_css($styles) {
-        $styles[] = 'display';
-        $styles[] = 'width';
-        $styles[] = 'height';
-        $styles[] = 'border-width';
-        $styles[] = 'border';
-        return $styles;
     }
 
     public function action_jet_form_builder_form_handler_before_send() {
@@ -210,7 +197,13 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('jetformbuilder_attachments');
@@ -253,7 +246,7 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
     public function action_jet_form_builder_send_email_send_before($send_email) {
         $message = $send_email->get_content();
         $attachments = $send_email->get_attachments();
-        $message = preg_replace('/(\{\{)((e2pdf-download|e2pdf-view|e2pdf-save|e2pdf-attachment|e2pdf-adobesign|e2pdf-zapier)[^\}]*?)(\}\})/', '[$2]', $message);
+        $message = $this->helper->load('shortcode')->unwrap($message, $this->helper->shortcodes('main'));
         if (false !== strpos($message, '[')) {
             $shortcode_tags = array(
                 'e2pdf-download',
@@ -274,21 +267,17 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                     $file = false;
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         $transient = isset($atts['dataset']) && substr($atts['dataset'], 0, 4) === 'tmp_' ? 'e2pdf_' . $atts['dataset'] : false;
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                         $file = do_shortcode_tag($shortcode);
                         if ($file) {
-                            $tmp = false;
-                            if (substr($file, 0, 4) === 'tmp:') {
-                                $file = substr($file, 4);
-                                $tmp = true;
-                            }
-                            if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                            $tmp = substr($file, 0, 4) === 'tmp:';
+                            $file = $tmp ? substr($file, 4) : $file;
+                            if (is_file($file)) {
                                 if ($tmp) {
                                     $this->helper->add('jetformbuilder_attachments', $file);
                                 }
-                            } else {
-                                $this->helper->add('jetformbuilder_attachments', $file);
+                                $attachments[] = $file;
                             }
-                            $attachments[] = $file;
                         }
                         $message = str_replace($shortcode_value, '', $message);
                         if ($transient) {
@@ -322,29 +311,26 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    $hash_data = [];
+                    if (isset($atts['id'])) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'jetformbuilder') {
-                            $dataset = jet_fb_action_handler()->get_context('save_record', 'id');
-                            if ($dataset) {
-                                $atts['dataset'] = $dataset;
-                                $shortcode[3] .= ' dataset="' . $dataset . '"';
-                            } elseif ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
-                                $dataset = 'tmp_' . $this->helper->load('encryption')->random_md5();
-                                set_transient('e2pdf_' . $dataset, jet_fb_context()->get_request(), 1800);
-                                $atts['dataset'] = $dataset;
-                                $shortcode[3] .= ' dataset="' . $dataset . '"';
+                        if ($template->get('extension') === 'jetformbuilder' && $template->get('item') == jet_fb_action_handler()->get_form_id()) {
+                            $entry_id = jet_fb_action_handler()->get_context('save_record', 'id');
+                            if ($entry_id && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $entry_id)) {
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                                $hash_data[] = 'dataset';
+                            } elseif (!isset($atts['dataset']) && $this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
+                                $entry_id = 'tmp_' . $this->helper->load('encryption')->random_md5();
+                                set_transient('e2pdf_' . $entry_id, jet_fb_context()->get_request(), 1800);
+                                $this->helper->load('shortcode')->add($shortcode, $atts, ['dataset' => $entry_id]);
+                                $hash_data[] = 'dataset';
                             }
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
-                    $message = str_replace($shortcode_value, '{{' . $shortcode[2] . $shortcode[3] . '}}', $message);
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'jetformbuilder_mail', $atts)]);
+                    $message = str_replace($shortcode_value, $this->helper->load('shortcode')->wrap($shortcode), $message);
                 }
             }
         }
@@ -374,31 +360,28 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
                         preg_match_all('@\[([^<>&/\[\]\x00-\x20=]++)@', $success_message, $matches);
                         $tagnames = array_intersect($shortcode_tags, $matches[1]);
                         if (!empty($tagnames)) {
-                            add_filter('wp_kses_allowed_html', array($this, 'filter_wp_kses_allowed_html'), 10, 2);
-                            add_filter('safe_style_css', array($this, 'filter_safe_style_css'));
+                            add_filter('wp_kses_allowed_html', array($this->helper->load('shortcode'), 'filter_wp_kses_allowed_html'), 10, 2);
+                            add_filter('safe_style_css', array($this->helper->load('shortcode'), 'filter_safe_style_css'));
+                            add_filter('render_block', array($this, 'filter_render_block'), 10, 2);
+                            add_filter('do_shortcode_tag', array($this, 'filter_do_shortcode_tag'), 10, 2);
+                            add_action('wp_footer', array($this, 'remove_kses_filters'), 0);
                             preg_match_all('/' . $this->helper->load('shortcode')->get_shortcode_regex($tagnames) . '/', $success_message, $shortcodes);
                             foreach ($shortcodes[0] as $key => $shortcode_value) {
                                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                                 $atts = shortcode_parse_atts($shortcode[3]);
+                                $hash_data = [];
                                 if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
                                 } else {
-                                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                                    if (isset($atts['id']) && (!isset($atts['dataset']) || ($dataset && (string) $atts['dataset'] === (string) $dataset))) {
                                         $template = new Model_E2pdf_Template();
                                         $template->load($atts['id']);
-                                        if ($template->get('extension') === 'jetformbuilder') {
-                                            $atts['dataset'] = $dataset;
-                                            $shortcode[3] .= ' dataset="' . $dataset . '"';
+                                        if ($template->get('extension') === 'jetformbuilder' && $template->get('item') == jet_form_builder()->msg_router->get_form_id()) {
+                                            $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset]);
+                                            $hash_data[] = 'dataset';
                                         }
                                     }
-                                    if (!isset($atts['apply'])) {
-                                        $shortcode[3] .= ' apply="true"';
-                                    }
-                                    if (!isset($atts['iframe_download'])) {
-                                        $shortcode[3] .= ' iframe_download="true"';
-                                    }
-                                    if (!isset($atts['iframe_loader'])) {
-                                        $shortcode[3] .= ' iframe_loader="true"';
-                                    }
+                                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'iframe_download' => 'true', 'iframe_loader' => 'true']);
+                                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'jetformbuilder_success_message', $atts)]);
                                     $success_message = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']', $success_message);
                                 }
                             }
@@ -409,6 +392,31 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
             }
         }
         return $str;
+    }
+
+    // form block rendered with its messages
+    public function filter_render_block($block_content, $block) {
+        if (isset($block['blockName']) && $block['blockName'] === 'jet-forms/form-block') {
+            $this->remove_kses_filters();
+        }
+        return $block_content;
+    }
+
+    // form shortcode rendered with its messages
+    public function filter_do_shortcode_tag($output, $tag) {
+        if ($tag === 'jet_fb_form') {
+            $this->remove_kses_filters();
+        }
+        return $output;
+    }
+
+    // e2pdf html allowed in kses only while the form messages are rendered
+    public function remove_kses_filters() {
+        remove_filter('wp_kses_allowed_html', array($this->helper->load('shortcode'), 'filter_wp_kses_allowed_html'), 10);
+        remove_filter('safe_style_css', array($this->helper->load('shortcode'), 'filter_safe_style_css'));
+        remove_filter('render_block', array($this, 'filter_render_block'), 10);
+        remove_filter('do_shortcode_tag', array($this, 'filter_do_shortcode_tag'), 10);
+        remove_action('wp_footer', array($this, 'remove_kses_filters'), 0);
     }
 
     // items
@@ -611,6 +619,21 @@ class Extension_E2pdf_Jetformbuilder extends Model_E2pdf_Model {
             return true;
         }
         return false;
+    }
+
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry');
+            $capability = 'manage_options';
+            if (class_exists('\Jet_Form_Builder\Admin\Tabs_Handlers\Tab_Handler_Manager') && method_exists('\Jet_Form_Builder\Admin\Tabs_Handlers\Tab_Handler_Manager', 'get_form_records_access_capability')) {
+                $capability = \Jet_Form_Builder\Admin\Tabs_Handlers\Tab_Handler_Manager::get_form_records_access_capability();
+            }
+            if ((!empty($entry['user_id']) && (int) $entry['user_id'] === $user_id) || user_can($user_id, 'manage_options') || user_can($user_id, $capability)) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
     }
 
     // visual mapper

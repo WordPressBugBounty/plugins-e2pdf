@@ -197,6 +197,13 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
                 case 'tab_order':
                     $value = '0';
                     break;
+                case 'access_check':
+                    if ($this->get('ID')) {
+                        $value = '0';
+                    } else {
+                        $value = get_option('e2pdf_access_check', '0');
+                    }
+                    break;
                 case 'flatten':
                 case 'appearance':
                     $value = '1';
@@ -265,12 +272,10 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             }
 
             if ($this->get('pdf')) {
-                $pdf_dir = $this->helper->get('pdf_dir') . $this->get('pdf') . '/';
-                $this->helper->delete_dir($pdf_dir);
+                $this->helper->delete_pdf_dir($this->get('pdf'));
             }
 
-            $tpl_dir = $this->helper->get('tpl_dir') . $this->get('ID') . '/';
-            $this->helper->delete_dir($tpl_dir);
+            $this->helper->delete_tpl_dir($this->get('ID'));
 
             $where = [
                 'ID' => $this->get('ID'),
@@ -524,6 +529,7 @@ class Model_E2pdf_Template extends Model_E2pdf_Model {
             'password' => $this->get('password'),
             'owner_password' => $this->get('owner_password'),
             'permissions' => serialize($this->get('permissions')), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+            'access_check' => $this->get('access_check'),
             'hooks' => $this->get('hooks'),
             'meta_title' => $this->get('meta_title'),
             'meta_subject' => $this->get('meta_subject'),

@@ -326,7 +326,33 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         //phpcs:enable
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                '[e2pdf-wc-order key="KEY"]: order data, e.g. key="get_formatted_order_total", key="get_date_created" format="Y-m-d", key="get_billing_email", meta key with meta="true", order item meta: key="metakey" subkey="subkey" index="0" order_item_meta="true". Order items table (in e2pdf-html): [e2pdf-wc-order key="cart"] (show_quantity="false", show_image="false", ... hide parts).',
+                '[e2pdf-wc-product key="KEY"]: product data, e.g. get_name, get_sku, get_price, get_description wc_format_content="true", get_attribute attribute="pa_color" show="value", meta key with meta="true"; in order / cart templates add index="0" (purchased item) and order="true" for order item data. [e2pdf-wc-cart key="KEY"] cart data (get_cart_subtotal, get_total, get_cart_contents_count, ...), [e2pdf-wc-customer key="get_billing_email"] customer data.',
+                'Loops: [e2pdf-foreach shortcode="e2pdf-wc-order" key="get_items"][e2pdf-wc-product key="get_name" order="true" index="[e2pdf-foreach-index]"][/e2pdf-foreach]; totals: [e2pdf-foreach shortcode="e2pdf-wc-order" key="get_order_item_totals"][e2pdf-wc-order key="get_order_item_totals" path="[e2pdf-foreach-key].label"]: [e2pdf-wc-order key="get_order_item_totals" path="[e2pdf-foreach-key].value"][/e2pdf-foreach]. Take exact keys from get_fields of the WooCommerce item.',
+                '[e2pdf-wp key="KEY"] also works for the product / order post (see the WordPress extension syntax: meta="true", terms="true" names="true").',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'WooCommerce pages',
+                    'location' => 'E2Pdf > Settings > WooCommerce: select this template for cart, checkout, order details, My Account orders actions or admin order actions (no shortcode needed).',
+                    'shortcodes' => array(),
+                ),
+                array(
+                    'place' => 'WooCommerce emails',
+                    'location' => 'WooCommerce > Settings > Emails > (email, e.g. Completed order) > Additional content: the PDF is attached to the email.',
+                    'shortcodes' => array('[e2pdf-attachment]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
         add_filter('woocommerce_product_file_download_path', array($this, 'filter_woocommerce_product_file_download_path'), 10, 3);
         add_filter('woocommerce_short_description', array($this, 'filter_content_custom'));
         add_filter('the_content', array($this, 'filter_the_content'), 10, 2);
@@ -357,7 +383,10 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
 
         /* Order Hooks */
         add_filter('manage_edit-shop_order_columns', array($this, 'hook_woocommerce_order_row_column'));
+        add_filter('woocommerce_shop_order_list_table_columns', array($this, 'hook_woocommerce_order_row_column'));
         add_filter('woocommerce_my_account_my_orders_actions', array($this, 'hook_woocommerce_my_account_my_orders_actions'), 10, 2);
+        add_filter('render_block_woocommerce/proceed-to-checkout-block', array($this, 'hook_woocommerce_cart_block'), 10, 2);
+        add_filter('render_block_woocommerce/checkout-actions-block', array($this, 'hook_woocommerce_cart_block'), 10, 2);
 
         /* Subscription Hooks */
         add_filter('manage_edit-shop_subscription_columns', array($this, 'hook_woocommerce_subscription_row_column'), 11);
@@ -407,7 +436,13 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
             $this->helper->deset('woocommerce_attachments');
@@ -617,7 +652,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             $linked_entry_id = $linked_data[0];
                                         }
                                     }
-                                    if ($linked_entry_id) {
+                                    $linked_entry = $linked_entry_id && class_exists('GFAPI') ? GFAPI::get_entry($linked_entry_id) : false;
+                                    if (is_array($linked_entry) && isset($linked_entry['form_id']) && $template->get('item') == $linked_entry['form_id']) {
                                         $attachment = true;
                                         if ($attachment) {
                                             if (!empty($attributes)) {
@@ -670,29 +706,22 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                         }
                                         if ($attachment) {
                                             $item_shortcode = $shortcode;
-                                            if (!isset($atts['apply'])) {
-                                                $item_shortcode[3] .= ' apply="true"';
-                                            }
-                                            if (!isset($atts['filter'])) {
-                                                $item_shortcode[3] .= ' filter="true"';
-                                            }
-                                            $item_shortcode[3] .= ' dataset="' . $linked_entry_id . '"';
+                                            $item_atts = $atts;
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['apply' => 'true', 'filter' => 'true']);
+                                            $this->helper->load('shortcode')->set($item_shortcode, $item_atts, ['dataset' => $linked_entry_id]);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['hash' => $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_mail', $item_atts)]);
                                             if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['is_tmp' => 'true']);
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
-                                                    $tmp = false;
-                                                    if (substr($file, 0, 4) === 'tmp:') {
-                                                        $file = substr($file, 4);
-                                                        $tmp = true;
-                                                    }
-                                                    if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                    $tmp = substr($file, 0, 4) === 'tmp:';
+                                                    $file = $tmp ? substr($file, 4) : $file;
+                                                    if (is_file($file)) {
                                                         if ($tmp) {
                                                             $this->helper->add('woocommerce_attachments', $file);
                                                         }
-                                                    } else {
-                                                        $this->helper->add('woocommerce_attachments', $file);
+                                                        $attachments[] = $file;
                                                     }
-                                                    $attachments[] = $file;
                                                 }
                                             } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                 do_shortcode_tag($item_shortcode);
@@ -705,7 +734,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                             if (!isset($atts['dataset'])) {
                                 foreach ($items as $item_id => $item) {
                                     $_formidable_form_data = wc_get_order_item_meta($item_id, '_formidable_form_data', true);
-                                    if ($_formidable_form_data) {
+                                    $linked_entry = $_formidable_form_data && class_exists('FrmEntry') ? FrmEntry::getOne($_formidable_form_data) : false;
+                                    if ($linked_entry && ($template->get('item') == $linked_entry->form_id || ($template->get('item') == '-2' && $template->get('item1') == $linked_entry->form_id))) {
                                         $attachment = true;
                                         if ($attachment) {
                                             if (!empty($attributes)) {
@@ -758,29 +788,22 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                         }
                                         if ($attachment) {
                                             $item_shortcode = $shortcode;
-                                            if (!isset($atts['apply'])) {
-                                                $item_shortcode[3] .= ' apply="true"';
-                                            }
-                                            if (!isset($atts['filter'])) {
-                                                $item_shortcode[3] .= ' filter="true"';
-                                            }
-                                            $item_shortcode[3] .= ' dataset="' . $_formidable_form_data . '"';
+                                            $item_atts = $atts;
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['apply' => 'true', 'filter' => 'true']);
+                                            $this->helper->load('shortcode')->set($item_shortcode, $item_atts, ['dataset' => $_formidable_form_data]);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['hash' => $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_mail', $item_atts)]);
                                             if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['is_tmp' => 'true']);
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
-                                                    $tmp = false;
-                                                    if (substr($file, 0, 4) === 'tmp:') {
-                                                        $file = substr($file, 4);
-                                                        $tmp = true;
-                                                    }
-                                                    if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                    $tmp = substr($file, 0, 4) === 'tmp:';
+                                                    $file = $tmp ? substr($file, 4) : $file;
+                                                    if (is_file($file)) {
                                                         if ($tmp) {
                                                             $this->helper->add('woocommerce_attachments', $file);
                                                         }
-                                                    } else {
-                                                        $this->helper->add('woocommerce_attachments', $file);
+                                                        $attachments[] = $file;
                                                     }
-                                                    $attachments[] = $file;
                                                 }
                                             } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                 do_shortcode_tag($item_shortcode);
@@ -815,30 +838,22 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             }
                                             if ($attachment) {
                                                 $item_shortcode = $shortcode;
-                                                if (!isset($atts['apply'])) {
-                                                    $item_shortcode[3] .= ' apply="true"';
-                                                }
-                                                if (!isset($atts['filter'])) {
-                                                    $item_shortcode[3] .= ' filter="true"';
-                                                }
-                                                $item_shortcode[3] .= ' dataset="' . $ywgc_gift_post_id . '"';
+                                                $item_atts = $atts;
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['apply' => 'true', 'filter' => 'true']);
+                                                $this->helper->load('shortcode')->set($item_shortcode, $item_atts, ['dataset' => $ywgc_gift_post_id]);
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['hash' => $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_mail', $item_atts)]);
                                                 if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
+                                                    $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['is_tmp' => 'true']);
                                                     $file = do_shortcode_tag($item_shortcode);
                                                     if ($file) {
-                                                        $tmp = false;
-                                                        if (substr($file, 0, 4) === 'tmp:') {
-                                                            $file = substr($file, 4);
-                                                            $tmp = true;
-                                                        }
-                                                        if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                        $tmp = substr($file, 0, 4) === 'tmp:';
+                                                        $file = $tmp ? substr($file, 4) : $file;
+                                                        if (is_file($file)) {
                                                             if ($tmp) {
-                                                                $file = substr($file, 4);
                                                                 $this->helper->add('woocommerce_attachments', $file);
                                                             }
-                                                        } else {
-                                                            $this->helper->add('woocommerce_attachments', $file);
+                                                            $attachments[] = $file;
                                                         }
-                                                        $attachments[] = $file;
                                                     }
                                                 } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                     do_shortcode_tag($item_shortcode);
@@ -896,29 +911,22 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                         }
                                         if ($attachment) {
                                             $item_shortcode = $shortcode;
-                                            if (!isset($atts['apply'])) {
-                                                $item_shortcode[3] .= ' apply="true"';
-                                            }
-                                            if (!isset($atts['filter'])) {
-                                                $item_shortcode[3] .= ' filter="true"';
-                                            }
-                                            $item_shortcode[3] .= ' dataset="' . $ywgc_gift_post_id . '"';
+                                            $item_atts = $atts;
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['apply' => 'true', 'filter' => 'true']);
+                                            $this->helper->load('shortcode')->set($item_shortcode, $item_atts, ['dataset' => $ywgc_gift_post_id]);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['hash' => $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_mail', $item_atts)]);
                                             if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['is_tmp' => 'true']);
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
-                                                    $tmp = false;
-                                                    if (substr($file, 0, 4) === 'tmp:') {
-                                                        $file = substr($file, 4);
-                                                        $tmp = true;
-                                                    }
-                                                    if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                    $tmp = substr($file, 0, 4) === 'tmp:';
+                                                    $file = $tmp ? substr($file, 4) : $file;
+                                                    if (is_file($file)) {
                                                         if ($tmp) {
                                                             $this->helper->add('woocommerce_attachments', $file);
                                                         }
-                                                    } else {
-                                                        $this->helper->add('woocommerce_attachments', $file);
+                                                        $attachments[] = $file;
                                                     }
-                                                    $attachments[] = $file;
                                                 }
                                             } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                 do_shortcode_tag($item_shortcode);
@@ -953,36 +961,24 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             }
                                             if ($attachment) {
                                                 $item_shortcode = $shortcode;
-                                                if (!isset($atts['apply'])) {
-                                                    $item_shortcode[3] .= ' apply="true"';
-                                                }
-                                                if (!isset($atts['filter'])) {
-                                                    $item_shortcode[3] .= ' filter="true"';
-                                                }
-                                                if (!isset($atts['wc_order_id'])) {
-                                                    $item_shortcode[3] .= ' wc_order_id="' . $order->get_id() . '"';
-                                                }
-                                                if (!isset($atts['wc_product_item_id'])) {
-                                                    $item_shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
-                                                }
+                                                $item_atts = $atts;
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['apply' => 'true', 'filter' => 'true']);
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['wc_order_id' => $order->get_id()]);
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['wc_product_item_id' => $item_id]);
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['hash' => $this->helper->load('shortcode')->hash(['wc_order_id', 'wc_product_item_id'], 'woocommerce_mail', $item_atts)]);
 
                                                 if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
+                                                    $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['is_tmp' => 'true']);
                                                     $file = do_shortcode_tag($item_shortcode);
                                                     if ($file) {
-                                                        $tmp = false;
-                                                        if (substr($file, 0, 4) === 'tmp:') {
-                                                            $file = substr($file, 4);
-                                                            $tmp = true;
-                                                        }
-                                                        if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                        $tmp = substr($file, 0, 4) === 'tmp:';
+                                                        $file = $tmp ? substr($file, 4) : $file;
+                                                        if (is_file($file)) {
                                                             if ($tmp) {
-                                                                $file = substr($file, 4);
                                                                 $this->helper->add('woocommerce_attachments', $file);
                                                             }
-                                                        } else {
-                                                            $this->helper->add('woocommerce_attachments', $file);
+                                                            $attachments[] = $file;
                                                         }
-                                                        $attachments[] = $file;
                                                     }
                                                 } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                     do_shortcode_tag($item_shortcode);
@@ -1040,35 +1036,24 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                         }
                                         if ($attachment) {
                                             $item_shortcode = $shortcode;
-                                            if (!isset($atts['apply'])) {
-                                                $item_shortcode[3] .= ' apply="true"';
-                                            }
-                                            if (!isset($atts['filter'])) {
-                                                $item_shortcode[3] .= ' filter="true"';
-                                            }
-                                            if (!isset($atts['wc_order_id'])) {
-                                                $item_shortcode[3] .= ' wc_order_id="' . $order->get_id() . '"';
-                                            }
-                                            if (!isset($atts['wc_product_item_id'])) {
-                                                $item_shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
-                                            }
-                                            $item_shortcode[3] .= ' dataset="' . $item . '"';
+                                            $item_atts = $atts;
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['apply' => 'true', 'filter' => 'true']);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['wc_order_id' => $order->get_id()]);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['wc_product_item_id' => $item_id]);
+                                            $this->helper->load('shortcode')->set($item_shortcode, $item_atts, ['dataset' => $item]);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['hash' => $this->helper->load('shortcode')->hash(['wc_order_id', 'wc_product_item_id', 'dataset'], 'woocommerce_mail', $item_atts)]);
                                             if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['is_tmp' => 'true']);
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
-                                                    $tmp = false;
-                                                    if (substr($file, 0, 4) === 'tmp:') {
-                                                        $file = substr($file, 4);
-                                                        $tmp = true;
-                                                    }
-                                                    if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                    $tmp = substr($file, 0, 4) === 'tmp:';
+                                                    $file = $tmp ? substr($file, 4) : $file;
+                                                    if (is_file($file)) {
                                                         if ($tmp) {
                                                             $this->helper->add('woocommerce_attachments', $file);
                                                         }
-                                                    } else {
-                                                        $this->helper->add('woocommerce_attachments', $file);
+                                                        $attachments[] = $file;
                                                     }
-                                                    $attachments[] = $file;
                                                 }
                                             } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                 do_shortcode_tag($item_shortcode);
@@ -1098,34 +1083,23 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             }
                                             if ($attachment) {
                                                 $item_shortcode = $shortcode;
-                                                if (!isset($atts['apply'])) {
-                                                    $item_shortcode[3] .= ' apply="true"';
-                                                }
-                                                if (!isset($atts['filter'])) {
-                                                    $item_shortcode[3] .= ' filter="true"';
-                                                }
-                                                if (!isset($atts['wc_order_id'])) {
-                                                    $item_shortcode[3] .= ' wc_order_id="' . $order->get_id() . '"';
-                                                }
-                                                if (!isset($atts['wc_product_item_id'])) {
-                                                    $item_shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
-                                                }
+                                                $item_atts = $atts;
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['apply' => 'true', 'filter' => 'true']);
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['wc_order_id' => $order->get_id()]);
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['wc_product_item_id' => $item_id]);
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['hash' => $this->helper->load('shortcode')->hash(['wc_order_id', 'wc_product_item_id'], 'woocommerce_mail', $item_atts)]);
                                                 if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
+                                                    $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['is_tmp' => 'true']);
                                                     $file = do_shortcode_tag($item_shortcode);
                                                     if ($file) {
-                                                        $tmp = false;
-                                                        if (substr($file, 0, 4) === 'tmp:') {
-                                                            $file = substr($file, 4);
-                                                            $tmp = true;
-                                                        }
-                                                        if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                        $tmp = substr($file, 0, 4) === 'tmp:';
+                                                        $file = $tmp ? substr($file, 4) : $file;
+                                                        if (is_file($file)) {
                                                             if ($tmp) {
                                                                 $this->helper->add('woocommerce_attachments', $file);
                                                             }
-                                                        } else {
-                                                            $this->helper->add('woocommerce_attachments', $file);
+                                                            $attachments[] = $file;
                                                         }
-                                                        $attachments[] = $file;
                                                     }
                                                 } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                     do_shortcode_tag($item_shortcode);
@@ -1187,35 +1161,24 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                         }
                                         if ($attachment) {
                                             $item_shortcode = $shortcode;
-                                            if (!isset($atts['apply'])) {
-                                                $item_shortcode[3] .= ' apply="true"';
-                                            }
-                                            if (!isset($atts['filter'])) {
-                                                $item_shortcode[3] .= ' filter="true"';
-                                            }
-                                            if (!isset($atts['wc_order_id'])) {
-                                                $item_shortcode[3] .= ' wc_order_id="' . $order->get_id() . '"';
-                                            }
-                                            if (!isset($atts['wc_product_item_id'])) {
-                                                $item_shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
-                                            }
-                                            $item_shortcode[3] .= ' dataset="' . $item . '"';
+                                            $item_atts = $atts;
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['apply' => 'true', 'filter' => 'true']);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['wc_order_id' => $order->get_id()]);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['wc_product_item_id' => $item_id]);
+                                            $this->helper->load('shortcode')->set($item_shortcode, $item_atts, ['dataset' => $item]);
+                                            $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['hash' => $this->helper->load('shortcode')->hash(['wc_order_id', 'wc_product_item_id', 'dataset'], 'woocommerce_mail', $item_atts)]);
                                             if ($this->helper->load('shortcode')->is_attachment($item_shortcode, $atts)) {
+                                                $this->helper->load('shortcode')->add($item_shortcode, $item_atts, ['is_tmp' => 'true']);
                                                 $file = do_shortcode_tag($item_shortcode);
                                                 if ($file) {
-                                                    $tmp = false;
-                                                    if (substr($file, 0, 4) === 'tmp:') {
-                                                        $file = substr($file, 4);
-                                                        $tmp = true;
-                                                    }
-                                                    if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                    $tmp = substr($file, 0, 4) === 'tmp:';
+                                                    $file = $tmp ? substr($file, 4) : $file;
+                                                    if (is_file($file)) {
                                                         if ($tmp) {
                                                             $this->helper->add('woocommerce_attachments', $file);
                                                         }
-                                                    } else {
-                                                        $this->helper->add('woocommerce_attachments', $file);
+                                                        $attachments[] = $file;
                                                     }
-                                                    $attachments[] = $file;
                                                 }
                                             } elseif ($item_shortcode[2] === 'e2pdf-zapier' || $item_shortcode[2] === 'e2pdf-save') {
                                                 do_shortcode_tag($item_shortcode);
@@ -1294,29 +1257,21 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                             }
                                         }
                                         if ($attachment) {
-                                            if (!isset($atts['apply'])) {
-                                                $shortcode[3] .= ' apply="true"';
-                                            }
-                                            if (!isset($atts['filter'])) {
-                                                $shortcode[3] .= ' filter="true"';
-                                            }
-                                            $shortcode[3] .= ' dataset="' . $subscription->get_id() . '"';
+                                            $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                                            $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $subscription->get_id()]);
+                                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_mail', $atts)]);
                                             if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                                                $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                                                 $file = do_shortcode_tag($shortcode);
                                                 if ($file) {
-                                                    $tmp = false;
-                                                    if (substr($file, 0, 4) === 'tmp:') {
-                                                        $file = substr($file, 4);
-                                                        $tmp = true;
-                                                    }
-                                                    if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                    $tmp = substr($file, 0, 4) === 'tmp:';
+                                                    $file = $tmp ? substr($file, 4) : $file;
+                                                    if (is_file($file)) {
                                                         if ($tmp) {
                                                             $this->helper->add('woocommerce_attachments', $file);
                                                         }
-                                                    } else {
-                                                        $this->helper->add('woocommerce_attachments', $file);
+                                                        $attachments[] = $file;
                                                     }
-                                                    $attachments[] = $file;
                                                 }
                                             } elseif ($shortcode[2] === 'e2pdf-zapier' || $shortcode[2] === 'e2pdf-save') {
                                                 do_shortcode_tag($shortcode);
@@ -1393,29 +1348,21 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                         }
                                     }
                                     if ($attachment) {
-                                        if (!isset($atts['apply'])) {
-                                            $shortcode[3] .= ' apply="true"';
-                                        }
-                                        if (!isset($atts['filter'])) {
-                                            $shortcode[3] .= ' filter="true"';
-                                        }
-                                        $shortcode[3] .= ' dataset="' . $order->get_id() . '"';
+                                        $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
+                                        $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $order->get_id()]);
+                                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_mail', $atts)]);
                                         if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
+                                            $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
                                             $file = do_shortcode_tag($shortcode);
                                             if ($file) {
-                                                $tmp = false;
-                                                if (substr($file, 0, 4) === 'tmp:') {
-                                                    $file = substr($file, 4);
-                                                    $tmp = true;
-                                                }
-                                                if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                                $tmp = substr($file, 0, 4) === 'tmp:';
+                                                $file = $tmp ? substr($file, 4) : $file;
+                                                if (is_file($file)) {
                                                     if ($tmp) {
                                                         $this->helper->add('woocommerce_attachments', $file);
                                                     }
-                                                } else {
-                                                    $this->helper->add('woocommerce_attachments', $file);
+                                                    $attachments[] = $file;
                                                 }
-                                                $attachments[] = $file;
                                             }
                                         } elseif ($shortcode[2] === 'e2pdf-zapier' || $shortcode[2] === 'e2pdf-save') {
                                             do_shortcode_tag($shortcode);
@@ -2364,6 +2311,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             foreach ($shortcodes[0] as $key => $shortcode_value) {
                 $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                 $atts = shortcode_parse_atts($shortcode[3]);
+                $hash_data = [];
                 if (isset($atts['wp_reset_postdata'])) {
                     if ($atts['wp_reset_postdata'] == 'true') {
                         $wp_reset_postdata = true;
@@ -2384,30 +2332,29 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                 continue;
                             }
                         } elseif ($template->get('extension') === 'gravity') {
-                            if (!isset($atts['dataset'])) {
-                                if (function_exists('wc_get_order') && isset($_GET['order'])) {
-                                    $order_id = wc_get_order_id_by_order_key(wc_clean(wp_unslash($_GET['order'])));
-                                    if ($order_id) {
-                                        $item_id = isset($_GET['item_id']) && $_GET['item_id'] ? wc_clean(wp_unslash($_GET['item_id'])) : false;
-                                        if ($item_id) {
-                                            $order = wc_get_order($order_id);
-                                            if ($order && method_exists($order, 'get_items')) {
-                                                $order_items = $order->get_items();
-                                                if (isset($order_items[$item_id])) {
-                                                    $linked_entry_id = false;
-                                                    if ($linked_data = wc_get_order_item_meta($item_id, '_gravity_forms_history', true)) {
-                                                        if (!empty($linked_data['_gravity_form_linked_entry_id'])) {
-                                                            $linked_entry_id = $linked_data['_gravity_form_linked_entry_id'];
-                                                        }
-                                                    } elseif ($linked_data = wc_get_order_item_meta($item_id, 'gspc_gf_entry_ids', true)) {
-                                                        if (!empty($linked_data) && isset($linked_data[0])) {
-                                                            $linked_entry_id = $linked_data[0];
-                                                        }
+                            if (function_exists('wc_get_order') && isset($_GET['order'])) {
+                                $order_id = wc_get_order_id_by_order_key(wc_clean(wp_unslash($_GET['order'])));
+                                if ($order_id) {
+                                    $item_id = isset($_GET['item_id']) && $_GET['item_id'] ? wc_clean(wp_unslash($_GET['item_id'])) : false;
+                                    if ($item_id) {
+                                        $order = wc_get_order($order_id);
+                                        if ($order && method_exists($order, 'get_items')) {
+                                            $order_items = $order->get_items();
+                                            if (isset($order_items[$item_id])) {
+                                                $linked_entry_id = false;
+                                                if ($linked_data = wc_get_order_item_meta($item_id, '_gravity_forms_history', true)) {
+                                                    if (!empty($linked_data['_gravity_form_linked_entry_id'])) {
+                                                        $linked_entry_id = $linked_data['_gravity_form_linked_entry_id'];
                                                     }
-                                                    if ($linked_entry_id) {
-                                                        $atts['dataset'] = $linked_entry_id;
-                                                        $shortcode[3] .= ' dataset="' . $linked_entry_id . '"';
+                                                } elseif ($linked_data = wc_get_order_item_meta($item_id, 'gspc_gf_entry_ids', true)) {
+                                                    if (!empty($linked_data) && isset($linked_data[0])) {
+                                                        $linked_entry_id = $linked_data[0];
                                                     }
+                                                }
+                                                $linked_entry = $linked_entry_id && class_exists('GFAPI') ? GFAPI::get_entry($linked_entry_id) : false;
+                                                if (is_array($linked_entry) && isset($linked_entry['form_id']) && $template->get('item') == $linked_entry['form_id'] && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $linked_entry_id)) {
+                                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $linked_entry_id]);
+                                                    $hash_data[] = 'dataset';
                                                 }
                                             }
                                         }
@@ -2415,21 +2362,20 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                 }
                             }
                         } elseif ($template->get('extension') === 'formidable') {
-                            if (!isset($atts['dataset'])) {
-                                if (function_exists('wc_get_order') && isset($_GET['order'])) {
-                                    $order_id = wc_get_order_id_by_order_key(wc_clean(wp_unslash($_GET['order'])));
-                                    if ($order_id) {
-                                        $item_id = isset($_GET['item_id']) && $_GET['item_id'] ? wc_clean(wp_unslash($_GET['item_id'])) : false;
-                                        if ($item_id) {
-                                            $order = wc_get_order($order_id);
-                                            if ($order && method_exists($order, 'get_items')) {
-                                                $order_items = $order->get_items();
-                                                if (isset($order_items[$item_id])) {
-                                                    $_formidable_form_data = wc_get_order_item_meta($item_id, '_formidable_form_data', true);
-                                                    if ($_formidable_form_data) {
-                                                        $atts['dataset'] = $_formidable_form_data;
-                                                        $shortcode[3] .= ' dataset="' . $_formidable_form_data . '"';
-                                                    }
+                            if (function_exists('wc_get_order') && isset($_GET['order'])) {
+                                $order_id = wc_get_order_id_by_order_key(wc_clean(wp_unslash($_GET['order'])));
+                                if ($order_id) {
+                                    $item_id = isset($_GET['item_id']) && $_GET['item_id'] ? wc_clean(wp_unslash($_GET['item_id'])) : false;
+                                    if ($item_id) {
+                                        $order = wc_get_order($order_id);
+                                        if ($order && method_exists($order, 'get_items')) {
+                                            $order_items = $order->get_items();
+                                            if (isset($order_items[$item_id])) {
+                                                $_formidable_form_data = wc_get_order_item_meta($item_id, '_formidable_form_data', true);
+                                                $linked_entry = $_formidable_form_data && class_exists('FrmEntry') ? FrmEntry::getOne($_formidable_form_data) : false;
+                                                if ($linked_entry && ($template->get('item') == $linked_entry->form_id || ($template->get('item') == '-2' && $template->get('item1') == $linked_entry->form_id)) && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $_formidable_form_data)) {
+                                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $_formidable_form_data]);
+                                                    $hash_data[] = 'dataset';
                                                 }
                                             }
                                         }
@@ -2437,7 +2383,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                 }
                             }
                         } elseif ($template->get('extension') === 'woocommerce') {
-                            if (!isset($atts['dataset']) && ($template->get('item') == 'shop_order' || $template->get('item') == 'shop_subscription') && function_exists('wc_get_order') && isset($_GET['order'])) {
+                            if (($template->get('item') == 'shop_order' || $template->get('item') == 'shop_subscription') && function_exists('wc_get_order') && isset($_GET['order'])) {
                                 $order_id = wc_get_order_id_by_order_key(wc_clean(wp_unslash($_GET['order'])));
 
                                 if (function_exists('wcs_get_subscription') && $template->get('item') == 'shop_order' && get_post_type($order_id) == 'shop_subscription') {
@@ -2450,21 +2396,32 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                     }
                                 }
 
-                                if ($order_id) {
-                                    $atts['dataset'] = $order_id;
-                                    $shortcode[3] .= ' dataset="' . $order_id . '"';
+                                $order = $order_id ? wc_get_order($order_id) : false;
+                                if ($order && $template->get('item') == $order->get_type() && (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $order_id)) {
+                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $order_id]);
+                                    $hash_data[] = 'dataset';
                                 }
                             }
-                            if (!isset($atts['dataset']) && ($post_id || isset($post->ID))) {
+                            if (!in_array('dataset', $hash_data, true) && ($post_id || isset($post->ID))) {
                                 $dataset_id = $post_id ? $post_id : $post->ID;
-                                $atts['dataset'] = $dataset_id;
-                                $shortcode[3] .= ' dataset="' . $dataset_id . '"';
+                                $post_type = get_post_type($dataset_id);
+                                if (
+                                        (
+                                        $template->get('item') == $post_type ||
+                                        ($template->get('item') == 'cart' && $dataset_id == wc_get_page_id('cart')) ||
+                                        ($template->get('item') == 'shop_order' && $post_type == 'shop_order_placehold')
+                                        ) &&
+                                        (!isset($atts['dataset']) || (string) $atts['dataset'] === (string) $dataset_id)
+                                ) {
+                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $dataset_id]);
+                                    $hash_data[] = 'dataset';
+                                }
                             }
                             if (($template->get('item') == 'product' || $template->get('item') == 'product_variation') && function_exists('wc_get_order') && isset($_GET['order'])) {
                                 $order_id = wc_get_order_id_by_order_key(wc_clean(wp_unslash($_GET['order'])));
                                 if ($order_id) {
-                                    $atts['wc_order_id'] = $order_id;
-                                    $shortcode[3] .= ' wc_order_id="' . $order_id . '"';
+                                    $this->helper->load('shortcode')->set($shortcode, $atts, ['wc_order_id' => $order_id]);
+                                    $hash_data[] = 'wc_order_id';
 
                                     $item_id = isset($_GET['item_id']) && $_GET['item_id'] ? wc_clean(wp_unslash($_GET['item_id'])) : false;
                                     if ($item_id) {
@@ -2472,8 +2429,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                                         if ($order && method_exists($order, 'get_items')) {
                                             $order_items = $order->get_items();
                                             if (isset($order_items[$item_id])) {
-                                                $atts['wc_product_item_id'] = $item_id;
-                                                $shortcode[3] .= ' wc_product_item_id="' . $item_id . '"';
+                                                $this->helper->load('shortcode')->set($shortcode, $atts, ['wc_product_item_id' => $item_id]);
+                                                $hash_data[] = 'wc_product_item_id';
                                             }
                                         }
                                     }
@@ -2481,16 +2438,13 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                             }
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
-                    if (!isset($atts['filter'])) {
-                        $shortcode[3] .= ' filter="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true', 'filter' => 'true']);
                     if ($download) {
                         $site_url = str_replace(array('http:', 'https:'), array('', ''), $this->helper->load('translator')->translate_url($this->helper->get_frontend_site_url()));
-                        $shortcode[3] .= ' output="url" site_url="' . $site_url . '" esc_url_raw="true" wc_product_download="true"';
+                        $this->helper->load('shortcode')->set($shortcode, $atts, ['output' => 'url', 'site_url' => $site_url, 'esc_url_raw' => 'true', 'wc_product_download' => 'true']);
+                        $hash_data[] = 'site_url';
                     }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, 'woocommerce_content', $atts)]);
                     $content = str_replace($shortcode_value, do_shortcode_tag($shortcode), $content);
                 }
             }
@@ -2503,6 +2457,38 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             return false;
         }
         return $enabled;
+    }
+
+    // record attributes the user has no access to: orders of the customer or for order managers, public products, cart of the current visitor
+    public function access($atts = array(), $user_id = 0) {
+        $wc_order_id = isset($atts['wc_order_id']) ? $atts['wc_order_id'] : $this->get('wc_order_id');
+        if (isset($atts['dataset'])) {
+            if ($this->get('item') == 'cart') {
+                $access = true;
+            } elseif ($this->get('item') == 'shop_order' || $this->get('item') == 'shop_subscription') {
+                $access = ($user_id && user_can($user_id, 'view_order', $this->get('dataset'))) || user_can($user_id, 'edit_shop_orders');
+            } else {
+                $product_id = $this->get('item') == 'product_variation' ? wp_get_post_parent_id($this->get('dataset')) : $this->get('dataset');
+                $access = (is_post_publicly_viewable($product_id) && !post_password_required($product_id)) || user_can($user_id, 'edit_post', $product_id);
+            }
+            if ($access) {
+                unset($atts['dataset']);
+            }
+        }
+        // order of the product
+        if (isset($atts['wc_order_id'])) {
+            if (($user_id && user_can($user_id, 'view_order', $atts['wc_order_id'])) || user_can($user_id, 'edit_shop_orders')) {
+                unset($atts['wc_order_id']);
+            }
+        }
+        // item of the order
+        if (isset($atts['wc_product_item_id'])) {
+            $order = $wc_order_id ? wc_get_order($wc_order_id) : false;
+            if ($order && $order->get_item($atts['wc_product_item_id'])) {
+                unset($atts['wc_product_item_id']);
+            }
+        }
+        return $atts;
     }
 
     /**
@@ -3440,9 +3426,10 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         if (!is_cart() || WC()->cart->is_empty()) {
             return;
         }
+        $atts = array('id' => get_option('e2pdf_wc_cart_template_id', '0'), 'dataset' => wc_get_page_id('cart'));
         echo apply_filters(
                 'e2pdf_wc_action_e2pdf_wc_cart_template_id',
-                do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_cart_template_id', '0') . '" dataset="' . wc_get_page_id('cart') . '" class="button e2pdf-wc-download-button e2pdf-wc-download-cart-button"]')
+                do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_cart', $atts) . '" class="button e2pdf-wc-download-button e2pdf-wc-download-cart-button"]')
         );
     }
 
@@ -3450,18 +3437,20 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         if (!is_checkout() || WC()->cart->is_empty()) {
             return;
         }
+        $atts = array('id' => get_option('e2pdf_wc_checkout_template_id', '0'), 'dataset' => wc_get_page_id('cart'));
         echo apply_filters(
                 'e2pdf_wc_action_e2pdf_wc_checkout_template_id',
-                do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_checkout_template_id', '0') . '" dataset="' . wc_get_page_id('cart') . '" class="button e2pdf-wc-download-button e2pdf-wc-download-checkout-button"]')
+                do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_checkout', $atts) . '" class="button e2pdf-wc-download-button e2pdf-wc-download-checkout-button"]')
         );
     }
 
     public function action_e2pdf_wc_order_details_template_id($order) {
         $statuses = get_option('e2pdf_wc_order_details_template_id_status', array('any'));
         if (is_array($statuses) && (in_array($order->get_status(), $statuses, false) || in_array('wc-' . $order->get_status(), $statuses, false) || in_array('any', $statuses, false))) {
+            $atts = array('id' => get_option('e2pdf_wc_order_details_template_id', '0'), 'dataset' => $order->get_id());
             echo apply_filters(
                     'e2pdf_wc_action_e2pdf_wc_order_details_template_id',
-                    do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_order_details_template_id', '0') . '" dataset="' . $order->get_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
+                    do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset'], 'woocommerce_order_details', $atts) . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
                     $order
             );
         }
@@ -3470,9 +3459,10 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
     public function action_e2pdf_wc_admin_order_actions_template_id($order) {
         $statuses = get_option('e2pdf_wc_admin_order_actions_template_id_status', array('any'));
         if (is_array($statuses) && (in_array($order->get_status(), $statuses, false) || in_array('wc-' . $order->get_status(), $statuses, false) || in_array('any', $statuses, false))) {
+            $atts = array('id' => get_option('e2pdf_wc_admin_order_actions_template_id', '0'), 'dataset' => $order->get_id(), 'user_id' => $order->get_user_id());
             echo apply_filters(
                     'e2pdf_wc_action_e2pdf_wc_admin_order_actions_template_id',
-                    do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_admin_order_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
+                    do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" user_id="' . $atts['user_id'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'user_id'], 'woocommerce_admin', $atts) . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
                     $order
             );
         }
@@ -3496,9 +3486,10 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
             if ($order) {
                 $statuses = get_option('e2pdf_wc_admin_order_details_template_id_status', array('any'));
                 if (is_array($statuses) && (in_array($order->get_status(), $statuses, false) || in_array('wc-' . $order->get_status(), $statuses, false) || in_array('any', $statuses, false))) {
+                    $atts = array('id' => get_option('e2pdf_wc_admin_order_details_template_id', '0'), 'dataset' => $order->get_id(), 'user_id' => $order->get_user_id());
                     echo apply_filters(
                             'e2pdf_wc_action_e2pdf_wc_admin_order_details_template_id',
-                            do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_admin_order_details_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
+                            do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" user_id="' . $atts['user_id'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'user_id'], 'woocommerce_admin', $atts) . '" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]'),
                             $order
                     );
                 }
@@ -3509,11 +3500,12 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
     public function filter_woocommerce_my_account_my_orders_actions($actions, $order) {
         $statuses = get_option('e2pdf_wc_my_orders_actions_template_id_status', array('any'));
         if (is_array($statuses) && (in_array($order->get_status(), $statuses, false) || in_array('wc-' . $order->get_status(), $statuses, false) || in_array('any', $statuses, false))) {
-            $url = do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_my_orders_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" output="url"]');
+            $atts = array('id' => get_option('e2pdf_wc_my_orders_actions_template_id', '0'), 'dataset' => $order->get_id(), 'user_id' => $order->get_user_id());
+            $url = do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" user_id="' . $atts['user_id'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'user_id'], 'woocommerce_my_account', $atts) . '" output="url"]');
             if ($url) {
                 $actions['e2pdf_invoice'] = array(
                     'url' => $url,
-                    'name' => apply_filters('e2pdf_wc_my_account_my_orders_actions_invoice_title', do_shortcode('[e2pdf-download id="' . get_option('e2pdf_wc_my_orders_actions_template_id', '0') . '" dataset="' . $order->get_id() . '" user_id="' . $order->get_user_id() . '" output="button_title"]')),
+                    'name' => apply_filters('e2pdf_wc_my_account_my_orders_actions_invoice_title', do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" user_id="' . $atts['user_id'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'user_id'], 'woocommerce_my_account', $atts) . '" output="button_title"]')),
                 );
             }
             $actions = apply_filters('e2pdf_wc_action_e2pdf_wc_my_orders_actions_template_id', $actions, $order);
@@ -3899,12 +3891,14 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
         if (!empty($hooks)) {
             $columns['e2pdf_hook_woocommerce_order_row_column'] = apply_filters('e2pdf_hook_section_title', __('E2Pdf Actions', 'e2pdf'), 'hook_woocommerce_order_row_column');
             add_action('manage_shop_order_posts_custom_column', array($this, 'hook_woocommerce_order_row_column_callback'), 10, 2);
+            add_action('woocommerce_shop_order_list_table_custom_column', array($this, 'hook_woocommerce_order_row_column_callback'), 10, 2);
         }
         return $columns;
     }
 
     public function hook_woocommerce_order_row_column_callback($column, $post_id) {
         if ($column == 'e2pdf_hook_woocommerce_order_row_column') {
+            $post_id = $post_id instanceof WC_Abstract_Order ? $post_id->get_id() : $post_id;
             $hooks = $this->helper->load('hooks')->get('woocommerce', 'hook_woocommerce_order_row_column', 'shop_order');
             foreach ($hooks as $hook) {
                 if ($this->helper->load('hooks')->process_hook(
@@ -3997,9 +3991,10 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                             'hook_woocommerce_my_account_my_orders_actions'
                     )
             ) {
+                $atts = array('id' => $hook, 'dataset' => $order->get_id(), 'noactions' => 'true');
                 $actions['e2pdf_' . $hook] = array(
-                    'url' => do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" output="url"]'),
-                    'name' => apply_filters('e2pdf_wc_my_account_my_orders_actions_invoice_title', do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" output="button_title"]')),
+                    'url' => do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_my_account', $atts) . '" noactions="true" output="url"]'),
+                    'name' => apply_filters('e2pdf_wc_my_account_my_orders_actions_invoice_title', do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_my_account', $atts) . '" noactions="true" output="button_title"]')),
                 );
             }
         }
@@ -4017,9 +4012,10 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                             'hook_wcs_view_subscription_actions'
                     )
             ) {
+                $atts = array('id' => $hook, 'dataset' => $order->get_id(), 'noactions' => 'true');
                 $actions['e2pdf_' . $hook] = array(
-                    'url' => do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" output="url"]'),
-                    'name' => apply_filters('e2pdf_wc_wcs_view_subscription_actions_actions_title', do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" output="button_title"]')),
+                    'url' => do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_subscription', $atts) . '" noactions="true" output="url"]'),
+                    'name' => apply_filters('e2pdf_wc_wcs_view_subscription_actions_actions_title', do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_subscription', $atts) . '" noactions="true" output="button_title"]')),
                 );
             }
         }
@@ -4037,7 +4033,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                             'hook_' . current_action()
                     )
             ) {
-                echo do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]');
+                $atts = array('id' => $hook, 'dataset' => $order->get_id(), 'noactions' => 'true');
+                echo do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_order_details', $atts) . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-order-details-button"]');
             }
         }
     }
@@ -4058,7 +4055,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                             'hook_' . current_action()
                     )
             ) {
-                echo do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . $order->get_id() . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-subscription-details-button"]');
+                $atts = array('id' => $hook, 'dataset' => $order->get_id(), 'noactions' => 'true');
+                echo do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_subscription', $atts) . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-subscription-details-button"]');
             }
         }
 
@@ -4081,7 +4079,8 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                             'hook_woocommerce_proceed_to_checkout'
                     )
             ) {
-                echo do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . wc_get_page_id('cart') . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-cart-button"]');
+                $atts = array('id' => $hook, 'dataset' => wc_get_page_id('cart'), 'noactions' => 'true');
+                echo do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_cart', $atts) . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-cart-button"]');
             }
         }
     }
@@ -4101,8 +4100,38 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                             'hook_' . current_action()
                     )
             ) {
-                echo do_shortcode('[e2pdf-download id="' . $hook . '" dataset="' . wc_get_page_id('cart') . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-checkout-button"]');
+                $atts = array('id' => $hook, 'dataset' => wc_get_page_id('cart'), 'noactions' => 'true');
+                echo do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_checkout', $atts) . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-checkout-button"]');
             }
         }
+    }
+
+    // classic Cart / Checkout hooks on block-based pages: before / after the Proceed to Checkout and Place Order blocks
+    public function hook_woocommerce_cart_block($block_content, $block) {
+        if (!WC()->cart || WC()->cart->is_empty()) {
+            return $block_content;
+        }
+        $type = $block['blockName'] == 'woocommerce/proceed-to-checkout-block' ? 'cart' : 'checkout';
+        $buttons = ['before' => '', 'after' => ''];
+        $block_hooks = $type == 'cart' ? ['before' => 'hook_woocommerce_proceed_to_checkout'] : ['before' => 'hook_woocommerce_review_order_before_submit', 'after' => 'hook_woocommerce_review_order_after_submit'];
+        foreach ($block_hooks as $position => $block_hook) {
+            foreach ($this->helper->load('hooks')->get('woocommerce', $block_hook, 'cart') as $hook) {
+                if ($this->helper->load('hooks')->process_hook(
+                                $hook,
+                                [
+                                    'dataset' => wc_get_page_id('cart'),
+                                ],
+                                $block_hook
+                        )
+                ) {
+                    $atts = array('id' => $hook, 'dataset' => wc_get_page_id('cart'), 'noactions' => 'true');
+                    $buttons[$position] .= do_shortcode('[e2pdf-download id="' . $atts['id'] . '" dataset="' . $atts['dataset'] . '" hash="' . $this->helper->load('shortcode')->hash(['dataset', 'noactions'], 'woocommerce_' . $type, $atts) . '" noactions="true" class="button e2pdf-wc-download-button e2pdf-wc-download-' . $type . '-button"]');
+                }
+            }
+            if ($buttons[$position]) {
+                $buttons[$position] = '<p class="e2pdf-wc-' . $type . '-block-' . $position . '">' . $buttons[$position] . '</p>';
+            }
+        }
+        return $buttons['before'] . $block_content . $buttons['after'];
     }
 }

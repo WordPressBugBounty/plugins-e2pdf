@@ -94,14 +94,41 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         add_action('everest_forms_entry_details_sidebar_details', array($this, 'hook_everest_entry_view'), 10);
     }
 
+    // extension mcp instructions
+    public function filter_e2pdf_extension_mcp_instructions($instructions) {
+        $instructions[$this->info['key']] = array(
+            'values' => array(
+                'Field values (Everest Forms smart tags): {field_id="field_key"}. Multiple files / images: [e2pdf-format-output explode=", " output="{0}"]{field_id="field_key"}[/e2pdf-format-output] (1st), output="{1}" (2nd).',
+                'Repeater: single row {field_id="field_key_1"} (row 1 = first); loop: [e2pdf-for][e2pdf-for-data]{field_id="repeater_key"}[/e2pdf-for-data][e2pdf-for-do]{field_id="field_key_[e2pdf-for-counter]"}[/e2pdf-for-do][/e2pdf-for].',
+            ),
+            'places' => array(
+                array(
+                    'place' => 'Confirmation / success message shown after submit',
+                    'location' => 'Form settings: successful form submission message',
+                    'shortcodes' => array('[e2pdf-download]', '[e2pdf-view]'),
+                ),
+                array(
+                    'place' => 'Email notification message (body)',
+                    'location' => 'Form settings: Email message',
+                    'shortcodes' => array('[e2pdf-attachment]', '[e2pdf-download]'),
+                ),
+            ),
+        );
+        return $instructions;
+    }
+
     // load filters
     public function load_filters() {
+        add_filter('e2pdf_extension_mcp_instructions', array($this, 'filter_e2pdf_extension_mcp_instructions'));
         add_filter('everest_forms_add_success', array($this, 'filter_everest_forms_add_success'));
         add_filter('everest_forms_email_attachments', array($this, 'filter_everest_forms_email_attachments'), 10, 2);
         add_filter('everest_forms_email_message', array($this, 'filter_everest_forms_email_message'), 10);
         add_filter('everest_forms_email_template_message', array($this, 'filter_everest_forms_email_message'), 10);
         add_filter('everest_forms_entry_table_actions', array($this, 'hook_everest_row_actions'), 10, 2);
         add_filter('everest_forms_after_success_ajax_message', array($this, 'filter_everest_forms_after_success_ajax_message'), 99, 3);
+        add_filter('everest_forms_smart_tags_value', array($this, 'filter_everest_forms_field_value'), 99);
+        add_filter('everest_forms_html_field_value', array($this, 'filter_everest_forms_field_value'), 99);
+        add_filter('everest_forms_plaintext_field_value', array($this, 'filter_everest_forms_field_value'), 99);
 
         // extension hooks
         add_filter('e2pdf_extension_hooks', function ($hooks) {
@@ -276,6 +303,17 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
             return true;
         }
         return false;
+    }
+
+    // record attributes the user has no access to: the loaded entry is allowed for its owner or entries capability
+    public function access($atts = [], $user_id = 0) {
+        if (isset($atts['dataset'])) {
+            $entry = $this->get('cached_entry');
+            if ((!empty($entry->user_id) && (int) $entry->user_id === $user_id) || user_can($user_id, 'everest_forms_view_entry', $this->get('dataset'))) {
+                unset($atts['dataset']);
+            }
+        }
+        return $atts;
     }
 
     // visual mapper
@@ -1014,12 +1052,18 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
                 if (is_file($file)) {
-                    $this->helper->delete_dir(dirname($file) . '/');
+                    $dir = dirname($file) . '/';
+                    unlink($file);
+                    if (is_file($dir . 'index.php')) {
+                        unlink($dir . 'index.php');
+                    }
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    @rmdir($dir);
                 }
             }
-            $this->helper->deset('tmp_everest_attachments');
-            $this->helper->deset('everest_attachments');
         }
+        $this->helper->deset('tmp_everest_attachments');
+        $this->helper->deset('everest_attachments');
     }
 
     // before template part action
@@ -1058,6 +1102,20 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
             }
         }
         return $attachments;
+    }
+
+    // field value filter
+    public function filter_everest_forms_field_value($value) {
+        if (is_array($value)) {
+            array_walk_recursive($value, function (&$item) {
+                if (is_string($item)) {
+                    $item = str_replace('[e2pdf-', '&#91;e2pdf-', $item);
+                }
+            });
+        } elseif (is_string($value)) {
+            $value = str_replace('[e2pdf-', '&#91;e2pdf-', $value);
+        }
+        return $value;
     }
 
     // email message filter
@@ -1178,42 +1236,41 @@ class Extension_E2pdf_Everest extends Model_E2pdf_Model {
                 foreach ($shortcodes[0] as $key => $shortcode_value) {
                     $shortcode = $this->helper->load('shortcode')->get_shortcode($shortcodes, $key);
                     $atts = shortcode_parse_atts($shortcode[3]);
-                    if (!isset($atts['dataset']) && isset($atts['id'])) {
+                    $hash_data = [];
+                    if (isset($atts['id']) && (!isset($atts['dataset']) || (evf()->task->entry_id && (string) $atts['dataset'] === (string) evf()->task->entry_id))) {
                         $template = new Model_E2pdf_Template();
                         $template->load($atts['id']);
-                        if ($template->get('extension') === 'everest') {
-                            $atts['dataset'] = evf()->task->entry_id;
-                            $shortcode[3] .= ' dataset="' . evf()->task->entry_id . '"';
+                        if ($template->get('extension') === 'everest' && isset(evf()->task->form_data['id']) && $template->get('item') == evf()->task->form_data['id']) {
+                            if (evf()->task->entry_id) {
+                                $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => evf()->task->entry_id]);
+                                $hash_data[] = 'dataset';
+                            }
                         }
                     }
-                    if (!isset($atts['apply'])) {
-                        $shortcode[3] .= ' apply="true"';
-                    }
+                    $this->helper->load('shortcode')->add($shortcode, $atts, ['apply' => 'true']);
                     if ($type == 'message' && !isset($atts['iframe_download'])) {
                         $shortcode[3] .= ' iframe_download="true"';
                     }
                     $file = false;
                     if ($this->helper->load('shortcode')->is_attachment($shortcode, $atts)) {
                         if ($type == 'mail') {
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['is_tmp' => 'true']);
+                            $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, ($type === 'mail' ? 'everest_mail' : 'everest_success_message'), $atts)]);
                             $file = do_shortcode_tag($shortcode);
                             if ($file) {
-                                $tmp = false;
-                                if (substr($file, 0, 4) === 'tmp:') {
-                                    $file = substr($file, 4);
-                                    $tmp = true;
-                                }
-                                if ($shortcode[2] === 'e2pdf-save' || isset($atts['pdf'])) {
+                                $tmp = substr($file, 0, 4) === 'tmp:';
+                                $file = $tmp ? substr($file, 4) : $file;
+                                if (is_file($file)) {
                                     if ($tmp) {
                                         $this->helper->add('tmp_everest_attachments', $file);
                                     }
-                                } else {
-                                    $this->helper->add('tmp_everest_attachments', $file);
+                                    $this->helper->add('everest_attachments', $file);
                                 }
-                                $this->helper->add('everest_attachments', $file);
                             }
                         }
                         $message = str_replace($shortcode_value, '', $message);
                     } else {
+                        $this->helper->load('shortcode')->add($shortcode, $atts, ['hash' => $this->helper->load('shortcode')->hash($hash_data, ($type === 'mail' ? 'everest_mail' : 'everest_success_message'), $atts)]);
                         $message = str_replace($shortcode_value, do_shortcode_tag($shortcode), $message);
                     }
                 }

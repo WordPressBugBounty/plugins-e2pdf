@@ -55,4 +55,38 @@ class Model_E2pdf_Rpc extends Model_E2pdf_Model {
     public function set($key, $value) {
         $this->options[$key] = $value;
     }
+
+    public function get_request_method() {
+        return strtoupper($this->helper->load('server')->get('REQUEST_METHOD'));
+    }
+
+    public function get_body() {
+        if (!isset($this->options['body'])) {
+            $body = file_get_contents('php://input'); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+            $this->set('body', $body === false ? '' : $body);
+        }
+        return $this->options['body'];
+    }
+
+    public function get_bearer_token() {
+        $authorization = '';
+        // phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        if (!empty($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authorization = wp_unslash($_SERVER['HTTP_AUTHORIZATION']);
+        } elseif (!empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $authorization = wp_unslash($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+        } elseif (function_exists('getallheaders')) {
+            foreach ((array) getallheaders() as $header_key => $header_value) {
+                if (strtolower($header_key) === 'authorization') {
+                    $authorization = $header_value;
+                    break;
+                }
+            }
+        }
+        // phpcs:enable
+        if (is_string($authorization) && preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $authorization, $matches)) {
+            return $matches[1];
+        }
+        return '';
+    }
 }

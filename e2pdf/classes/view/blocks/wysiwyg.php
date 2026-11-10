@@ -23,6 +23,8 @@ if (!defined('ABSPATH')) {
         </li><li>
             <a title="<?php _e('Undo Changes', 'e2pdf'); ?>" href="javascript:void(0);"  class="ed_button button button-small e2pdf-undo e2pdf-inactive">
                 <i class="dashicons dashicons-undo"></i>
+            </a><a title="<?php _e('Redo Changes', 'e2pdf'); ?>" href="javascript:void(0);"  class="ed_button button button-small e2pdf-redo e2pdf-inactive">
+                <i class="dashicons dashicons-redo"></i>
             </a>
         </li><li>
             <a title="<?php _e('Clear Style', 'e2pdf'); ?>" href="javascript:void(0);"  class="ed_button e2pdf-apply-wysiwyg e2pdf-apply-wysiwyg-selection button button-small e2pdf-inactive" data-command='clear'>
