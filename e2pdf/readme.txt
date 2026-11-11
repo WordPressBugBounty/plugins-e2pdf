@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.1
-Stable tag: 2.00.00
+Stable tag: 2.00.01
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -78,6 +78,7 @@ Easily create, populate, and email PDFs using popular form builders and platform
 * [JetFormBuilder](https://e2pdf.com/docs/extensions/jetformbuilder): [Demo](https://e2pdf.com/demo/jetformbuilder)
 * [MetForm](https://e2pdf.com/docs/extensions/metform): [Demo](https://e2pdf.com/demo/metform)
 * [Ninja Forms PDF](https://e2pdf.com/docs/extensions/ninja-forms): [Demo](https://e2pdf.com/demo/ninja-forms)
+* [SureForms](https://e2pdf.com/docs/extensions/sureforms): [Demo](https://e2pdf.com/demo/sureforms)
 * [WooCommerce Order / Product](https://e2pdf.com/docs/extensions/woocommerce) : [Demo](https://e2pdf.com/demo/woocommerce)
 * [WordPress / Post / Meta / ACF](https://e2pdf.com/docs/extensions/wordpress): [Demo](https://e2pdf.com/demo/wordpress)
 * [WPForms](https://e2pdf.com/docs/extensions/wpforms): [Demo](https://e2pdf.com/demo/wpforms)
@@ -143,6 +144,21 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
+= 2.00.01 =
+*Release Date - November 11, 2026*
+
+* Add: Uninstall option to remove all data on plugin uninstall
+* Add: SureForms support
+* Improvement: E2Pdf data is kept on plugin uninstall by default
+* Improvement: E2Pdf format, math and page number shortcodes limited by PDF context
+* Improvement: E2Pdf data shortcodes limited by PDF context
+* Improvement: Translations
+* Fix: W3 Total Cache database cache purge
+* Fix: Formidable Forms entry values escaping outside PDF
+* Fix: [e2pdf-for] data with square brackets
+* Fix: [e2pdf-for] data with line breaks or indentation
+* Fix: PHP 8.x warnings and deprecation notices
+
 = 2.00.00 =
 *Release Date - November 10, 2026*
 
@@ -162,290 +178,6 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 = 1.32.65 =
 *Release Date - November 06, 2026*
-
-* Fix: Formidable Forms signature render fail in some cases
-
-= 1.32.64 =
-*Release Date - November 04, 2026*
-
-* Add: Forminator Stripe payment success message support
-
-= 1.32.63 =
-*Release Date - November 03, 2026*
-
-* Fix: Formidable Forms 7.x spam filter compatibility
-
-= 1.32.62 =
-*Release Date - October 28, 2026*
-
-* Fix: Some images fail to render
-
-= 1.32.61 =
-*Release Date - October 22, 2026*
-
-* Improvement: Temp files management
-* Improvement: Bulk export
-* Improvement: Security
-* Fix: Network deactivation on multisite
-
-= 1.32.60 =
-*Release Date - October 18, 2026*
-
-* Fix: Formidable Forms 7.0 repeater entries
-* Improvement: Images render
-
-= 1.32.59 =
-*Release Date - October 17, 2026*
-
-* Fix: Formidable Forms signature 3.2 compatibility
-
-= 1.32.58 =
-*Release Date - October 16, 2026*
-
-* Improvement: Security
-
-= 1.32.54 =
-*Release Date - September 30, 2026*
-
-* Improvement: Extension hooks load
-
-= 1.32.53 =
-*Release Date - September 27, 2026*
-
-* Fix: [e2pdf-view] shortcode for Fluent Forms ≥ 6.2.12
-* Fix: Auto download for Fluent Forms ≥ 6.2.12
-
-= 1.32.52 =
-*Release Date - September 23, 2026*
-
-* Add: AVIF image format support
-
-= 1.32.51 =
-*Release Date - September 17, 2026*
-
-* Fix: PHP 8.5 deprecation notices
-
-= 1.32.50 =
-*Release Date - September 16, 2026*
-
-* Improvement: Fields border settings detection
-
-= 1.32.49 =
-*Release Date - September 16, 2026*
-
-* Fix: Minor UI fixes
-* Fix: Quick properties
-
-= 1.32.48 =
-*Release Date - September 07, 2026*
-
-* Fix: Gallery FooGallery plugin compatibility
-* Fix: Shortcodes do not render when the Toolset template is used
-* Fix: Keep color order in PieGraph
-* Improvement: Additional Graph options
-* Improvement: Zoom
-* Improvement: Editor
-
-= 1.32.43 =
-*Release Date - July 27, 2026*
-
-* Improvement: Security
-
-= 1.32.42 =
-*Release Date - July 22, 2026*
-
-* Add: Ultimate Member – User Profile, Registration, Login, Member Directory, Content Restriction & Membership Plugin mail support
-
-= 1.32.41 =
-*Release Date - July 21, 2026*
-
-* Improvement: Upload handling
-
-= 1.32.40 =
-*Release Date - July 09, 2026*
-
-* Fix: Divi 5 Contact Forms compatibility
-
-= 1.32.39 =
-*Release Date - July 08, 2026*
-
-* Add: Annotation tab order
-
-= 1.32.38 =
-*Release Date - July 06, 2026*
-
-* Add: Formidable Forms child forms Visual Mapper support
-* Add: Formidable Forms child entry parent values render
-* Improvement: Styles
-* Improvement: Graph Non-numeric value
-
-= 1.32.35 =
-*Release Date - July 03, 2026*
-
-* Add: Graph additional properties
-
-= 1.32.34 =
-*Release Date - June 30, 2026*
-
-* Fix: Divi 5 Contact Form can't be detected in some cases
-
-= 1.32.33 =
-*Release Date - June 27, 2026*
-
-* Add: Additional [e2pdf-attachment] attributes
-
-= 1.32.32 =
-*Release Date - June 24, 2026*
-
-* Fix: Divi Contact Form Helper 2.1.3 compatibility
-
-= 1.32.31 =
-*Release Date - June 16, 2026*
-
-* Fix: TranslatePress full translation
-* Fix: ACF shortcodes translation
-* Fix: Ninja Forms signature
-* Improvement: Graph properties
-* Security: Input validation
-
-= 1.32.26 =
-*Release Date - June 03, 2026*
-
-* Improvement: Divi 5 integration
-
-= 1.32.25 =
-*Release Date - June 02, 2026*
-
-* Fix: DB initialization
-
-= 1.32.24 =
-*Release Date - June 01, 2026*
-
-* Add: Divi 5 Support
-* Fix: ACF shortcodes fail to render in some cases
-
-= 1.32.23 =
-*Release Date - May 27, 2026*
-
-* Fix: Fatal Error during template import
-* Fix: Main font error after upload
-
-= 1.32.22 =
-*Release Date - May 27, 2026*
-
-* Fix: PDF uploads fail in some cases
-
-= 1.32.21 =
-*Release Date - May 26, 2026*
-
-* Fix: Inner shortcodes fail to render in some cases
-* Fix: Visual Mapper Fluent Forms Page Breaks
-* Fix: License key does not match this website
-* Improvement: Notifications
-* Improvement: Translation
-* Improvement: UI/UX
-
-= 1.32.20 =
-*Release Date - May 15, 2026*
-
-* Fix: Fluent Forms email attachments fail in some cases
-
-= 1.32.19 =
-*Release Date - May 07, 2026*
-
-* Fix: Cron bulk export ACF fields
-
-= 1.32.18 =
-*Release Date - May 04, 2026*
-
-* Security: Cross Site Scripting (XSS)
-
-= 1.32.17 =
-*Release Date - April 28, 2026*
-
-* Fix: Forminator 1.53.x calculation field compatibility
-
-= 1.32.16 =
-*Release Date - April 22, 2026*
-
-* Improvement: UI
-
-= 1.32.15 =
-*Release Date - April 21, 2026*
-
-* Improvement: [e2pdf-arg] shortcodes
-* Security: Cross Site Scripting (XSS)
-
-= 1.32.14 =
-*Release Date - April 14, 2026*
-
-* Add: [frm-graph] shortcode support
-* Improvement: Graph options
-
-= 1.32.13 =
-*Release Date - April 13, 2026*
-
-* Add: [e2pdf-no-translation] Weglot shortcode support
-
-= 1.32.12 =
-*Release Date - April 08, 2026*
-
-* Add: WPForms hidden field default value support
-
-= 1.32.11 =
-*Release Date - April 01, 2026*
-
-* Improvement: Integrations
-
-= 1.32.09 =
-*Release Date - March 25, 2026*
-
-* Improvement: Styles
-
-= 1.32.08 =
-*Release Date - March 25, 2026*
-
-* Fix: [e2pdf-math] calculation
-* Fix: Contact Form 7 values rendering
-
-= 1.32.07 =
-*Release Date - March 17, 2026*
-
-* Add: Checkout Field Editor (Checkout Manager) for WooCommerce Visual Mapper
-
-= 1.32.06 =
-*Release Date - March 13, 2026*
-
-* Fix: WPForms Checkbox and Radio HTML mapping
-
-= 1.32.05 =
-*Release Date - March 12, 2026*
-
-* Add: Checkbox and Radio background color support
-* Fix: WPForms Visual Mapper styles
-* Fix: WPForms Checkbox and Radio HTML mapping
-* Fix: Backward compatibility for the URL format setting
-
-= 1.32.03 =
-*Release Date - March 10, 2026*
-
-* Add: [e2pdf-download] view attribute
-* Add: Additional actions
-* Improvement: UI
-
-= 1.32.02 =
-*Release Date - March 06, 2026*
-
-* Fix: SVG images fail to render in some cases
-* Fix: Divi Contact Form Helper 2.0.4 file uploads
-
-= 1.32.01 =
-*Release Date - February 26, 2026*
-
-* Fix: Divi Contact Form Helper 2.0.4 compatibility
-
-= 1.32.00 =
-*Release Date - February 24, 2026*
 
 * Add: MetForm support
 * Add: Elementor Forms label output support
@@ -487,6 +219,22 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Add: [e2pdf-frm-field-value] shortcode for Formidable Forms dynamic field
 * Add: [e2pdf-if] strict comparators [===] [!==]
 * Add: [e2pdf-acf-repeater] implode attribute
+* Add: [e2pdf-download] view attribute
+* Add: Additional actions
+* Add: Checkbox and Radio background color support
+* Add: Checkout Field Editor (Checkout Manager) for WooCommerce Visual Mapper
+* Add: WPForms hidden field default value support
+* Add: [e2pdf-no-translation] Weglot shortcode support
+* Add: [frm-graph] shortcode support
+* Add: Divi 5 Support
+* Add: Additional [e2pdf-attachment] attributes
+* Add: Graph additional properties
+* Add: Formidable Forms child forms Visual Mapper support
+* Add: Formidable Forms child entry parent values render
+* Add: Annotation tab order
+* Add: Ultimate Member – User Profile, Registration, Login, Member Directory, Content Restriction & Membership Plugin mail support
+* Add: AVIF image format support
+* Add: Forminator Stripe payment success message support
 * Fix: WooCommerce User Order List hook global actions
 * Fix: WooCommerce Empty My Orders actions
 * Fix: JetFormBuilder link and frame class
@@ -507,80 +255,76 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 * Fix: HTML Worker 2.0 "ol" tags render
 * Fix: HTML Worker 2.0 incorrect table spacing when using margins on elements inside rows
 * Fix: [e2pdf-for], [e2pdf-acf-repeater] nested shortcodes render
+* Fix: Divi Contact Form Helper 2.0.4 compatibility
+* Fix: SVG images fail to render in some cases
+* Fix: WPForms Visual Mapper styles
+* Fix: WPForms Checkbox and Radio HTML mapping
+* Fix: Backward compatibility for the URL format setting
+* Fix: [e2pdf-math] calculation
+* Fix: Contact Form 7 values rendering
+* Fix: Forminator 1.53.x calculation field compatibility
+* Fix: Cron bulk export ACF fields
+* Fix: Fluent Forms email attachments fail in some cases
+* Fix: Visual Mapper Fluent Forms Page Breaks
+* Fix: License key does not match this website
+* Fix: PDF uploads fail in some cases
+* Fix: Fatal Error during template import
+* Fix: Main font error after upload
+* Fix: ACF shortcodes fail to render in some cases
+* Fix: DB initialization
+* Fix: TranslatePress full translation
+* Fix: ACF shortcodes translation
+* Fix: Ninja Forms signature
+* Fix: Divi Contact Form Helper 2.1.3 compatibility
+* Fix: Gallery FooGallery plugin compatibility
+* Fix: Shortcodes do not render when the Toolset template is used
+* Fix: Keep color order in PieGraph
+* Fix: Minor UI fixes
 * Fix: Minor PHP notices
-* Improvement: Gravity Forms Visual Mapper
+* Fix: [e2pdf-view] shortcode for Fluent Forms ≥ 6.2.12
+* Fix: Auto download for Fluent Forms ≥ 6.2.12
+* Fix: Formidable Forms signature 3.2 compatibility
+* Fix: Formidable Forms 7.0 repeater entries
+* Fix: Network deactivation on multisite
+* Fix: Formidable Forms 7.x spam filter compatibility
 * Improvement: Visual Mapper
 * Improvement: PDF Render Engine
 * Improvement: PDF Upload
-* Improvement: Translator
 * Improvement: Translation
 * Improvement: Memory usage
 * Improvement: TranslatePress support
 * Improvement: Shortcodes processing
-* Improvement: Shortcodes load optimization
 * Improvement: HTML render
 * Improvement: HTML Worker 3.0
 * Improvement: HTML tables render
 * Improvement: Auto download
 * Improvement: Global actions
-* Improvement: SVG render
 * Improvement: pdf.js update
 * Improvement: UI/UX
 * Improvement: WYSIWYG
 * Improvement: CSS load
-* Improvement: Backup import
 * Improvement: "convert" attribute
+* Improvement: Styles
+* Improvement: Integrations
+* Improvement: Graph options
+* Improvement: [e2pdf-arg] shortcodes
+* Improvement: Notifications
+* Improvement: Graph Non-numeric value
+* Improvement: Zoom
+* Improvement: Editor
+* Improvement: Fields border settings detection
+* Improvement: Extension hooks load
+* Improvement: Images render
+* Improvement: Temp files management
+* Improvement: Bulk export
 * Security: [e2pdf-frm-field-value] restriction outside PDF context
 * Security: Shortcodes usage limitations
 * Security: Attributes filtering
+* Security: Cross Site Scripting (XSS)
+* Security: Input validation
 
 = 1.28.15 =
 *Release Date - February 10, 2026*
-
-* Add: JetFormBuilder revision form entries
-* Add: WPForms Likert Scale support
-* Add: Gravity Forms repeater fields support
-* Add: Gravity Forms json value format support
-* Add: [e2pdf-format-output] sreplace filter
-* Add: [e2pdf-math] modulo operator
-* Add: Checkout Field Editor (Checkout Manager) for WooCommerce support
-* Add: get_items_category, get_items_category_ids keys for WooCommerce
-* Add: Additional actions and filters
-* Add: [e2pdf-acf-repeater] nested shortcodes support
-* Add: Fluent Forms hidden field default value support
-* Add: MemberPress custom thank you message shortcodes support
-* Add: User Registration & Membership – Custom Registration Form, Login Form, and User Profile mail support
-* Fix: Visual Mapper does not correctly set some values
-* Fix: Bulk PDF generation fails in certain case
-* Fix: Gravity Forms incorrect value mapping when using separate values
-* Fix: Checkbox and Select compatibility with Forminator 1.48.x
-* Fix: Gravity Forms Visual Mapper
-* Fix: Clear cache upon settings change
-* Fix: Docket Cache compatibility
-* Fix: Everest Forms email templates
-* Fix: Compatibility fix with Foxtool All-in-One: Contact chat button, Custom login, Media optimize images
-* Fix: Gravity Forms signature and hidden fields Visual Mapper
-* Fix: Fatal error on JetFormBuilder no entries
-* Fix: Fatal Error upon save to Media
-* Fix: Dataset titles
-* Fix: Download PDF Ajax Loader redirect, error message
-* Fix: Fluent Forms checkbox, dropdown, country, repeater fields render
-* Fix: Fluent Forms [e2pdf-view] shortcode fails to load correctly
-* Fix: Elementor Forms Repeater Fields compatibility fix
-* Fix: Incorrect DB collation
-* Fix: PHP 8.x deprecation notices
-* Improvement: truncate_html, truncate_ishtml, extract_by_tag, extract_by_id, extract_by_class, remove_by_tag, remove_by_id, remove_by_class html entities
-* Improvement: Parent option
-* Improvement: Timeouts
-* Improvement: Visual Mapper
-* Improvement: Backup import
-* Improvement: Actions can't have empty conditions
-* Improvement: Checkbox, Select and Multiline select render
-* Improvement: Everest Forms shortcodes process
-* Improvement: JetFormBuilder shortcodes process
-* Improvement: Elementor Widget shortcodes process
-* Security: Cross Site Scripting (XSS)
-* Security: HTML filter
 
 = 1.28.00 =
 *Release Date - April 08, 2025*

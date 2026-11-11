@@ -199,7 +199,7 @@ class Helper_E2pdf_Field {
                                     }
                                 }
                             }
-                            $value = str_replace($shortcode_value, do_shortcode_tag($shortcode), $value);
+                            $value = str_replace($shortcode_value, $this->helper->load('shortcode')->do_shortcode_tag($shortcode), $value);
                         }
                     }
                 }
@@ -290,7 +290,7 @@ class Helper_E2pdf_Field {
                             }
                         }
                         if ($do_shortcode) {
-                            $value = str_replace($shortcode_value, do_shortcode_tag($shortcode), $value);
+                            $value = str_replace($shortcode_value, $this->helper->load('shortcode')->do_shortcode_tag($shortcode), $value);
                         } else {
                             $value = str_replace($shortcode_value, '[' . $shortcode[2] . $shortcode[3] . ']' . $shortcode[5] . '[/' . $shortcode[2] . ']', $value);
                         }
@@ -304,7 +304,7 @@ class Helper_E2pdf_Field {
     public function do_shortcodes($value, $extension, $field = array()) {
         $element_id = isset($field['element_id']) ? $field['element_id'] : false;
         $value = apply_filters('e2pdf_extension_render_shortcodes_pre_do_shortcode', $value, $element_id, $extension->get('template_id'), $extension->get('item'), $extension->get('dataset'), $extension->get('item2'), $extension->get('dataset2'));
-        $value = do_shortcode($value);
+        $value = $this->helper->load('shortcode')->do_shortcode($value);
         $value = apply_filters('e2pdf_extension_render_shortcodes_after_do_shortcode', $value, $element_id, $extension->get('template_id'), $extension->get('item'), $extension->get('dataset'), $extension->get('item2'), $extension->get('dataset2'));
         return $value;
     }
@@ -415,7 +415,7 @@ class Helper_E2pdf_Field {
                 }
                 break;
             default:
-                if (!($extension instanceof Extension_E2pdf_Formidable) && !($extension instanceof Extension_E2pdf_Metform) && !($extension instanceof Extension_E2pdf_Wpcf7)) {
+                if (!apply_filters('e2pdf_for_do_shortcode_data_process', false) && !($extension instanceof Extension_E2pdf_Formidable) && !($extension instanceof Extension_E2pdf_Metform) && !($extension instanceof Extension_E2pdf_Wpcf7)) {
                     $value = $extension->convert_shortcodes($value);
                 }
                 $value = $this->helper->load('properties')->apply($field, $value);

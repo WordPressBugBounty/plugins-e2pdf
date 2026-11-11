@@ -397,6 +397,7 @@ class Extension_E2pdf_Caldera extends Model_E2pdf_Model {
             $auto_form_shortcode = isset($data['auto_form_shortcode']) ? true : false;
             $form = array(
                 '_last_updated' => date('r'),
+                /* translators: %s: E2Pdf Template ID */
                 'success' => sprintf(__('Success. [e2pdf-download id="%s"]', 'e2pdf'), $template->get('ID')),
                 'name' => $template->get('title'),
                 'db_support' => '1',

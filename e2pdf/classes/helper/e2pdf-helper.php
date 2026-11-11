@@ -601,6 +601,25 @@ class Helper_E2pdf_Helper {
                     'e2pdf-save',
                     'e2pdf-attachment',
                 ];
+            case 'data':
+                return [
+                    'e2pdf-user',
+                    'e2pdf-wp',
+                    'e2pdf-wp-term',
+                    'e2pdf-wp-posts',
+                    'e2pdf-wp-users',
+                    'e2pdf-wc-product',
+                    'e2pdf-wc-order',
+                    'e2pdf-wc-cart',
+                    'e2pdf-wc-customer',
+                    'e2pdf-foreach',
+                    'e2pdf-acf-repeater',
+                    'e2pdf-frm-field-value',
+                    'e2pdf-frm-repeatable',
+                    'e2pdf-frm-entry-values',
+                    'e2pdf-frm-lookup-values',
+                    'e2pdf-frm-data-values',
+                ];
             default:
                 break;
         }

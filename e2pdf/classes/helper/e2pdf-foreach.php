@@ -95,13 +95,15 @@ class Helper_E2pdf_Foreach {
      */
     public function do_shortcode($value, $data_key, $data_value, $index, $foreach = 0) {
         if ($value) {
+            $data_key = $this->helper->load('shortcode')->escape($data_key);
+            $data_value = $this->helper->load('shortcode')->escape($data_value);
             $foreach_index = $foreach ? '-' . $foreach : '';
             $evenodd = $index % 2 == 0 ? '0' : '1';
             $replace = array(
                 '[e2pdf-foreach-index' . $foreach_index . ']' => $index,
                 '[e2pdf-foreach-counter' . $foreach_index . ']' => $index + 1,
                 '[e2pdf-foreach-key' . $foreach_index . ']' => $data_key,
-                '[e2pdf-foreach-value' . $foreach_index . ']' => is_array($data_value) || is_object($data_value) ? serialize($data_value) : $data_value,
+                '[e2pdf-foreach-value' . $foreach_index . ']' => $this->helper->load('shortcode')->escape(is_array($data_value) || is_object($data_value) ? serialize($data_value) : $data_value),
                 '[e2pdf-foreach-evenodd' . $foreach_index . ']' => $evenodd,
             );
             $value = str_replace(array_keys($replace), $replace, $value);
@@ -141,7 +143,7 @@ class Helper_E2pdf_Foreach {
                         if (is_array($post_meta) || is_object($post_meta)) {
                             $post_meta = serialize($post_meta);
                         }
-                        $value = str_replace($shortcode_value, $post_meta, $value);
+                        $value = str_replace($shortcode_value, $this->helper->load('shortcode')->escape($post_meta), $value);
                     }
                 }
             }

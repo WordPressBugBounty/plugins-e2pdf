@@ -624,7 +624,6 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Create PDF' => __('Create PDF', 'e2pdf'),
                     'Extension' => __('Extension', 'e2pdf'),
                     'Size' => __('Size', 'e2pdf'),
-                    'Properties' => __('Properties', 'e2pdf'),
                     'Enter link here' => __('Enter link here', 'e2pdf'),
                     'Border' => __('Border', 'e2pdf'),
                     'Background' => __('Background', 'e2pdf'),
@@ -693,7 +692,6 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Disable Text to Image' => __('Disable Text to Image', 'e2pdf'),
                     'Confirmation Code' => __('Confirmation Code', 'e2pdf'),
                     'Code' => __('Code', 'e2pdf'),
-                    'Visual Mapper' => __('Visual Mapper', 'e2pdf'),
                     'Auto' => __('Auto', 'e2pdf'),
                     'Actions' => __('Actions', 'e2pdf'),
                     'Save' => __('Save', 'e2pdf'),
@@ -755,7 +753,6 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Margin Bottom' => __('Margin Bottom', 'e2pdf'),
                     'Margin Left' => __('Margin Left', 'e2pdf'),
                     'Margin Right' => __('Margin Right', 'e2pdf'),
-                    'Border Color' => __('Border Color', 'e2pdf'),
                     'Border Top' => __('Border Top', 'e2pdf'),
                     'Border Bottom' => __('Border Bottom', 'e2pdf'),
                     'Border Left' => __('Border Left', 'e2pdf'),
@@ -765,7 +762,6 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Lock / Hide' => __('Lock / Hide', 'e2pdf'),
                     'Font Color' => __('Font Color', 'e2pdf'),
                     'Font Size' => __('Font Size', 'e2pdf'),
-                    'Text Align' => __('Text Align', 'e2pdf'),
                     'Rotation' => __('Rotation', 'e2pdf'),
                     'Preg Replace Pattern' => __('Preg Replace Pattern', 'e2pdf'),
                     'Preg Replace Replacement' => __('Preg Replace Replacement', 'e2pdf'),
@@ -802,7 +798,6 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Change to' => __('Change to', 'e2pdf'),
                     'Merge' => __('Merge', 'e2pdf'),
                     'Change Property' => __('Change Property', 'e2pdf'),
-                    'Format' => __('Format', 'e2pdf'),
                     'Insert Before' => __('Insert Before', 'e2pdf'),
                     'Insert After' => __('Insert After', 'e2pdf'),
                     'Full Replacement' => __('Full Replacement', 'e2pdf'),
@@ -851,7 +846,6 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
                     'Max' => __('Max', 'e2pdf'),
                     'Fill Under' => __('Fill Under', 'e2pdf'),
                     'Reverse' => __('Reverse', 'e2pdf'),
-                    'Sort' => __('Sort', 'e2pdf'),
                     'Percentage' => __('Percentage', 'e2pdf'),
                     'Legend Text Side' => __('Legend Text Side', 'e2pdf'),
                     'Columns' => __('Columns', 'e2pdf'),
@@ -1283,46 +1277,48 @@ class Model_E2pdf_Loader extends Model_E2pdf_Model {
         wp_clear_scheduled_hook('e2pdf_cache_pdfs_cron');
         wp_clear_scheduled_hook('e2pdf_cache_tmp_cron');
 
-        $model_e2pdf_api = new Model_E2pdf_Api();
-        $model_e2pdf_api->set(
-            [
-                'action' => 'common/uninstall',
-            ]
-        );
-        $model_e2pdf_api->request();
+        if (get_option('e2pdf_uninstall_data', '0')) {
+            $model_e2pdf_api = new Model_E2pdf_Api();
+            $model_e2pdf_api->set(
+                [
+                    'action' => 'common/uninstall',
+                ]
+            );
+            $model_e2pdf_api->request();
 
-        $options = Model_E2pdf_Options::get_options();
-        foreach ($options as $option_key => $option_value) {
-            delete_option($option_key);
-        }
-        delete_option('e2pdf_adobe_api_key');
-        delete_option('e2pdf_gdrive_api_key');
-        delete_option('e2pdf_adobe_api_version');
-        delete_option('e2pdf_cache_tmp_ttl');
-        delete_option('e2pdf_pdf_translation_check');
-        delete_option('e2pdf_db_lock');
-        delete_option('e2pdf_db_version');
+            $options = Model_E2pdf_Options::get_options();
+            foreach ($options as $option_key => $option_value) {
+                delete_option($option_key);
+            }
+            delete_option('e2pdf_adobe_api_key');
+            delete_option('e2pdf_gdrive_api_key');
+            delete_option('e2pdf_adobe_api_version');
+            delete_option('e2pdf_cache_tmp_ttl');
+            delete_option('e2pdf_pdf_translation_check');
+            delete_option('e2pdf_db_lock');
+            delete_option('e2pdf_db_version');
 
-        // phpcs:disable WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared
-        $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_templates`');
-        $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_entries`');
-        $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_datasets`');
-        $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_pages`');
-        $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_elements`');
-        $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_revisions`');
-        $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_bulks`');
-        // phpcs:enable
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $wpdb->query($wpdb->prepare('DELETE FROM `' . $db_prefix . 'options` WHERE option_name LIKE %s OR option_name LIKE %s', '_transient_e2pdf_%', '_transient_timeout_e2pdf_%'));
+            // phpcs:disable WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared
+            $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_templates`');
+            $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_entries`');
+            $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_datasets`');
+            $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_pages`');
+            $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_elements`');
+            $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_revisions`');
+            $wpdb->query('DROP TABLE IF EXISTS `' . $db_prefix . 'e2pdf_bulks`');
+            // phpcs:enable
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $wpdb->query($wpdb->prepare('DELETE FROM `' . $db_prefix . 'options` WHERE option_name LIKE %s OR option_name LIKE %s', '_transient_e2pdf_%', '_transient_timeout_e2pdf_%'));
 
-        $helper->delete_upload_dir();
+            $helper->delete_upload_dir();
 
-        $caps = $helper->get_caps();
-        $roles = wp_roles()->get_names();
-        foreach ($roles as $role_key => $sub_role) {
-            $role = get_role($role_key);
-            foreach ($caps as $cap_key => $cap) {
-                $role->remove_cap($cap_key);
+            $caps = $helper->get_caps();
+            $roles = wp_roles()->get_names();
+            foreach ($roles as $role_key => $sub_role) {
+                $role = get_role($role_key);
+                foreach ($caps as $cap_key => $cap) {
+                    $role->remove_cap($cap_key);
+                }
             }
         }
 

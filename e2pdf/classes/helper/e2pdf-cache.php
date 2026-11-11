@@ -40,6 +40,9 @@ class Helper_E2pdf_Cache {
     }
 
     public function purge_objects_cache() {
+        if (function_exists('w3tc_dbcache_flush')) {
+            w3tc_dbcache_flush();
+        }
         if (function_exists('wp_cache_supports') && function_exists('wp_cache_flush_group') && wp_cache_supports('flush_group')) {
             wp_cache_flush_group('e2pdf_bulks_uids');
             wp_cache_flush_group('e2pdf_bulks');
@@ -48,9 +51,6 @@ class Helper_E2pdf_Cache {
             wp_cache_flush_group('e2pdf_revisions');
             wp_cache_flush_group('e2pdf_uid_entries');
         } else {
-            if (function_exists('w3tc_dbcache_flush')) {
-                w3tc_dbcache_flush();
-            }
             wp_cache_flush();
         }
     }

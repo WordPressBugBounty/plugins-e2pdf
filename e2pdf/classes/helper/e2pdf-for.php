@@ -60,6 +60,8 @@ class Helper_E2pdf_For {
 
     public function apply($value, $data_key, $data_value, $index, $for = 0, $total = 0) {
         if ($value) {
+            $data_key = $this->helper->load('shortcode')->escape($data_key);
+            $data_value = $this->helper->load('shortcode')->escape($data_value);
             $for_index = $for ? '-' . $for : '';
             $evenodd = $index % 2 == 0 ? '0' : '1';
             $replace = array(
@@ -124,7 +126,7 @@ class Helper_E2pdf_For {
                     } else {
                         $response = $post_meta;
                     }
-                    $value = str_replace($shortcode_value, $response, $value);
+                    $value = str_replace($shortcode_value, $this->helper->load('shortcode')->escape($response), $value);
                 }
             }
         }

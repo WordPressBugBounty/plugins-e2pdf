@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) {
 class Helper_E2pdf_Shortcode {
 
     private $helper;
+    private $template_value = null;
 
     public function __construct() {
         $this->helper = Helper_E2pdf_Helper::instance();
@@ -83,6 +84,60 @@ class Helper_E2pdf_Shortcode {
             }
         }
         return $response;
+    }
+
+    // e2pdf shortcodes in the data value are not rendered
+    public function escape($value) {
+        if (is_array($value)) {
+            $escaped = [];
+            foreach ($value as $key => $sub_value) {
+                $escaped[$this->escape($key)] = $this->escape($sub_value);
+            }
+            return $escaped;
+        }
+        if (is_string($value)) {
+            return str_replace(['[e2pdf-', '[/e2pdf-'], ['&#91;e2pdf-', '&#91;/e2pdf-'], $value);
+        }
+        return $value;
+    }
+
+    // render the template value
+    public function do_shortcode($value) {
+        $template_value = $this->template_value;
+        $this->template_value = $value;
+        $value = do_shortcode($value);
+        $this->template_value = $template_value;
+        return $value;
+    }
+
+    // render the template shortcode
+    public function do_shortcode_tag($shortcode) {
+        $template_value = $this->template_value;
+        $this->template_value = '[' . $shortcode[2] . $shortcode[3] . $shortcode[4] . ']';
+        $value = do_shortcode_tag($shortcode);
+        $this->template_value = $template_value;
+        return $value;
+    }
+
+    // e2pdf data shortcode is rendered only if it is written in the template value
+    public function filter_pre_do_shortcode_tag($output, $tag, $attr, $m) {
+        if ($this->template_value === null) {
+            return $output;
+        }
+        $data = in_array($tag, $this->helper->shortcodes('data'), true);
+        if ($tag === 'e2pdf-content' && is_array($attr) && !empty($attr['id']) && !empty($attr['key'])) {
+            $data = true;
+        }
+        if (!$data) {
+            return $output;
+        }
+        if (false !== strpos($this->template_value, '[' . $tag . $m[3] . $m[4] . ']')) {
+            return $output;
+        }
+        if (apply_filters('e2pdf_shortcode_enable_' . str_replace('-', '_', $tag), false)) {
+            return $output;
+        }
+        return '';
     }
 
     public function apply_path_attribute($value, $path = false, $delimiter = '.') {

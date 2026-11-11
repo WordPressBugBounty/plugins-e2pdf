@@ -1,0 +1,74 @@
+.e2pdf-dialog .srfm-form-container {
+    overflow: hidden;
+}
+
+.e2pdf-dialog .srfm-form-container .srfm-page-break {
+    width: 100%;
+}
+
+.e2pdf-dialog .srfm-form-container svg {
+    max-width: 24px;
+    max-height: 24px;
+}
+
+.e2pdf-dialog .srfm-form-container .srfm-form input[type="text"],
+.e2pdf-dialog .srfm-form-container .srfm-form input[type="email"],
+.e2pdf-dialog .srfm-form-container .srfm-form input[type="tel"],
+.e2pdf-dialog .srfm-form-container .srfm-form input[type="file"],
+.e2pdf-dialog .srfm-form-container .srfm-form input[type="range"],
+.e2pdf-dialog .srfm-form-container .srfm-form textarea,
+.e2pdf-dialog .srfm-form-container .srfm-form select {
+    width: 100% !important;
+    max-width: 100% !important;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.e2pdf-dialog .srfm-form-container .srfm-form input[type="file"],
+.e2pdf-dialog .srfm-form-container .srfm-form input[type="range"],
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-input-signature-hidden {
+    display: block !important;
+    position: static !important;
+    opacity: 1 !important;
+    height: 40px !important;
+    margin: 5px 0 0 0 !important;
+}
+
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-multi-choice-block .srfm-block-wrap .srfm-multi-choice-single {
+    display: flex;
+    align-items: center;
+}
+
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-multi-choice-block .srfm-block-wrap .srfm-multi-choice-single input,
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-checkbox-block .srfm-block-wrap input,
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-gdpr-block .srfm-block-wrap input {
+    position: static !important;
+    opacity: 1 !important;
+    -webkit-appearance: auto !important;
+    -moz-appearance: auto !important;
+    appearance: auto !important;
+    width: 22px !important;
+    min-width: 22px !important;
+    height: 22px !important;
+    margin: 0 8px 0 0 !important;
+    clip: auto !important;
+    -webkit-clip-path: none !important;
+    clip-path: none !important;
+}
+
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-multi-choice-block .srfm-block-wrap .srfm-multi-choice-single .srfm-block-content-wrap {
+    flex: 1;
+}
+
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-checkbox-block .srfm-block-wrap,
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-gdpr-block .srfm-block-wrap {
+    display: flex;
+    align-items: center;
+}
+
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-cbx > .srfm-span-wrap:first-child,
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-checkbox-block .srfm-block-wrap > svg,
+.e2pdf-dialog .srfm-form-container .srfm-form .srfm-gdpr-block .srfm-block-wrap > svg {
+    display: none !important;
+}

@@ -75,6 +75,7 @@ class Helper_E2pdf_Files {
         } elseif (!is_readable($file['tmp_name'])) {
             $upload['error'] = __('TMP file is not readable', 'e2pdf');
         } elseif (!empty($exts) && !in_array($upload['ext'], $exts)) {
+            /* translators: %s: Allowed file extensions */
             $upload['error'] = sprintf(__('Only %s files allowed', 'e2pdf'), '.' . implode(', .', $exts));
         } elseif (!empty($mimes) && function_exists('finfo_open') && function_exists('finfo_file') && defined('FILEINFO_MIME_TYPE')) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);

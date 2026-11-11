@@ -187,7 +187,7 @@ class Helper_E2pdf_Convert {
     public function is_unserialized_array($value) {
         if (!is_array($value)) {
             if (is_serialized($value)) {
-                $value = $this->unserialize($value);
+                $value = $this->unserialize(trim($value));
             }
         }
         return is_array($value) ? $value : [];

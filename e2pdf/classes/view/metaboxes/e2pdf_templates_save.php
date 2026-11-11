@@ -66,7 +66,7 @@ if (!defined('ABSPATH')) {
                         <div class="e2pdf-grid e2pdf-w100">
                             <div class="e2pdf-ib e2pdf-w40">
                                 <label for="e2pdf-revision-item" class="e2pdf-small"><?php _e('Revision', 'e2pdf'); ?>:</label>
-                                <div class="e2pdf-ib e2pdf-small e2pdf-w100 "><?php echo esc_html(sprintf(__("Revisions Limit: %s", 'e2pdf'), max(1, (int) get_option('e2pdf_revisions_limit', '3')))); ?></div>
+                                <div class="e2pdf-ib e2pdf-small e2pdf-w100 "><?php /* translators: %s: Revisions limit */ echo esc_html(sprintf(__("Revisions Limit: %s", 'e2pdf'), max(1, (int) get_option('e2pdf_revisions_limit', '3')))); ?></div>
                             </div><div class="e2pdf-ib e2pdf-w60 e2pdf-onload">
                                 <?php
                                 $this->render('field', 'select', array(

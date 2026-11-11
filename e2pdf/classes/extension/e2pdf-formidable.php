@@ -532,7 +532,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                                         'user_info' => isset($atts['user_info']) && $atts['user_info'] == 'true' ? true : false,
                                     )
                             );
-                            $value = str_replace($shortcode_value, $default_message, $value);
+                            $value = str_replace($shortcode_value, $this->helper->load('shortcode')->escape($default_message), $value);
                         } elseif (($shortcode[2] === 'default-message2' || $shortcode[2] == 'default_message2') && $this->get('cached_entry2') && class_exists('FrmEntriesHelper')) {
                             $default_message = FrmEntriesHelper::replace_default_message(
                                     str_replace(array('default-message2', 'default_message2'), array('default-message', 'default_message'), $shortcode_value),
@@ -543,7 +543,7 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                                         'user_info' => isset($atts['user_info']) && $atts['user_info'] == 'true' ? true : false,
                                     )
                             );
-                            $value = str_replace($shortcode_value, $default_message, $value);
+                            $value = str_replace($shortcode_value, $this->helper->load('shortcode')->escape($default_message), $value);
                         }
                     }
                 }
@@ -4240,6 +4240,14 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
             foreach ($entries_tmp as $key => $entry) {
                 $values[] = FrmEntryMeta::get_meta_value($entry, $field_id);
             }
+        }
+        if (!apply_filters('e2pdf_pdf_render', false)) {
+            foreach ($values as $key => $value) {
+                if (!is_array($value)) {
+                    $values[$key] = FrmAppHelper::kses($value, 'all');
+                }
+            }
+            $separator = wp_kses_post($separator);
         }
         $response = implode($separator, $values);
         return $response;

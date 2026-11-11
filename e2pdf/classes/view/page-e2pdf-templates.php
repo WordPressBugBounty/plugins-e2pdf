@@ -196,7 +196,10 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                                 </td>
                                 <td class="updated column-updated" data-colname="<?php _e('Updated', 'e2pdf') ?>">
                                     <?php echo esc_html($template->get('updated_at')); ?>
-                                    <div class="e2pdf-small">by <strong><?php echo esc_html(get_userdata((int) $template->get('author'))->user_nicename); ?></strong></div>
+                                    <?php $author = get_userdata((int) $template->get('author')); ?>
+                                    <?php if ($author) { ?>
+                                        <div class="e2pdf-small">by <strong><?php echo esc_html($author->user_nicename); ?></strong></div>
+                                    <?php } ?>
                                 </td>
                                 <td class="author column-activation" data-colname="Activation">
                                     <span id="e2pdf-list-post-activation">
@@ -321,7 +324,7 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                                 <?php } ?>
                                 <div id="e2pdf-build-form-wrapper" class="e2pdf-build-form-wrapper">
                                     <div id="e2pdf-form-editor-header" class="e2pdf-form-editor-header">
-                                        <h1><?php echo $this->get->get('action') === 'edit' ? esc_html(sprintf(__("ID: %d | Edit Template", 'e2pdf'), (int) $this->view->template->get('ID'))) : __('New Template', 'e2pdf'); ?>
+                                        <h1><?php /* translators: %d: Template ID */ echo $this->get->get('action') === 'edit' ? esc_html(sprintf(__("ID: %d | Edit Template", 'e2pdf'), (int) $this->view->template->get('ID'))) : __('New Template', 'e2pdf'); ?>
                                             <a href="<?php echo esc_url($this->helper->get_url(array('page' => 'e2pdf-templates', 'action' => 'create'))); ?>" class="page-title-action">
                                                 <?php _e('Add New', 'e2pdf') ?>
                                             </a>
@@ -330,7 +333,7 @@ if ($this->get->get('action') && ($this->get->get('action') === 'create' || ($th
                                         <?php $this->render('blocks', 'notifications'); ?>
                                         <?php if ($this->view->template->get('ID') && !$this->view->template->get('access_check') && get_option('e2pdf_access_check', '0')) { ?>
                                             <div class="e2pdf-notice notice notice-warning">
-                                                <p><?php printf(__(' <strong>Important:</strong> Template Access Check is disabled: <a href="%s" target="_blank">Read More »</a>', 'e2pdf'), esc_url('https://e2pdf.com/docs/shortcodes/access-check')); ?></p>
+                                                <p><?php /* translators: %s: Documentation URL */ printf(__(' <strong>Important:</strong> Template Access Check is disabled: <a href="%s" target="_blank">Read More »</a>', 'e2pdf'), esc_url('https://e2pdf.com/docs/shortcodes/access-check')); ?></p>
                                             </div>
                                         <?php } ?>
                                     </div>

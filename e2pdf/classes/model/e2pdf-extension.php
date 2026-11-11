@@ -186,6 +186,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
     public function pre_render() {
         add_filter('e2pdf_pdf_render_filter', [$this->helper, '__return_true'], 999);
         add_filter('e2pdf_pdf_render', [$this->helper, '__return_true'], 999);
+        add_filter('pre_do_shortcode_tag', [$this->helper->load('shortcode'), 'filter_pre_do_shortcode_tag'], 999, 4);
         if (class_exists('ACF')) {
             if (apply_filters('e2pdf_acf_enable_shortcodes', true)) {
                 add_filter('acf/settings/enable_shortcode', [$this->helper, '__return_true'], 999);
@@ -223,6 +224,7 @@ class Model_E2pdf_Extension extends Model_E2pdf_Model {
             remove_filter('acf/load_value', [$this, 'filter_acf_load_value'], 999);
             remove_filter('do_shortcode_tag', [$this, 'filter_do_shortcode_tag_acf'], 999);
         }
+        remove_filter('pre_do_shortcode_tag', [$this->helper->load('shortcode'), 'filter_pre_do_shortcode_tag'], 999);
         remove_filter('e2pdf_pdf_render', [$this->helper, '__return_true'], 999);
         remove_filter('e2pdf_pdf_render_filter', [$this->helper, '__return_true'], 999);
     }

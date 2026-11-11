@@ -419,7 +419,7 @@ class Extension_E2pdf_Woocommerce extends Model_E2pdf_Model {
                 'hook_wcs_subscription_details_table_before_dates' => __('User Subscription (Before Dates)', 'e2pdf'),
                 'hook_wcs_subscription_details_table_after_dates' => __('User Subscription (After Dates)', 'e2pdf'),
                 'hook_wcs_subscription_details_table_before_payment_method' => __('User Subscription (Before Payment Method)', 'e2pdf'),
-                'hook_wcs_view_subscription_actions' => __('User Subscrition (Actions)', 'e2pdf')
+                'hook_wcs_view_subscription_actions' => __('User Subscription (Actions)', 'e2pdf')
             ];
             $hooks[$this->info['key'] . '_cart'] = [
                 'hook_woocommerce_proceed_to_checkout' => __('User Cart', 'e2pdf'),

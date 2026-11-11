@@ -756,7 +756,7 @@ class Extension_E2pdf_Fluent extends Model_E2pdf_Model {
             switch ($type) {
                 case 'container':
                     foreach ($field['columns'] as $column) {
-                        $width = $column['width'];
+                        $width = isset($column['width']) ? $column['width'] : '100';
                         foreach ($column['fields'] as $sub_field) {
                             $elements = $this->auto_fields($elements, $sub_field, $width);
                         }

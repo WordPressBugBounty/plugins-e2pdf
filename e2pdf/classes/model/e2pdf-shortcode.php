@@ -2180,13 +2180,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     // e2pdf-format-number
     public function e2pdf_format_number($atts = [], $value = '') {
 
-        // phpcs:ignore Squiz.PHP.CommentedOutCode.Found
-        /*
-         * TODO: Prevent shortcode execution outside PDF rendering context
-         * if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_number', false) && !apply_filters('e2pdf_pdf_render', false)) {
-         * return '';
-         * }
-         */
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_number', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
 
         $response = $value;
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_format_number_atts', $atts);
@@ -2227,13 +2223,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     // e2pdf-format-date
     public function e2pdf_format_date($atts = [], $value = '') {
 
-        // phpcs:ignore Squiz.PHP.CommentedOutCode.Found
-        /*
-         * TODO: Prevent shortcode execution outside PDF rendering context
-         * if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_date', false) && !apply_filters('e2pdf_pdf_render', false)) {
-         * return '';
-         * }
-         */
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_date', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
 
         $response = trim(strtolower($value));
 
@@ -2316,13 +2308,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     // e2pdf-format-output
     public function e2pdf_format_output($atts = [], $value = '') {
 
-        // phpcs:ignore Squiz.PHP.CommentedOutCode.Found
-        /*
-         * TODO: Prevent shortcode execution outside PDF rendering context
-         * if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_output', false) && !apply_filters('e2pdf_pdf_render', false)) {
-         * return '';
-         * }
-         */
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_format_output', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
 
         $response = $value;
         $atts = apply_filters('e2pdf_model_shortcode_e2pdf_format_output_atts', $atts);
@@ -2911,13 +2899,9 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     // e2pdf-math
     public function e2pdf_math($atts = [], $value = '') {
 
-        // phpcs:ignore Squiz.PHP.CommentedOutCode.Found
-        /*
-         * TODO: Prevent shortcode execution outside PDF rendering context
-         * if (!apply_filters('e2pdf_shortcode_enable_e2pdf_math', false) && !apply_filters('e2pdf_pdf_render', false)) {
-         * return '';
-         * }
-         */
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_math', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
 
         $thousands_sep_split = isset($atts['thousands_sep_split']) ? $atts['thousands_sep_split'] : ',';
         $dec_point_split = isset($atts['dec_point_split']) ? $atts['dec_point_split'] : '.';
@@ -6715,10 +6699,20 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
     }
 
     public function e2pdf_page_number($atts = [], $value = '') {
+        
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_page_number', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
+
         return 'e2pdf-page-number';
     }
 
     public function e2pdf_page_total($atts = [], $value = '') {
+        
+        if (!apply_filters('e2pdf_shortcode_enable_e2pdf_page_total', false) && !apply_filters('e2pdf_pdf_render', false)) {
+            return '';
+        }
+        
         return 'e2pdf-page-total';
     }
 

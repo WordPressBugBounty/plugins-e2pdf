@@ -147,6 +147,7 @@ class Model_E2pdf_Notification extends Model_E2pdf_Model {
                     [
                         'type' => 'notice',
                         'text' => sprintf(
+                                /* translators: %s: Documentation URL */
                                 __('<strong>Important:</strong> Global Access Check is disabled: <a target="_blank" rel="noopener noreferrer" href="%s">Read More »</a>', 'e2pdf'),
                                 esc_url('https://e2pdf.com/docs/shortcodes/access-check')
                         ),

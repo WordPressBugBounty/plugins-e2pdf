@@ -72,6 +72,9 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                     case 'jetformbuilder':
                         $extension_title = 'JetFormBuilder';
                         break;
+                    case 'sureforms':
+                        $extension_title = 'SureForms';
+                        break;
                     default:
                         break;
                 }
@@ -403,6 +406,16 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'placeholder' => '0',
                     ),
                     array(
+                        'name' => __('Uninstall', 'e2pdf'),
+                        'key' => 'e2pdf_uninstall_data',
+                        'value' => get_option('e2pdf_uninstall_data', '0'),
+                        'default_value' => '0',
+                        'type' => 'checkbox',
+                        'checkbox_value' => '1',
+                        'placeholder' => __('Remove All Data on Plugin Uninstall', 'e2pdf'),
+                        'cap' => 'manage_options',
+                    ),
+                    array(
                         'name' => __('Debug Mode', 'e2pdf'),
                         'key' => 'e2pdf_debug',
                         'value' => get_option('e2pdf_debug', '0'),
@@ -461,6 +474,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'default_value' => '',
                         'type' => 'textarea',
                         'placeholder' => __('One folder per line, relative or absolute, e.g. wp-content/uploads/invoices', 'e2pdf'),
+                        /* translators: 1: Attribute 2: Shortcode 3: WordPress root path */
                         'description' => sprintf(__('For %1$s in %2$s. Relative paths start from the WordPress root: %3$s', 'e2pdf'), '<strong>dir</strong>', '[e2pdf-save]', '<strong>' . esc_html(ABSPATH) . '</strong>'),
                     ),
                     array(
@@ -470,6 +484,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'default_value' => '',
                         'type' => 'textarea',
                         'placeholder' => __('One folder per line, relative or absolute, e.g. wp-content/uploads/documents', 'e2pdf'),
+                        /* translators: 1: Attribute 2: Attribute 3: WordPress root path */
                         'description' => sprintf(__('For %1$s and %2$s. Relative paths start from the WordPress root: %3$s', 'e2pdf'), '<strong>pdf</strong>', '<strong>dpdf</strong>', '<strong>' . esc_html(ABSPATH) . '</strong>'),
                     ),
                     array(
@@ -479,6 +494,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
                         'default_value' => '',
                         'type' => 'textarea',
                         'placeholder' => __('One URL per line, e.g. https://cdn.example.com/pdf/', 'e2pdf'),
+                        /* translators: 1: Attribute 2: Attribute 3: Attribute */
                         'description' => sprintf(__('For %1$s, %2$s and %3$s.', 'e2pdf'), '<strong>pdf</strong>', '<strong>site_url</strong>', '<strong>viewer</strong>'),
                     ),
                 ),
@@ -1144,6 +1160,7 @@ class Model_E2pdf_Options extends Model_E2pdf_Model {
 
                                     if (isset($request['error'])) {
                                         if (in_array($request['error'], array('incorrect_email', 'The E2Pdf account e-mail has not been found'), true)) {
+                                            /* translators: %s: Registration URL */
                                             $request['error'] = sprintf(__('An account with that E-mail address was not found at E2Pdf.com. You can register at %s', 'e2pdf'), 'https://e2pdf.com/register');
                                         }
                                         $data['e2pdf_user_email'] = get_option('e2pdf_user_email', '');

@@ -46,16 +46,19 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->trash_template($value);
                             }
+                            /* translators: %d: Number of templates */
                             $this->add_notification('update', sprintf(__('Templates Trashed: %d', 'e2pdf'), count($this->post->get('post'))));
                         } elseif ($action == 'activate') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->activate_template($value);
                             }
+                            /* translators: %d: Number of templates */
                             $this->add_notification('update', sprintf(__('Templates Activated: %d', 'e2pdf'), count($this->post->get('post'))));
                         } elseif ($action == 'deactivate') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->deactivate_template($value);
                             }
+                            /* translators: %d: Number of templates */
                             $this->add_notification('update', sprintf(__('Templates Deactivated: %d', 'e2pdf'), count($this->post->get('post'))));
                         } elseif (($action == 'access_check_enable' || $action == 'access_check_disable') && current_user_can('manage_options')) {
                             foreach ($this->post->get('post') as $key => $value) {
@@ -66,19 +69,23 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                                 }
                             }
                             if ($action == 'access_check_enable') {
+                                /* translators: %d: Number of templates */
                                 $this->add_notification('update', sprintf(__('Access Check Enabled: %d', 'e2pdf'), count($this->post->get('post'))));
                             } else {
+                                /* translators: %d: Number of templates */
                                 $this->add_notification('update', sprintf(__('Access Check Disabled: %d', 'e2pdf'), count($this->post->get('post'))));
                             }
                         } elseif ($action == 'restore') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->restore_template($value);
                             }
+                            /* translators: %d: Number of templates */
                             $this->add_notification('update', sprintf(__('Templates Restored: %d', 'e2pdf'), count($this->post->get('post'))));
                         } elseif ($action == 'delete') {
                             foreach ($this->post->get('post') as $key => $value) {
                                 $this->delete_template($value);
                             }
+                            /* translators: %d: Number of templates */
                             $this->add_notification('update', sprintf(__('Templates Deleted: %d', 'e2pdf'), count($this->post->get('post'))));
                         }
                         $this->helper->load('license')->load();
@@ -722,6 +729,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                         if ($template->get('ID')) {
                             $this->add_notification(
                                 'update', sprintf(
+                                    /* translators: 1: Template View URL 2: Template Edit URL */
                                     __('Template Imported: <a target="_blank" href="%1$s">View</a> | <a target="_blank" href="%2$s">Edit</a>', 'e2pdf'),
                                     $this->helper->get_url(
                                         [
@@ -1466,6 +1474,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                         if ($pos_page == '0') {
                             $flush[] = $pos_key;
                         } elseif (!in_array($pos_page, $pos_pages, false)) {
+                            /* translators: %s: Page key */
                             throw new Exception(sprintf(__('Invalid position of %s page', 'e2pdf'), $pos_key));
                         }
                     }

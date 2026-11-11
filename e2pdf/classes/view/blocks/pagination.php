@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) {
 }
 ?>
 <div class="tablenav-pages e2pdf-tablenav-pages"><span class="displaying-num">
-        <?php echo esc_html(sprintf(__("Templates: %d", 'e2pdf'), $this->tpl_args->get('total'))); ?></span>
+        <?php /* translators: %d: Templates count */ echo esc_html(sprintf(__("Templates: %d", 'e2pdf'), $this->tpl_args->get('total'))); ?></span>
     <span class="pagination-links">
         <?php if (($this->tpl_args->get('paged')) > 2) { ?>
             <a class="first-page button" href="<?php echo esc_url($this->helper->get_url($this->tpl_args->get('url'))); ?>"><span class="screen-reader-text"><?php _e('First page', 'e2pdf') ?></span><span aria-hidden="true">«</span></a>
@@ -22,6 +22,7 @@ if (!defined('ABSPATH')) {
             <span class="tablenav-paging-text">
                 <?php
                 echo sprintf(
+                        /* translators: %d: Current page number */
                         esc_html__('%d of ', 'e2pdf'),
                         (int) $this->tpl_args->get('paged')
                 );

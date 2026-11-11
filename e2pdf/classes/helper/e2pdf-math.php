@@ -20,6 +20,7 @@ class Helper_E2pdf_Math {
     protected $variables = [];
     protected $stack = [];
     protected $output = [];
+    protected $operators = [];
 
     public function __construct() {
         $this->helper = Helper_E2pdf_Helper::instance();
@@ -172,7 +173,7 @@ class Helper_E2pdf_Math {
     }
 
     protected function tokenize($string) {
-        $parts = preg_split('((\b\d[\d.]*\b|\+|-|\(|\)|\*|\^|¦|/)|\s+)', $string, null, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+        $parts = preg_split('((\b\d[\d.]*\b|\+|-|\(|\)|\*|\^|¦|/)|\s+)', $string, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
         $parts = array_map('trim', $parts);
 
         $tokens = [];
