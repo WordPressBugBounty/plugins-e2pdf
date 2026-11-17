@@ -1053,7 +1053,7 @@ var e2pdf = {
                     data = JSON.stringify(data);
                     break;
                 case 'e2pdf-email':
-                    jQuery('.e2pdf-email-lock .e2pdf-form-loader').removeClass('e2pdf-hidden-loader');
+                    jQuery('.e2pdf-email-subscribe .e2pdf-form-loader').removeClass('e2pdf-hidden-loader');
                     data = {};
                     data['email'] = form.find('input[name="email"]').val();
                     if (form.find('input[name="email_code"]').length > 0) {
@@ -1260,10 +1260,10 @@ var e2pdf = {
         callBack: function (action, result, el) {
             switch (action) {
                 case 'e2pdf_email':
-                    if (result === 'subscribed') {
-                        jQuery('.e2pdf-email-lock').remove();
+                    if (result === 'subscribed' || result === 'dismissed') {
+                        jQuery('.e2pdf-email-subscribe').remove();
                     } else {
-                        jQuery('.e2pdf-email-lock .e2pdf-form-loader').addClass('e2pdf-hidden-loader');
+                        jQuery('.e2pdf-email-subscribe .e2pdf-form-loader').addClass('e2pdf-hidden-loader');
                         var form_id = el.attr('form-id');
                         var form = jQuery(document.getElementById(form_id));
                         form.find('label').html(e2pdf.lang.get('Confirmation Code') + ":");
@@ -10658,6 +10658,10 @@ jQuery(document).ready(function () {
         if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
             e.preventDefault();
         }
+    });
+    jQuery(document).on('click', '.e2pdf-email-dismiss', function (e) {
+        e.preventDefault();
+        e2pdf.request.submitRequest('e2pdf_email', jQuery(this), {'dismiss': '1'});
     });
     jQuery(document).on('keydown', '.e2pdf-enter', function (e) {
         if (e.which == 13) {

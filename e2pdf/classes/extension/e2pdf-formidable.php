@@ -409,8 +409,11 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
         $foreach_wrapper_shortcodes = false;
         $foreach_inner_shortcodes = false;
         if ($this->verify()) {
-            add_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20, 2);
-            add_filter('frm_field_value_requires_ownership', '__return_false', 99);
+            $render_filters = !has_filter('frm_display_value', array($this, 'filter_frm_display_value'));
+            if ($render_filters) {
+                add_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20, 2);
+                add_filter('frm_field_value_requires_ownership', '__return_false', 99);
+            }
             if (false !== strpos($value, '[')) {
                 $value = $this->helper->load('field')->pre_shortcodes($value, $this, $field);
                 if (class_exists('FrmProEntry')) {
@@ -704,8 +707,10 @@ class Extension_E2pdf_Formidable extends Model_E2pdf_Model {
                     $this,
                     $field
             );
-            remove_filter('frm_field_value_requires_ownership', '__return_false', 99);
-            remove_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20);
+            if ($render_filters) {
+                remove_filter('frm_field_value_requires_ownership', '__return_false', 99);
+                remove_filter('frm_display_value', array($this, 'filter_frm_display_value'), 20);
+            }
         }
         return apply_filters(
                 'e2pdf_extension_render_shortcodes_value', $value, $element_id, $this->get('template_id'), $this->get('item'), $this->get('dataset'), $this->get('item2'), $this->get('dataset2')

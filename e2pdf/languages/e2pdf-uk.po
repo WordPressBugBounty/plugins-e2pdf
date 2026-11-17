@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: E2Pdf 2.00.01\n"
+"Project-Id-Version: E2Pdf 2.00.02\n"
 "Report-Msgid-Bugs-To: https://e2pdf.com/support\n"
 "POT-Creation-Date: 2026-11-10T16:07:18+00:00\n"
 "PO-Revision-Date: 2026-11-10 16:11+0000\n"
@@ -1653,7 +1653,6 @@ msgid "Lock"
 msgstr "Заблокувати"
 
 #: classes/model/e2pdf-loader.php:790
-#: classes/view/metaboxes/e2pdf_templates_settings.php:40
 msgid "Unlock"
 msgstr "Розблокувати"
 
@@ -2779,9 +2778,13 @@ msgstr "Мета"
 msgid "Security"
 msgstr "Безпека"
 
-#: classes/view/metaboxes/e2pdf_templates_settings.php:25
-msgid "Enter your E-mail to unlock this features"
-msgstr "Введіть вашу електронну пошту, щоб розблокувати ці функції"
+#: classes/view/metaboxes/e2pdf_templates_settings.php:26
+msgid "Subscribe to E2Pdf news and updates"
+msgstr "Підпишіться на новини та оновлення E2Pdf"
+
+#: classes/view/metaboxes/e2pdf_templates_settings.php:41
+msgid "Subscribe"
+msgstr "Підписатися"
 
 #: classes/view/metaboxes/e2pdf_templates_settings.php:32
 msgid "E-mail"

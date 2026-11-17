@@ -212,6 +212,55 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                             );
                             $this->set('cached_entry', $cached_entry);
                         }
+                    } elseif ($this->get_storing_engine() == '4') {
+                        if ($this->get('dataset') == $this->helper->get('wpcf7_flamingo_dataset')) {
+                            $submission = WPCF7_Submission::get_instance();
+                            $cached_entry = array(
+                                'posted_data' => $submission->get_posted_data(),
+                                'uploaded_files' => $submission->uploaded_files(),
+                                'meta' => array(
+                                    'timestamp' => $submission->get_meta('timestamp'),
+                                    'remote_ip' => $submission->get_meta('remote_ip'),
+                                    'remote_port' => $submission->get_meta('remote_port'),
+                                    'user_agent' => $submission->get_meta('user_agent'),
+                                    'url' => $submission->get_meta('url'),
+                                    'unit_tag' => $submission->get_meta('unit_tag'),
+                                    'container_post_id' => $submission->get_meta('container_post_id'),
+                                    'current_user_id' => $submission->get_meta('current_user_id'),
+                                    'do_not_store' => $submission->get_meta('do_not_store'),
+                                ),
+                            );
+                            $this->set('cached_entry', $cached_entry);
+                        } else {
+                            $post_meta = get_post_meta($this->get('item'), '_flamingo', true);
+                            if (!empty($post_meta['channel']) && has_term((int) $post_meta['channel'], Flamingo_Inbound_Message::channel_taxonomy, $this->get('dataset'))) {
+                                $entry = new Flamingo_Inbound_Message($this->get('dataset'));
+                                $posted_data = is_array($entry->fields) ? $entry->fields : array();
+                                foreach ($this->get('cached_form')->scan_form_tags(array('feature' => 'file-uploading')) as $tag) {
+                                    if (isset($posted_data[$tag->name])) {
+                                        $posted_data[$tag->name] = '';
+                                    }
+                                }
+                                $meta = is_array($entry->meta) ? $entry->meta : array();
+                                $user = !empty($meta['user_login']) ? get_user_by('login', $meta['user_login']) : false;
+                                $cached_entry = array(
+                                    'posted_data' => $posted_data,
+                                    'uploaded_files' => array(),
+                                    'meta' => array(
+                                        'timestamp' => get_post_time('U', true, $entry->id),
+                                        'remote_ip' => !empty($meta['remote_ip']) ? $meta['remote_ip'] : '',
+                                        'remote_port' => '',
+                                        'user_agent' => !empty($meta['user_agent']) ? $meta['user_agent'] : '',
+                                        'url' => !empty($meta['url']) ? $meta['url'] : '',
+                                        'unit_tag' => '',
+                                        'container_post_id' => !empty($meta['post_id']) ? $meta['post_id'] : '',
+                                        'current_user_id' => $user ? $user->ID : '0',
+                                        'do_not_store' => '',
+                                    ),
+                                );
+                                $this->set('cached_entry', $cached_entry);
+                            }
+                        }
                     } else {
                         $entry = new Model_E2pdf_Dataset();
                         if ($entry->load($this->get('dataset'), $this->get('item'), 'wpcf7')) {
@@ -263,6 +312,11 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                             $this->set('cached_submission', $submission);
                         }
                     }
+                }
+                break;
+            case 'storing_engine':
+                if ($this->get('dataset') && $value !== get_option('e2pdf_wpcf7_storing_engine', '0')) {
+                    $this->set('dataset', $this->get('dataset'));
                 }
                 break;
             default:
@@ -455,6 +509,32 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                         );
                     }
                 }
+            } elseif ($this->get_storing_engine() == '4') {
+                $post_meta = get_post_meta($item_id, '_flamingo', true);
+                if (!empty($post_meta['channel'])) {
+                    $entries = Flamingo_Inbound_Message::find(
+                            array(
+                                'channel_id' => (int) $post_meta['channel'],
+                                'posts_per_page' => -1,
+                                'orderby' => 'ID',
+                                'order' => 'DESC',
+                            )
+                    );
+                    if ($entries) {
+                        $this->set('item', $item_id);
+                        foreach ($entries as $key => $entry) {
+                            $this->set('dataset', $entry->id);
+                            $entry_title = $this->render($name);
+                            if (!$entry_title) {
+                                $entry_title = $entry->id;
+                            }
+                            $datasets[] = array(
+                                'key' => $entry->id,
+                                'value' => $entry_title,
+                            );
+                        }
+                    }
+                }
             } else {
                 $condition = array(
                     'extension' => array(
@@ -534,6 +614,15 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             $data->delete = false;
         } elseif ($this->get_storing_engine() == '3') {
             $data->view = false;
+            $data->delete = false;
+        } elseif ($this->get_storing_engine() == '4') {
+            $data->view = $this->helper->get_url(
+                    array(
+                        'page' => 'flamingo_inbound',
+                        'post' => $dataset_id,
+                        'action' => 'edit',
+                    )
+            );
             $data->delete = false;
         } else {
             $data->view = false;
@@ -648,6 +737,9 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             } elseif ($this->get_storing_engine() == '3') {
                 // Advanced CF7 DB: view capability of the form
                 $capability = 'cf7_db_form_view' . $this->get('item');
+            } elseif ($this->get_storing_engine() == '4') {
+                // Flamingo
+                $capability = 'flamingo_edit_inbound_messages';
             }
             if ((!empty($entry['meta']['current_user_id']) && (int) $entry['meta']['current_user_id'] === $user_id) || user_can($user_id, $capability) || ($this->get_storing_engine() == '2' && user_can($user_id, 'manage_options'))) {
                 unset($atts['dataset']);
@@ -880,7 +972,6 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                         'width' => '100%',
                                         'height' => 'auto',
                                         'value' => $label ? $label : $field->name,
-                                        'text_auto_font_size' => $field->type == 'textarea' ? '1' : '0',
                                     ),
                                 )
                         );
@@ -892,6 +983,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                                         'top' => '5',
                                         'width' => '100%',
                                         'height' => '150',
+                                        'text_auto_font_size' => 1,
                                         'value' => '[' . $field->name . ']',
                                     ),
                                 )
@@ -1159,6 +1251,23 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             if ($this->get('vsz_cf7_entry_id')) {
                 $this->set('dataset', $this->get('vsz_cf7_entry_id'));
             }
+        } elseif ($this->get_storing_engine() == '4') {
+            $dataset = 'tmp_' . $this->helper->load('encryption')->random_md5();
+            if (!$this->get('submission')->get_contact_form()->in_demo_mode() && !$this->get('submission')->get_meta('do_not_store')) {
+                $post_id = wp_insert_post(
+                        array(
+                            'post_type' => Flamingo_Inbound_Message::post_type,
+                            'post_status' => 'auto-draft',
+                        )
+                );
+                if ($post_id) {
+                    $dataset = $post_id;
+                    add_filter('flamingo_add_inbound', array($this, 'filter_flamingo_add_inbound'), 99);
+                    add_action('wpcf7_submit', array($this, 'action_wpcf7_submit_flamingo'), 11);
+                }
+            }
+            $this->helper->set('wpcf7_flamingo_dataset', $dataset);
+            $this->set('dataset', $dataset);
         } else {
             $posted_data = $this->get('submission')->get_posted_data();
             $uploaded_files = $this->get('submission')->uploaded_files();
@@ -1244,6 +1353,33 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
         }
     }
 
+    // Flamingo add inbound filter: the next inserted post updates the reserved entry
+    public function filter_flamingo_add_inbound($args) {
+        remove_filter('flamingo_add_inbound', array($this, 'filter_flamingo_add_inbound'), 99);
+        add_filter('pre_post_ID', array($this, 'filter_pre_post_id'));
+        return $args;
+    }
+
+    // pre post ID filter
+    public function filter_pre_post_id($post_id) {
+        remove_filter('pre_post_ID', array($this, 'filter_pre_post_id'));
+        $dataset = $this->helper->get('wpcf7_flamingo_dataset');
+        if ($dataset && get_post_type($dataset) === Flamingo_Inbound_Message::post_type && get_post_status($dataset) === 'auto-draft') {
+            return $dataset;
+        }
+        return $post_id;
+    }
+
+    // submit action: remove the reserved entry if Flamingo did not store the submission
+    public function action_wpcf7_submit_flamingo() {
+        remove_filter('flamingo_add_inbound', array($this, 'filter_flamingo_add_inbound'), 99);
+        $dataset = $this->helper->get('wpcf7_flamingo_dataset');
+        if ($dataset && get_post_type($dataset) === Flamingo_Inbound_Message::post_type && get_post_status($dataset) === 'auto-draft') {
+            wp_delete_post($dataset, true);
+        }
+        $this->helper->deset('wpcf7_flamingo_dataset');
+    }
+
     // before send mail abort action
     public function action_wpcf7_before_send_mail_abort($form, &$abort) {
         $abort = true;
@@ -1317,7 +1453,10 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 $submission->set_response($success_message);
             }
         }
+    }
 
+    // submit action
+    public function action_wpcf7_submit() {
         $files = $this->helper->get('wpcf7_attachments');
         if (is_array($files) && !empty($files)) {
             foreach ($files as $key => $file) {
@@ -1362,6 +1501,10 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                             if ($template->get('extension') === 'wpcf7' && $template->get('item') == $form_id) {
                                 if (!$this->get('dataset')) {
                                     $this->save_item();
+                                }
+                                if (substr($this->get('dataset'), 0, 4) === 'tmp_') {
+                                    $success_message = str_replace($shortcode_value, '', $success_message);
+                                    continue;
                                 }
                                 $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $this->get('dataset')]);
                                 $hash_data[] = 'dataset';
@@ -1419,6 +1562,7 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                             if (is_file($file)) {
                                 if ($tmp) {
                                     $this->helper->add('wpcf7_attachments', $file);
+                                    add_action('wpcf7_submit', array($this, 'action_wpcf7_submit'));
                                 }
                                 $this->get('submission')->add_extra_attachments($file, $tpl);
                             }
@@ -1431,6 +1575,10 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                             if ($template->get('extension') === 'wpcf7' && $template->get('item') == $form_id) {
                                 if (!$this->get('dataset')) {
                                     $this->save_item();
+                                }
+                                if (substr($this->get('dataset'), 0, 4) === 'tmp_') {
+                                    $success_message = str_replace($shortcode_value, '', $success_message);
+                                    continue;
                                 }
                                 $this->helper->load('shortcode')->set($shortcode, $atts, ['dataset' => $this->get('dataset')]);
                                 $hash_data[] = 'dataset';
@@ -1458,8 +1606,10 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             $urls = array_map(
                     function ($uploaded_file) {
                         $wp_upload_dir = wp_upload_dir();
-                        $upload_dir = $this->helper->get('wpcf7_dir') . $this->get('dataset');
-                        $uploaded_file = str_replace(wpcf7_upload_tmp_dir(), $upload_dir, $uploaded_file);
+                        if ($this->get_storing_engine() != '4') {
+                            $upload_dir = $this->helper->get('wpcf7_dir') . $this->get('dataset');
+                            $uploaded_file = str_replace(wpcf7_upload_tmp_dir(), $upload_dir, $uploaded_file);
+                        }
                         return str_replace($wp_upload_dir['basedir'], $wp_upload_dir['baseurl'], $uploaded_file);
                     }, $paths
             );
@@ -1505,6 +1655,14 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
             $engines['3'] = 'Advanced Contact form 7 DB';
         }
 
+        /**
+         * Flamingo
+         * https://wordpress.org/plugins/flamingo/
+         */
+        if (class_exists('Flamingo_Inbound_Message')) {
+            $engines['4'] = 'Flamingo';
+        }
+
         $options['wpcf7_group'] = array(
             'name' => 'Contact Form 7',
             'action' => 'extension',
@@ -1531,6 +1689,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
      * https://wordpress.org/plugins/contact-form-cfdb7/
      * 3 - Advanced Contact form 7 DB
      * https://wordpress.org/plugins/advanced-cf7-db/)
+     * 4 - Flamingo
+     * https://wordpress.org/plugins/flamingo/
      */
     public function get_storing_engine() {
         if ($this->get('storing_engine') !== false) {
@@ -1553,6 +1713,12 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 } else {
                     return false;
                 }
+            } elseif ($storing_engine === '4') {
+                if (class_exists('Flamingo_Inbound_Message')) {
+                    return '4';
+                } else {
+                    return false;
+                }
             } else {
                 return '0';
             }
@@ -1564,6 +1730,8 @@ class Extension_E2pdf_Wpcf7 extends Model_E2pdf_Model {
                 return '2';
             } elseif ($storing_engine === '3' && class_exists('Advanced_Cf7_Db')) {
                 return '3';
+            } elseif ($storing_engine === '4' && class_exists('Flamingo_Inbound_Message')) {
+                return '4';
             } else {
                 return '0';
             }

@@ -2,7 +2,7 @@
 # This file is distributed under the GPLv3.
 msgid ""
 msgstr ""
-"Project-Id-Version: E2Pdf 2.00.01\n"
+"Project-Id-Version: E2Pdf 2.00.02\n"
 "Report-Msgid-Bugs-To: https://e2pdf.com/support\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: e2pdf <support@e2pdf.com>\n"
@@ -1704,7 +1704,6 @@ msgid "Lock"
 msgstr ""
 
 #: classes/model/e2pdf-loader.php:790
-#: classes/view/metaboxes/e2pdf_templates_settings.php:40
 msgid "Unlock"
 msgstr ""
 
@@ -2838,8 +2837,12 @@ msgstr ""
 msgid "Security"
 msgstr ""
 
-#: classes/view/metaboxes/e2pdf_templates_settings.php:25
-msgid "Enter your E-mail to unlock this features"
+#: classes/view/metaboxes/e2pdf_templates_settings.php:26
+msgid "Subscribe to E2Pdf news and updates"
+msgstr ""
+
+#: classes/view/metaboxes/e2pdf_templates_settings.php:41
+msgid "Subscribe"
 msgstr ""
 
 #: classes/view/metaboxes/e2pdf_templates_settings.php:32

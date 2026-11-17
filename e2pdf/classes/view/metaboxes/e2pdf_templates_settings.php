@@ -19,10 +19,11 @@ if (!defined('ABSPATH')) {
     </ul>
     <div class="e2pdf-rel">
         <?php if (!get_option('e2pdf_email', '') && $this->helper->get('license')->get('type') == 'FREE') { ?>
-            <div class="e2pdf-email-lock e2pdf-ib">
+            <div class="e2pdf-email-subscribe e2pdf-ib">
+                <a href="javascript:void(0);" class="e2pdf-email-dismiss" _wpnonce="<?php echo wp_create_nonce('e2pdf_templates'); ?>">&times;</a>
                 <div id="e2pdf-email">
                     <p class="post-attributes-label-wrapper">
-                        <label><?php _e('Enter your E-mail to unlock this features', 'e2pdf'); ?>:</label>
+                        <label><?php _e('Subscribe to E2Pdf news and updates', 'e2pdf'); ?>:</label>
                     </p>
                     <p class="post-attributes-label-wrapper">
                         <?php
@@ -37,7 +38,7 @@ if (!defined('ABSPATH')) {
                         ?>
                     </p>
                     <p class="post-attributes-label-wrapper">
-                        <input form-id="e2pdf-email" action="e2pdf_email" type="button" class="e2pdf-submit-form button-primary button-small" value="<?php _e('Unlock', 'e2pdf'); ?>" _wpnonce="<?php echo wp_create_nonce('e2pdf_templates'); ?>">
+                        <input form-id="e2pdf-email" action="e2pdf_email" type="button" class="e2pdf-submit-form button-primary button-small" value="<?php _e('Subscribe', 'e2pdf'); ?>" _wpnonce="<?php echo wp_create_nonce('e2pdf_templates'); ?>">
                     </p>
                 </div>
             </div>

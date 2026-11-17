@@ -1675,6 +1675,10 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
     public function ajax_email() {
         if (wp_verify_nonce($this->get->get('_wpnonce'), 'e2pdf_templates') && (current_user_can('manage_options') || current_user_can('e2pdf_templates'))) {
             $data = $this->post->get('data');
+            if (isset($data['dismiss'])) {
+                update_option('e2pdf_email', '1');
+                $this->json_response(array('content' => 'dismissed'));
+            }
             $email = isset($data['email']) ? trim($data['email']) : '';
             $email_code = isset($data['email_code']) ? trim($data['email_code']) : '';
             $model_e2pdf_api = new Model_E2pdf_Api();
@@ -1708,7 +1712,7 @@ class Controller_E2pdf_Templates extends Helper_E2pdf_View {
                     'content' => $request['success'],
                 );
                 if ($request['success'] == 'subscribed') {
-                    update_option('e2pdf_email', $email);
+                    update_option('e2pdf_email', '1');
                 }
             }
         } else {

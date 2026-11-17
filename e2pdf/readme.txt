@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.1
-Stable tag: 2.00.01
+Stable tag: 2.00.04
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -143,6 +143,28 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 2.00.04 =
+*Release Date - November 17, 2026*
+
+* Fix: AVIF images with transparency rendered with wrong colors
+* Fix: Formidable Forms repeater field values not rendered in some cases
+
+= 2.00.03 =
+*Release Date - November 17, 2026*
+
+* Add: Flamingo storing engine for Contact Form 7
+* Fix: Zero font size text rendering
+* Fix: Contact Form 7 Auto PDF textarea font size
+* Fix: Contact Form 7 temporary mail attachments not removed after failed or aborted mail
+* Fix: Contact Form 7 download links after storing engine change
+
+= 2.00.02 =
+*Release Date - November 12, 2026*
+
+* Fix: Rotated images fail to render in some cases
+* Improvement: UI/UX
+* Improvement: Translations
 
 = 2.00.01 =
 *Release Date - November 11, 2026*
