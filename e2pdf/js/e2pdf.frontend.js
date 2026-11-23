@@ -236,6 +236,7 @@ jQuery(document).ready(function () {
                             });
                             const iframe = document.createElement('iframe');
                             iframe.style.setProperty('display', 'none', 'important');
+                            iframe.setAttribute('data-download', link.attr('download'));
                             document.body.appendChild(iframe);
                             const doc = iframe.contentDocument || iframe.contentWindow.document;
                             doc.open();
@@ -243,9 +244,10 @@ jQuery(document).ready(function () {
                             <!DOCTYPE html>
                             <html>
                             <body>
-                            <a href="${blobURL}" download="${link.attr('download')}"></a>
+                            <a href="${blobURL}"></a>
                             <script>
                                 const link = document.querySelector('a');
+                                link.setAttribute('download', window.frameElement.getAttribute('data-download'));
                                 parent.postMessage('e2pdf-download-ready', '*');                             
                                 link.click();    
                             </script>

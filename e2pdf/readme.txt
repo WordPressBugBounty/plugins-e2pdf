@@ -5,7 +5,7 @@ Tags: pdf, form, forms, email, document, formidable, forminator, gravity, wpform
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.1
-Stable tag: 2.00.04
+Stable tag: 2.00.05
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -143,6 +143,13 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 10. Viewing the Email PDF Attachment
 
 == Changelog ==
+
+= 2.00.05 =
+*Release Date - November 23, 2026*
+
+* Fix: AVIF images not rendered with image optimization in some cases
+* Fix: PDF Ajax Loader file name
+* Improvement: Security
 
 = 2.00.04 =
 *Release Date - November 17, 2026*

@@ -167,7 +167,14 @@ class Helper_E2pdf_Image {
                 ob_end_clean();
                 return $contents;
             } elseif ($image && $editor instanceof WP_Image_Editor_Imagick) {
-                $contents = $image->getImagesBlob();
+                try {
+                    if ($mime_type == 'image/heic') {
+                        $image->setImageFormat('avif');
+                    }
+                    $contents = $image->getImagesBlob();
+                } catch (Exception $e) {
+                    $contents = '';
+                }
                 return $contents;
             }
         }

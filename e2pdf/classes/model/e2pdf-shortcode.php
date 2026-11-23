@@ -288,7 +288,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             } else {
                                 $download_name = $entry->get_data('name') ? $entry->get_data('name') : basename($pdf, '.' . pathinfo($pdf, PATHINFO_EXTENSION));
                                 $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $download_name, $entry->get('uid'), $entry->get('entry'));
-                                $file_download = 'download="' . esc_attr($download_name . '.' . (pathinfo($pdf, PATHINFO_EXTENSION))) . '"';
+                                $file_download = 'download="' . esc_attr($this->helper->load('convert')->to_file_name($download_name . '.' . (pathinfo($pdf, PATHINFO_EXTENSION)))) . '"';
                                 $classes[] = 'e2pdf-download-loader';
                                 if ($this->helper->load('server')->isIOS() && $this->helper->load('server')->isSafari()) {
                                     $classes[] = 'e2pdf-ios-safari-loader';
@@ -372,7 +372,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                                 } else {
                                     $download_name = $entry->get_data('name') ? $entry->get_data('name') : basename($pdf, '.' . pathinfo($pdf, PATHINFO_EXTENSION));
                                     $download_name = apply_filters('e2pdf_controller_frontend_e2pdf_download_name', $download_name, $entry->get('uid'), $entry->get('entry'));
-                                    $file_download = 'download="' . esc_attr($download_name . '.' . (pathinfo($pdf, PATHINFO_EXTENSION))) . '"';
+                                    $file_download = 'download="' . esc_attr($this->helper->load('convert')->to_file_name($download_name . '.' . (pathinfo($pdf, PATHINFO_EXTENSION)))) . '"';
                                     $classes[] = 'e2pdf-download-loader';
                                     if ($this->helper->load('server')->isIOS() && $this->helper->load('server')->isSafari()) {
                                         $classes[] = 'e2pdf-ios-safari-loader';
@@ -548,7 +548,7 @@ class Model_E2pdf_Shortcode extends Model_E2pdf_Model {
                             if ($template->get('inline')) {
                                 $target = '_blank';
                             } else {
-                                $file_download = 'download="' . esc_attr($download_name) . '.' . $template->get('format') . '"';
+                                $file_download = 'download="' . esc_attr($this->helper->load('convert')->to_file_name($download_name . '.' . $template->get('format'))) . '"';
                                 $classes[] = 'e2pdf-download-loader';
                                 if ($this->helper->load('server')->isIOS() && $this->helper->load('server')->isSafari()) {
                                     $classes[] = 'e2pdf-ios-safari-loader';
