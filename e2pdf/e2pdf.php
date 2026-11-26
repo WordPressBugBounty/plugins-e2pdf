@@ -4,7 +4,7 @@
   Plugin Name: E2Pdf
   Plugin URI:  https://e2pdf.com
   Description: Export PDF tool
-  Version:     2.00.05
+  Version:     2.00.06
   Requires at least: 5.9
   Requires PHP: 7.1
   Author:      E2Pdf.com

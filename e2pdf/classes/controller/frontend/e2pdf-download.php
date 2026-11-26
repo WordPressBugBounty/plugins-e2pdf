@@ -175,7 +175,7 @@ class Controller_Frontend_E2pdf_Download extends Helper_E2pdf_View {
                                             ];
                                             $this->json_response_ajax($response, 403);
                                         } else {
-                                            wp_die($error_message, '', ['exit' => true]);
+                                            wp_die(wp_kses_post($error_message), '', ['exit' => true]);
                                         }
                                         break;
                                     case $action['action'] == 'redirect_access_by_url' && isset($action['success']):
